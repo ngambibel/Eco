@@ -1,0 +1,1665 @@
+{% extends 'administrations/base.html' %}
+{% load static %}
+
+{% block title %}Ecocity - Gestion des Zones & Tricycles{% endblock %}
+
+{% block page_title %}Gestion des Zones, Tricycles et Programmes de Collecte{% endblock %}
+
+{% block extra_css %}
+<style>
+    .process-steps {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+        color: white;
+    }
+    
+    .step {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .step-number {
+        width: 30px;
+        height: 30px;
+        background: white;
+        color: #667eea;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 15px;
+    }
+    
+    .step-content {
+        flex: 1;
+    }
+    
+    .step.active {
+        background: rgba(255,255,255,0.2);
+        border-left: 4px solid #27AE60;
+    }
+    
+    .tab-content {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .entity-card {
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    
+    .entity-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    
+    .capacity-bar {
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+    
+    .capacity-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #27AE60, #2ECC71);
+        transition: width 0.3s ease;
+    }
+    
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 500;
+    }
+    
+    .ajax-loader {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 5px;
+    }
+    
+    .success-message {
+        color: #28a745;
+        font-size: 0.875em;
+        margin-top: 5px;
+    }
+    
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .day-checkboxes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .day-checkbox {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .program-card {
+        border-left: 4px solid #27AE60;
+    }
+    
+    .zone-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs" id="managementTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="zones-tab" data-bs-toggle="tab" data-bs-target="#zones" type="button" role="tab">
+                <i class="fas fa-map-marker-alt me-2"></i>Zones
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tricycles-tab" data-bs-toggle="tab" data-bs-target="#tricycles" type="button" role="tab">
+                <i class="fas fa-truck me-2"></i>Tricycles
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="programs-tab" data-bs-toggle="tab" data-bs-target="#programs" type="button" role="tab">
+                <i class="fas fa-calendar-alt me-2"></i>Programmes
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="collection-days-tab" data-bs-toggle="tab" data-bs-target="#collection-days" type="button" role="tab">
+                <i class="fas fa-calendar-day me-2"></i>Jours de Collecte
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="managementTabsContent">
+        
+        <!-- Zones Tab -->
+        <div class="tab-pane fade show active" id="zones" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4>Gestion des Zones</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#zoneModal">
+                    <i class="fas fa-plus me-2"></i>Nouvelle Zone
+                </button>
+            </div>
+
+            <div class="row" id="zones-container">
+                <!-- Zones will be loaded here via AJAX -->
+            </div>
+
+            <div class="ajax-loader" id="zones-loader">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-2">Chargement des zones...</p>
+            </div>
+        </div>
+
+        <!-- Tricycles Tab -->
+        <div class="tab-pane fade" id="tricycles" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4>Gestion des Tricycles</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#tricycleModal">
+                    <i class="fas fa-plus me-2"></i>Nouveau Tricycle
+                </button>
+            </div>
+
+            <div class="row" id="tricycles-container">
+                <!-- Tricycles will be loaded here via AJAX -->
+            </div>
+
+            <div class="ajax-loader" id="tricycles-loader">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-2">Chargement des tricycles...</p>
+            </div>
+        </div>
+
+        <!-- Programs Tab -->
+        <div class="tab-pane fade" id="programs" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4>Programmes de Collecte</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#programModal">
+                    <i class="fas fa-plus me-2"></i>Nouveau Programme
+                </button>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Lorsqu'un programme est modifié, tous les abonnements de la zone concernée sont automatiquement mis à jour.
+            </div>
+
+            <div id="programs-container">
+                <!-- Programs will be loaded here via AJAX -->
+            </div>
+
+            <div class="ajax-loader" id="programs-loader">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-2">Chargement des programmes...</p>
+            </div>
+        </div>
+
+        <!-- Collection Days Tab -->
+        <div class="tab-pane fade" id="collection-days" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4>Jours de Collecte</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#collectionDayModal">
+                    <i class="fas fa-plus me-2"></i>Nouveau Jour
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped" id="collection-days-table">
+                    <thead>
+                        <tr>
+                            <th>Jour</th>
+                            <th>Ordre</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Collection days will be loaded here via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ajax-loader" id="collection-days-loader">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-2">Chargement des jours de collecte...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Zone Modal -->
+<div class="modal fade" id="zoneModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="zoneModalTitle">Nouvelle Zone</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="zoneForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-section">
+                        <h6>Informations de base</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nom de la zone *</label>
+                                    <input type="text" class="form-control" name="nom" required>
+                                    <div class="error-message" id="zone-nom-error"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ville *</label>
+                                    <select class="form-control" name="ville" required>
+                                        <option value="">Sélectionner une ville</option>
+                                        <!-- Cities will be populated via AJAX -->
+                                    </select>
+                                    <div class="error-message" id="zone-ville-error"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h6>Configuration visuelle</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Couleur d'affichage</label>
+                                    <input type="color" class="form-control" name="couleur" value="#27AE60">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Statut</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="is_active" checked>
+                                        <label class="form-check-label">Zone active</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="zoneSubmitBtn">
+                        <span class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tricycle Modal -->
+<div class="modal fade" id="tricycleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tricycleModalTitle">Nouveau Tricycle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="tricycleForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-section">
+                        <h6>Informations du véhicule</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Numéro d'immatriculation *</label>
+                                    <input type="text" class="form-control" name="numero_immatriculation" required>
+                                    <div class="error-message" id="tricycle-immat-error"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nom du tricycle *</label>
+                                    <input type="text" class="form-control" name="nom" required>
+                                    <div class="error-message" id="tricycle-nom-error"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Capacité (kg) *</label>
+                                    <input type="number" class="form-control" name="capacite_kg" step="0.01" required>
+                                    <div class="error-message" id="tricycle-capacite-error"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Couleur</label>
+                                    <input type="text" class="form-control" name="couleur">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Date mise en service</label>
+                                    <input type="date" class="form-control" name="date_mise_en_service">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h6>Assignation et statut</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Conducteur</label>
+                                    <select class="form-control" name="conducteur">
+                                        <option value="">Aucun conducteur assigné</option>
+                                        <!-- Collectors will be populated via AJAX -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Statut</label>
+                                    <select class="form-control" name="status" required>
+                                        <option value="active">Actif</option>
+                                        <option value="maintenance">En maintenance</option>
+                                        <option value="inactive">Inactif</option>
+                                        <option value="broken">En panne</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes techniques</label>
+                            <textarea class="form-control" name="notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="tricycleSubmitBtn">
+                        <span class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Program Modal -->
+<div class="modal fade" id="programModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="programModalTitle">Nouveau Programme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="programForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        La modification de ce programme déclenchera une mise à jour automatique de tous les abonnements dans cette zone.
+                    </div>
+
+                    <div class="form-section">
+                        <h6>Configuration du programme</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Tricycle *</label>
+                                    <select class="form-control" name="tricycle" required>
+                                        <option value="">Sélectionner un tricycle</option>
+                                        <!-- Tricycles will be populated via AJAX -->
+                                    </select>
+                                    <div class="error-message" id="program-tricycle-error"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Zone *</label>
+                                    <select class="form-control" name="zone" required>
+                                        <option value="">Sélectionner une zone</option>
+                                        <!-- Zones will be populated via AJAX -->
+                                    </select>
+                                    <div class="error-message" id="program-zone-error"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Jour de la semaine *</label>
+                                    <select class="form-control" name="jour_semaine" required>
+                                        <option value="lundi">Lundi</option>
+                                        <option value="mardi">Mardi</option>
+                                        <option value="mercredi">Mercredi</option>
+                                        <option value="jeudi">Jeudi</option>
+                                        <option value="vendredi">Vendredi</option>
+                                        <option value="samedi">Samedi</option>
+                                        <option value="dimanche">Dimanche</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Heure de début *</label>
+                                    <input type="time" class="form-control" name="heure_debut" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Heure de fin *</label>
+                                    <input type="time" class="form-control" name="heure_fin" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h6>Capacité et planning</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Capacité maximale de clients</label>
+                                    <input type="number" class="form-control" name="capacite_max_clients" value="50" min="1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Date de début</label>
+                                    <input type="date" class="form-control" name="date_debut">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" checked>
+                                <label class="form-check-label">Programme actif</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="programSubmitBtn">
+                        <span class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Collection Day Modal -->
+<div class="modal fade" id="collectionDayModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouveau Jour de Collecte</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="collectionDayForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Jour *</label>
+                        <select class="form-control" name="name" required>
+                            <option value="lundi">Lundi</option>
+                            <option value="mardi">Mardi</option>
+                            <option value="mercredi">Mercredi</option>
+                            <option value="jeudi">Jeudi</option>
+                            <option value="vendredi">Vendredi</option>
+                            <option value="samedi">Samedi</option>
+                            <option value="dimanche">Dimanche</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ordre d'affichage</label>
+                        <input type="number" class="form-control" name="order" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="collectionDaySubmitBtn">
+                        <span class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Fonction pour récupérer le token CSRF
+function getCSRFToken() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfToken ? csrfToken.value : '';
+}
+
+// Global variables
+let editingId = null;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadZones();
+    loadTricycles();
+    loadPrograms();
+    loadCollectionDays();
+    loadFormData();
+    
+    // Form submissions
+    document.getElementById('zoneForm').addEventListener('submit', handleZoneSubmit);
+    document.getElementById('tricycleForm').addEventListener('submit', handleTricycleSubmit);
+    document.getElementById('programForm').addEventListener('submit', handleProgramSubmit);
+    document.getElementById('collectionDayForm').addEventListener('submit', handleCollectionDaySubmit);
+});
+
+// Load form data (cities, collectors, etc.)
+function loadFormData() {
+    // Load cities for zone form
+    fetch('/api/cities/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur réseau');
+            return response.json();
+        })
+        .then(data => {
+            const select = document.querySelector('select[name="ville"]');
+            select.innerHTML = '<option value="">Sélectionner une ville</option>' +
+                data.map(city => `<option value="${city.id}">${city.city}</option>`).join('');
+        })
+        .catch(error => {
+            console.error('Erreur chargement villes:', error);
+        });
+    
+    // Load collectors for tricycle form
+    fetch('/api/collectors/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur réseau');
+            return response.json();
+        })
+        .then(data => {
+            const select = document.querySelector('select[name="conducteur"]');
+            select.innerHTML = '<option value="">Aucun conducteur assigné</option>' +
+                data.map(collector => `<option value="${collector.id}">${collector.name}</option>`).join('');
+        })
+        .catch(error => {
+            console.error('Erreur chargement collecteurs:', error);
+        });
+    
+    // Load tricycles for program form
+    fetch('/api/tricycles/active/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur réseau');
+            return response.json();
+        })
+        .then(data => {
+            const select = document.querySelector('select[name="tricycle"]');
+            select.innerHTML = '<option value="">Sélectionner un tricycle</option>' +
+                data.map(tricycle => `<option value="${tricycle.id}">${tricycle.nom} (${tricycle.numero_immatriculation})</option>`).join('');
+        })
+        .catch(error => {
+            console.error('Erreur chargement tricycles:', error);
+        });
+    
+    // Load zones for program form
+    fetch('/api/zones/active/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur réseau');
+            return response.json();
+        })
+        .then(data => {
+            const select = document.querySelector('select[name="zone"]');
+            select.innerHTML = '<option value="">Sélectionner une zone</option>' +
+                data.map(zone => `<option value="${zone.id}">${zone.nom}</option>`).join('');
+        })
+        .catch(error => {
+            console.error('Erreur chargement zones:', error);
+        });
+}
+
+// Zone Management
+function loadZones() {
+    showLoader('zones-loader');
+    fetch('/api/zones/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement des zones');
+            return response.json();
+        })
+        .then(data => {
+            hideLoader('zones-loader');
+            renderZones(data);
+        })
+        .catch(error => {
+            hideLoader('zones-loader');
+            showError(error.message);
+        });
+}
+
+function renderZones(zones) {
+    const container = document.getElementById('zones-container');
+    if (zones.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aucune zone configurée</h5>
+                <p class="text-muted">Commencez par créer votre première zone de collecte.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = zones.map(zone => `
+        <div class="col-md-6 col-lg-4">
+            <div class="card entity-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">
+                            <span class="zone-color" style="background-color: ${zone.couleur || '#27AE60'}"></span>
+                            ${zone.nom}
+                        </h5>
+                        <span class="badge ${zone.is_active ? 'bg-success' : 'bg-secondary'} status-badge">
+                            ${zone.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <p class="card-text text-muted">${zone.description || 'Aucune description'}</p>
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-city me-1"></i>${zone.ville_nom}
+                        </small>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            ${zone.programmes_count || 0} programme(s)
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editZone('${zone.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteZone('${zone.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function handleZoneSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('zoneSubmitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    
+    // Clear previous errors
+    clearErrors('zoneForm');
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    // Convertir les valeurs booléennes
+    if (data.is_active) {
+        data.is_active = data.is_active === 'on';
+    }
+    
+    const url = editingId ? `/api/zones/${editingId}/` : '/api/zones/';
+    const method = editingId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(async response => {
+        const data = await response.json();
+        
+        if (!response.ok) {
+            // Si c'est une erreur de validation, afficher les messages d'erreur
+            if (response.status === 400) {
+                return {status: response.status, body: data};
+            }
+            // Pour les autres erreurs, lancer une exception
+            throw new Error(data.error || `Erreur ${response.status}`);
+        }
+        
+        return {status: response.status, body: data};
+    })
+    .then(({status, body}) => {
+        if (status === 200 || status === 201) {
+            // Success
+            const modal = bootstrap.Modal.getInstance(document.getElementById('zoneModal'));
+            modal.hide();
+            showSuccess(body.message || 'Zone enregistrée avec succès');
+            loadZones();
+            resetForm('zoneForm');
+            editingId = null;
+        } else {
+            // Validation errors
+            displayErrors('zoneForm', body);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur détaillée:', error);
+        showError(error.message || 'Erreur lors de l\'enregistrement de la zone');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+}
+
+// Tricycle Management
+function loadTricycles() {
+    showLoader('tricycles-loader');
+    fetch('/api/tricycles/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement des tricycles');
+            return response.json();
+        })
+        .then(data => {
+            hideLoader('tricycles-loader');
+            renderTricycles(data);
+        })
+        .catch(error => {
+            hideLoader('tricycles-loader');
+            showError(error.message);
+        });
+}
+
+function renderTricycles(tricycles) {
+    const container = document.getElementById('tricycles-container');
+    if (tricycles.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aucun tricycle configuré</h5>
+                <p class="text-muted">Ajoutez votre premier tricycle pour commencer les collectes.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = tricycles.map(tricycle => `
+        <div class="col-md-6 col-lg-4">
+            <div class="card entity-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">${tricycle.nom}</h5>
+                        <span class="badge ${getStatusBadgeClass(tricycle.status)} status-badge">
+                            ${getStatusDisplay(tricycle.status)}
+                        </span>
+                    </div>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="fas fa-id-card me-1"></i>${tricycle.numero_immatriculation}
+                        </small>
+                    </p>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <small>Capacité: ${tricycle.capacite_kg} kg</small>
+                            <small>Couleur: ${tricycle.couleur || 'Non spécifiée'}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            ${tricycle.conducteur_nom ? `Conducteur: ${tricycle.conducteur_nom}` : 'Aucun conducteur'}
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editTricycle('${tricycle.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTricycle('${tricycle.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function handleTricycleSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('tricycleSubmitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    clearErrors('tricycleForm');
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    const url = editingId ? `/api/tricycles/${editingId}/` : '/api/tricycles/';
+    const method = editingId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(async response => {
+        const data = await response.json();
+        
+        if (!response.ok) {
+            if (response.status === 400) {
+                return {status: response.status, body: data};
+            }
+            throw new Error(data.error || `Erreur ${response.status}`);
+        }
+        
+        return {status: response.status, body: data};
+    })
+    .then(({status, body}) => {
+        if (status === 200 || status === 201) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('tricycleModal'));
+            modal.hide();
+            showSuccess(body.message || 'Tricycle enregistré avec succès');
+            loadTricycles();
+            resetForm('tricycleForm');
+            editingId = null;
+        } else {
+            displayErrors('tricycleForm', body);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur détaillée:', error);
+        showError(error.message || 'Erreur lors de l\'enregistrement du tricycle');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+}
+
+// Program Management
+function loadPrograms() {
+    showLoader('programs-loader');
+    fetch('/api/programs/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement des programmes');
+            return response.json();
+        })
+        .then(data => {
+            hideLoader('programs-loader');
+            renderPrograms(data);
+        })
+        .catch(error => {
+            hideLoader('programs-loader');
+            showError(error.message);
+        });
+}
+
+function renderPrograms(programs) {
+    const container = document.getElementById('programs-container');
+    if (programs.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aucun programme configuré</h5>
+                <p class="text-muted">Créez votre premier programme de collecte.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Group programs by zone
+    const programsByZone = {};
+    programs.forEach(program => {
+        if (!programsByZone[program.zone_nom]) {
+            programsByZone[program.zone_nom] = [];
+        }
+        programsByZone[program.zone_nom].push(program);
+    });
+
+    container.innerHTML = Object.entries(programsByZone).map(([zoneName, zonePrograms]) => `
+        <div class="card program-card mb-4">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>${zoneName}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    ${zonePrograms.map(program => `
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0">${getDayDisplay(program.jour_semaine)}</h6>
+                                    <span class="badge ${program.is_active ? 'bg-success' : 'bg-secondary'}">
+                                        ${program.is_active ? 'Actif' : 'Inactif'}
+                                    </span>
+                                </div>
+                                <p class="mb-2">
+                                    <i class="fas fa-clock me-1"></i>
+                                    ${program.heure_debut} - ${program.heure_fin}
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-truck me-1"></i>
+                                    ${program.tricycle_nom}
+                                </p>
+                                <div class="mb-2">
+                                    <small>Capacité: ${program.clients_actuels || 0}/${program.capacite_max_clients} clients</small>
+                                    <div class="capacity-bar">
+                                        <div class="capacity-fill" style="width: ${((program.clients_actuels || 0) / program.capacite_max_clients) * 100}%"></div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">
+                                        ${program.places_disponibles || program.capacite_max_clients} places disponibles
+                                    </small>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editProgram('${program.id}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteProgram('${program.id}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function handleProgramSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('programSubmitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    clearErrors('programForm');
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    // Convertir les valeurs booléennes
+    if (data.is_active) {
+        data.is_active = data.is_active === 'on';
+    }
+    
+    // Convertir la capacité en nombre
+    if (data.capacite_max_clients) {
+        data.capacite_max_clients = parseInt(data.capacite_max_clients);
+    }
+    
+    const url = editingId ? `/api/programs/${editingId}/` : '/api/programs/';
+    const method = editingId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(async response => {
+        const data = await response.json();
+        
+        if (!response.ok) {
+            if (response.status === 400) {
+                return {status: response.status, body: data};
+            }
+            throw new Error(data.error || `Erreur ${response.status}`);
+        }
+        
+        return {status: response.status, body: data};
+    })
+    .then(({status, body}) => {
+        if (status === 200 || status === 201) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('programModal'));
+            modal.hide();
+            showSuccess(body.message || 'Programme enregistré avec succès');
+            
+            // Show update process notification
+            if (editingId) {
+                showProcessNotification('Mise à jour des abonnements en cours...');
+                setTimeout(() => {
+                    showSuccess('Tous les abonnements ont été mis à jour avec succès');
+                }, 2000);
+            }
+            
+            loadPrograms();
+            resetForm('programForm');
+            editingId = null;
+        } else {
+            displayErrors('programForm', body);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur détaillée:', error);
+        showError(error.message || 'Erreur lors de l\'enregistrement du programme');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+}
+
+// Collection Days Management
+function loadCollectionDays() {
+    showLoader('collection-days-loader');
+    fetch('/api/collection-days/')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement des jours de collecte');
+            return response.json();
+        })
+        .then(data => {
+            hideLoader('collection-days-loader');
+            renderCollectionDays(data);
+        })
+        .catch(error => {
+            hideLoader('collection-days-loader');
+            showError(error.message);
+        });
+}
+
+function renderCollectionDays(days) {
+    const tbody = document.querySelector('#collection-days-table tbody');
+    tbody.innerHTML = days.map(day => `
+        <tr>
+            <td>${day.name_display}</td>
+            <td>${day.order}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editCollectionDay('${day.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteCollectionDay('${day.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function handleCollectionDaySubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('collectionDaySubmitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    const url = editingId ? `/api/collection-days/${editingId}/` : '/api/collection-days/';
+    const method = editingId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(async response => {
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `Erreur ${response.status}`);
+        }
+        
+        return {status: response.status, body: data};
+    })
+    .then(({status, body}) => {
+        if (status === 200 || status === 201) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('collectionDayModal'));
+            modal.hide();
+            showSuccess(body.message || 'Jour de collecte enregistré avec succès');
+            loadCollectionDays();
+            resetForm('collectionDayForm');
+            editingId = null;
+        } else {
+            const errorMessage = body.error || body.name || 'Erreur lors de l\'enregistrement';
+            showError(errorMessage);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur détaillée:', error);
+        showError(error.message || 'Erreur lors de l\'enregistrement du jour de collecte');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+}
+
+// Utility Functions
+function showLoader(loaderId) {
+    document.getElementById(loaderId).style.display = 'block';
+}
+
+function hideLoader(loaderId) {
+    document.getElementById(loaderId).style.display = 'none';
+}
+
+function clearErrors(formId) {
+    const form = document.getElementById(formId);
+    const errorMessages = form.querySelectorAll('.error-message');
+    errorMessages.forEach(el => el.textContent = '');
+    
+    const inputs = form.querySelectorAll('.is-invalid');
+    inputs.forEach(el => el.classList.remove('is-invalid'));
+}
+
+function displayErrors(formId, errors) {
+    const form = document.getElementById(formId);
+    for (const [field, messages] of Object.entries(errors)) {
+        const input = form.querySelector(`[name="${field}"]`);
+        const errorEl = document.getElementById(`${formId.split('Form')[0].toLowerCase()}-${field}-error`);
+        
+        if (input) {
+            input.classList.add('is-invalid');
+        }
+        if (errorEl) {
+            errorEl.textContent = Array.isArray(messages) ? messages[0] : messages;
+        }
+    }
+}
+
+function resetForm(formId) {
+    document.getElementById(formId).reset();
+    editingId = null;
+}
+
+function showSuccess(message) {
+    // Create and show success alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container-fluid.py-4').prepend(alert);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+function showError(message) {
+    // Create and show error alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show';
+    alert.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container-fluid.py-4').prepend(alert);
+    
+    // Auto remove after 8 seconds
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 8000);
+}
+
+function showProcessNotification(message) {
+    // Create and show process notification
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-info alert-dismissible fade show';
+    alert.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <span>${message}</span>
+        </div>
+    `;
+    document.querySelector('.container-fluid.py-4').prepend(alert);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 3000);
+}
+
+function getStatusBadgeClass(status) {
+    const classes = {
+        'active': 'bg-success',
+        'maintenance': 'bg-warning',
+        'inactive': 'bg-secondary',
+        'broken': 'bg-danger'
+    };
+    return classes[status] || 'bg-secondary';
+}
+
+function getStatusDisplay(status) {
+    const displays = {
+        'active': 'Actif',
+        'maintenance': 'Maintenance',
+        'inactive': 'Inactif',
+        'broken': 'En panne'
+    };
+    return displays[status] || status;
+}
+
+function getDayDisplay(day) {
+    const days = {
+        'lundi': 'Lundi',
+        'mardi': 'Mardi',
+        'mercredi': 'Mercredi',
+        'jeudi': 'Jeudi',
+        'vendredi': 'Vendredi',
+        'samedi': 'Samedi',
+        'dimanche': 'Dimanche'
+    };
+    return days[day] || day;
+}
+
+// Edit functions (simplified - would need actual implementation)
+function editZone(id) {
+    console.log('Edit zone:', id);
+    // Implementation to load zone data and open modal for editing
+}
+
+function editTricycle(id) {
+    console.log('Edit tricycle:', id);
+    // Implementation to load tricycle data and open modal for editing
+}
+
+function editProgram(id) {
+    console.log('Edit program:', id);
+    // Implementation to load program data and open modal for editing
+}
+
+function editCollectionDay(id) {
+    console.log('Edit collection day:', id);
+    // Implementation to load collection day data and open modal for editing
+}
+
+// Delete functions (simplified - would need actual implementation)
+function deleteZone(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette zone ?')) {
+        console.log('Delete zone:', id);
+    }
+}
+
+function deleteTricycle(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce tricycle ?')) {
+        console.log('Delete tricycle:', id);
+    }
+}
+
+function deleteProgram(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce programme ?')) {
+        console.log('Delete program:', id);
+    }
+}
+
+function deleteCollectionDay(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce jour de collecte ?')) {
+        console.log('Delete collection day:', id);
+    }
+}
+
+// Edit functions - Implementation complète
+function editZone(id) {
+    console.log('Edit zone:', id);
+    editingId = id;
+    
+    // Charger les données de la zone
+    fetch(`/api/zones/${id}/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement de la zone');
+            return response.json();
+        })
+        .then(zone => {
+            // Remplir le formulaire avec les données existantes
+            document.querySelector('input[name="nom"]').value = zone.nom || '';
+            document.querySelector('textarea[name="description"]').value = zone.description || '';
+            document.querySelector('select[name="ville"]').value = zone.ville_id || '';
+            document.querySelector('input[name="couleur"]').value = zone.couleur || '#27AE60';
+            document.querySelector('input[name="is_active"]').checked = zone.is_active;
+            
+            // Mettre à jour le titre du modal
+            document.getElementById('zoneModalTitle').textContent = 'Modifier la Zone';
+            
+            // Ouvrir le modal
+            const modal = new bootstrap.Modal(document.getElementById('zoneModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors du chargement de la zone: ' + error.message);
+        });
+}
+
+function editTricycle(id) {
+    console.log('Edit tricycle:', id);
+    editingId = id;
+    
+    // Charger les données du tricycle
+    fetch(`/api/tricycles/${id}/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement du tricycle');
+            return response.json();
+        })
+        .then(tricycle => {
+            // Remplir le formulaire avec les données existantes
+            document.querySelector('input[name="numero_immatriculation"]').value = tricycle.numero_immatriculation || '';
+            document.querySelector('input[name="nom"]').value = tricycle.nom || '';
+            document.querySelector('input[name="capacite_kg"]').value = tricycle.capacite_kg || '';
+            document.querySelector('input[name="couleur"]').value = tricycle.couleur || '';
+            document.querySelector('input[name="date_mise_en_service"]').value = tricycle.date_mise_en_service || '';
+            document.querySelector('select[name="status"]').value = tricycle.status || 'active';
+            document.querySelector('select[name="conducteur"]').value = tricycle.conducteur_id || '';
+            document.querySelector('textarea[name="notes"]').value = tricycle.notes || '';
+            
+            // Mettre à jour le titre du modal
+            document.getElementById('tricycleModalTitle').textContent = 'Modifier le Tricycle';
+            
+            // Ouvrir le modal
+            const modal = new bootstrap.Modal(document.getElementById('tricycleModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors du chargement du tricycle: ' + error.message);
+        });
+}
+
+function editProgram(id) {
+    console.log('Edit program:', id);
+    editingId = id;
+    
+    // Charger les données du programme
+    fetch(`/api/programs/${id}/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement du programme');
+            return response.json();
+        })
+        .then(program => {
+            // Remplir le formulaire avec les données existantes
+            document.querySelector('select[name="tricycle"]').value = program.tricycle_id || '';
+            document.querySelector('select[name="zone"]').value = program.zone_id || '';
+            document.querySelector('select[name="jour_semaine"]').value = program.jour_semaine || 'lundi';
+            document.querySelector('input[name="heure_debut"]').value = program.heure_debut || '';
+            document.querySelector('input[name="heure_fin"]').value = program.heure_fin || '';
+            document.querySelector('input[name="capacite_max_clients"]').value = program.capacite_max_clients || 50;
+            document.querySelector('input[name="is_active"]').checked = program.is_active;
+            document.querySelector('input[name="date_debut"]').value = program.date_debut || '';
+            
+            // Mettre à jour le titre du modal
+            document.getElementById('programModalTitle').textContent = 'Modifier le Programme';
+            
+            // Ouvrir le modal
+            const modal = new bootstrap.Modal(document.getElementById('programModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors du chargement du programme: ' + error.message);
+        });
+}
+
+function editCollectionDay(id) {
+    console.log('Edit collection day:', id);
+    editingId = id;
+    
+    // Charger les données du jour de collecte
+    fetch(`/api/collection-days/${id}/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur lors du chargement du jour de collecte');
+            return response.json();
+        })
+        .then(day => {
+            // Remplir le formulaire avec les données existantes
+            document.querySelector('select[name="name"]').value = day.name || 'lundi';
+            document.querySelector('input[name="order"]').value = day.order || 0;
+            
+            // Mettre à jour le titre du modal (vous devrez ajouter un ID pour le titre)
+            const modalTitle = document.querySelector('#collectionDayModal .modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = 'Modifier le Jour de Collecte';
+            }
+            
+            // Ouvrir le modal
+            const modal = new bootstrap.Modal(document.getElementById('collectionDayModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors du chargement du jour de collecte: ' + error.message);
+        });
+}
+
+// Delete functions - Implementation complète
+function deleteZone(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette zone ? Cette action est irréversible.')) {
+        fetch(`/api/zones/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
+        .then(async response => {
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Erreur ${response.status}`);
+            }
+            
+            return data;
+        })
+        .then(data => {
+            showSuccess(data.message || 'Zone supprimée avec succès');
+            loadZones(); // Recharger la liste
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors de la suppression: ' + error.message);
+        });
+    }
+}
+
+function deleteTricycle(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce tricycle ? Cette action est irréversible.')) {
+        fetch(`/api/tricycles/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
+        .then(async response => {
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Erreur ${response.status}`);
+            }
+            
+            return data;
+        })
+        .then(data => {
+            showSuccess(data.message || 'Tricycle supprimé avec succès');
+            loadTricycles(); // Recharger la liste
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors de la suppression: ' + error.message);
+        });
+    }
+}
+
+function deleteProgram(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce programme ? Cette action est irréversible.')) {
+        fetch(`/api/programs/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
+        .then(async response => {
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Erreur ${response.status}`);
+            }
+            
+            return data;
+        })
+        .then(data => {
+            showSuccess(data.message || 'Programme supprimé avec succès');
+            loadPrograms(); // Recharger la liste
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors de la suppression: ' + error.message);
+        });
+    }
+}
+
+function deleteCollectionDay(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce jour de collecte ? Cette action est irréversible.')) {
+        fetch(`/api/collection-days/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
+        .then(async response => {
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Erreur ${response.status}`);
+            }
+            
+            return data;
+        })
+        .then(data => {
+            showSuccess(data.message || 'Jour de collecte supprimé avec succès');
+            loadCollectionDays(); // Recharger la liste
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showError('Erreur lors de la suppression: ' + error.message);
+        });
+    }
+}
+
+// Fonction pour réinitialiser le modal lorsqu'il est fermé
+document.addEventListener('DOMContentLoaded', function() {
+    // Réinitialiser les modaux quand ils sont fermés
+    const modals = ['zoneModal', 'tricycleModal', 'programModal', 'collectionDayModal'];
+    
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function() {
+                resetForm(modalId.replace('Modal', 'Form'));
+                editingId = null;
+                
+                // Réinitialiser les titres
+                if (modalId === 'zoneModal') {
+                    document.getElementById('zoneModalTitle').textContent = 'Nouvelle Zone';
+                } else if (modalId === 'tricycleModal') {
+                    document.getElementById('tricycleModalTitle').textContent = 'Nouveau Tricycle';
+                } else if (modalId === 'programModal') {
+                    document.getElementById('programModalTitle').textContent = 'Nouveau Programme';
+                } else if (modalId === 'collectionDayModal') {
+                    const modalTitle = document.querySelector('#collectionDayModal .modal-title');
+                    if (modalTitle) {
+                        modalTitle.textContent = 'Nouveau Jour de Collecte';
+                    }
+                }
+            });
+        }
+    });
+});
+
+// Fonction utilitaire pour gérer les réponses d'erreur
+function handleApiResponse(response) {
+    return response.json().then(data => {
+        if (!response.ok) {
+            // Si c'est une erreur de validation, afficher les messages d'erreur
+            if (response.status === 400) {
+                return {status: response.status, body: data};
+            }
+            // Pour les autres erreurs, lancer une exception
+            throw new Error(data.error || `Erreur ${response.status}`);
+        }
+        return {status: response.status, body: data};
+    });
+}
+</script>
+{% endblock %}

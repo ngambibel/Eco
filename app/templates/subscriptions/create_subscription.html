@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nouvel Abonnement - EcoCity{% endblock %}
+
+
+{% block content %}
+<style>
+    .erroor-message {
+        background: #fee; border: 1px solid #fcc; color: #c00;
+    
+    }
+    .success-message {
+        background: #efe; border: 1px solid #cfc; color: #060;
+        }
+</style>
+<div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div class="form-header" style="text-align: center; margin-bottom: 30px;">
+        <a href="{% url 'subscriptions_dashboard' %}" style="color: var(--orange-cosmique); text-decoration: none; display: inline-flex; align-items: center; margin-bottom: 20px;">
+            <i class="fas fa-arrow-left" style="margin-right: 8px;"></i>
+            Retour aux abonnements
+        </a>
+        <h1 style="color: var(--orange-cosmique); margin-bottom: 10px;">Nouvel Abonnement</h1>
+        <p style="color: var(--gris-fonce);">Ajoutez un nouvel abonnement pour pouvoir faire des demandes de réabonnement</p>
+    </div>
+
+    <!-- Messages d'erreur/succès -->
+    {% if messages %}
+    <div style="margin-bottom: 20px;">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} {% if message.tags == 'error' %}erroor-message{% else %}success-message{% endif %}" 
+             style="padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="subscription-form" style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <form method="post" id="subscriptionForm">
+            {% csrf_token %}
+            
+            <!-- Type de Service -->
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="type_service" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--noir);">
+                    Type de Service *
+                </label>
+                <select name="type_service" id="type_service" required
+                        style="width: 100%; padding: 12px; border: 2px solid var(--gris-clair); border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;"
+                        onchange="toggleCanalOffers()">
+                    <option value="">Sélectionnez un service</option>
+                    {% for value, label in service_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Identifiant Abonné -->
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="identifiant_abonne" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--noir);">
+                    Identifiant Abonné *
+                </label>
+                <input type="text" name="identifiant_abonne" id="identifiant_abonne" required
+                       placeholder="Ex: 123456789 pour le numero du décodeur Canal+"
+                       style="width: 100%; padding: 12px; border: 2px solid var(--gris-clair); border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;">
+                <small style="color: var(--gris-fonce); margin-top: 5px; display: block;">
+                    Votre identifiant client chez le fournisseur de service
+                </small>
+            </div>
+
+            <!-- Offres Canal+ (caché par défaut) -->
+            <div id="canal-offers-section" style="display: none; margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 15px; font-weight: 600; color: var(--noir);">
+                    Choisissez votre offre Canal+ *
+                </label>
+                <div class="offers-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    {% for offer in canal_offers %}
+                    <div class="offer-card" 
+                         style="border: 2px solid var(--gris-clair); border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.3s;"
+                         onclick="selectOffer('{{ offer.id }}', '{{ offer.price }}')">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <h4 style="color: var(--orange-cosmique); margin: 0;">{{ offer.name }}</h4>
+                            <span style="background: var(--jaune-dore); color: white; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">
+                                {{ offer.price }} FCFA
+                            </span>
+                        </div>
+                        <p style="color: var(--gris-fonce); margin: 0; font-size: 0.9rem;">{{ offer.description }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="offre_choisie" id="selected_offer" required>
+                <div id="offer-error" style="color: #c00; font-size: 0.9rem; margin-top: 5px; display: none;">
+                    Veuillez sélectionner une offre
+                </div>
+            </div>
+
+            <!-- Bouton de soumission -->
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" id="submitBtn"
+                        style="background: linear-gradient(to right, var(--orange-cosmique), var(--jaune-dore)); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                    <i class="fas fa-check-circle"></i> Créer l'Abonnement
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let selectedOffer = '';
+
+function toggleCanalOffers() {
+    const serviceSelect = document.getElementById('type_service');
+    const canalSection = document.getElementById('canal-offers-section');
+    const selectedOfferInput = document.getElementById('selected_offer');
+    const offerError = document.getElementById('offer-error');
+    
+    if (serviceSelect.value === 'CANAL') {
+        canalSection.style.display = 'block';
+        selectedOfferInput.required = true;
+    } else {
+        canalSection.style.display = 'none';
+        selectedOfferInput.required = false;
+        selectedOfferInput.value = '';
+        selectedOffer = '';
+        offerError.style.display = 'none';
+        
+        // Réinitialiser les styles des cartes
+        document.querySelectorAll('.offer-card').forEach(card => {
+            card.style.borderColor = 'var(--gris-clair)';
+            card.style.background = 'white';
+        });
+    }
+}
+
+function selectOffer(offerId, price) {
+    // Retirer la sélection précédente
+    document.querySelectorAll('.offer-card').forEach(card => {
+        card.style.borderColor = 'var(--gris-clair)';
+        card.style.background = 'white';
+    });
+    
+    // Ajouter la sélection actuelle
+    event.currentTarget.style.borderColor = 'var(--orange-cosmique)';
+    event.currentTarget.style.background = 'var(--gris-clair)';
+    
+    // Mettre à jour l'input caché
+    selectedOffer = offerId;
+    document.getElementById('selected_offer').value = offerId;
+    document.getElementById('offer-error').style.display = 'none';
+}
+
+// Validation du formulaire
+document.getElementById('subscriptionForm').addEventListener('submit', function(e) {
+    const serviceType = document.getElementById('type_service').value;
+    const identifiant = document.getElementById('identifiant_abonne').value;
+    
+    if (!serviceType) {
+        e.preventDefault();
+        alert('Veuillez sélectionner un type de service');
+        return;
+    }
+    
+    if (!identifiant) {
+        e.preventDefault();
+        alert('Veuillez saisir un identifiant abonné');
+        return;
+    }
+    
+    if (serviceType === 'CANAL' && !selectedOffer) {
+        e.preventDefault();
+        document.getElementById('offer-error').style.display = 'block';
+        document.getElementById('canal-offers-section').scrollIntoView({ behavior: 'smooth' });
+    }
+});
+
+// Sélection automatique de la première offre pour Canal+ quand le service est changé
+document.getElementById('type_service').addEventListener('change', function() {
+    if (this.value === 'CANAL') {
+        // Attendre que la section soit affichée
+        setTimeout(() => {
+            const firstOffer = document.querySelector('.offer-card');
+            if (firstOffer && !selectedOffer) {
+                firstOffer.click();
+            }
+        }, 100);
+    }
+});
+</script>
+
+<style>
+.offer-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.offer-card.selected {
+    border-color: var(--orange-cosmique) !important;
+    background: var(--gris-clair) !important;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--orange-cosmique) !important;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+}
+
+@media (max-width: 768px) {
+    .offers-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+{% endblock %}

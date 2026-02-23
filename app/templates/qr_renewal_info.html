@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Information Réabonnement - EcoCity</title>
+    <style>
+        :root {
+            --orange-cosmique: #FF6B35;
+            --rouge-poupre: #C53D3D;
+            --blanc: #FFFFFF;
+            --gris-clair: #F8F9FA;
+            --gris-fonce: #6C757D;
+            --noir: #212529;
+            --vert-success: #28a745;
+            --orange-warning: #ffc107;
+            --rouge-danger: #dc3545;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: var(--blanc);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--orange-cosmique), var(--rouge-poupre));
+            color: var(--blanc);
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .status-icon {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .icon-success {
+            color: var(--vert-success);
+            font-size: 4rem;
+        }
+        
+        .icon-warning {
+            color: var(--orange-warning);
+            font-size: 4rem;
+        }
+        
+        .icon-error {
+            color: var(--rouge-danger);
+            font-size: 4rem;
+        }
+        
+        .subscription-info {
+            background: var(--gris-clair);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .info-label {
+            color: var(--gris-fonce);
+            font-weight: 500;
+        }
+        
+        .info-value {
+            color: var(--noir);
+            font-weight: 600;
+        }
+        
+        .message-box {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .message-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .message-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            gap: 8px;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: var(--orange-cosmique);
+            color: var(--blanc);
+        }
+        
+        .btn-primary:hover {
+            background: var(--rouge-poupre);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--orange-cosmique);
+            color: var(--orange-cosmique);
+        }
+        
+        .btn-outline:hover {
+            background: var(--orange-cosmique);
+            color: var(--blanc);
+        }
+        
+        .btn-secondary {
+            background: var(--gris-fonce);
+            color: var(--blanc);
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .instructions {
+            background: #e7f3ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .instructions h4 {
+            color: var(--orange-cosmique);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            color: var(--gris-fonce);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background: var(--gris-clair);
+            color: var(--gris-fonce);
+            font-size: 0.9rem;
+        }
+        
+        .contact-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .contact-info a {
+            color: var(--orange-cosmique);
+            text-decoration: none;
+        }
+        
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>♻️ EcoCity</h1>
+            <p>Information Réabonnement</p>
+        </div>
+        
+        <div class="content">
+            {% if error %}
+                <!-- État d'erreur -->
+                <div class="status-icon">
+                    <i class="fas fa-exclamation-triangle icon-error"></i>
+                </div>
+                
+                <div class="message-box message-error">
+                    <h3>Impossible de Procéder au Réabonnement</h3>
+                    <p>{{ error }}</p>
+                </div>
+                
+                <div class="subscription-info">
+                    <div class="info-item">
+                        <span class="info-label">Abonnement:</span>
+                        <span class="info-value">{{ subscription.plan.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Statut:</span>
+                        <span class="info-value">{{ subscription.get_status_display }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Adresse:</span>
+                        <span class="info-value">{{ subscription.address.street }}, {{ subscription.address.city }}</span>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <a href="{% url 'login' %}" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Se Connecter
+                    </a>
+                    <a href="/" class="btn btn-outline">
+                        <i class="fas fa-home"></i> Retour à l'Accueil
+                    </a>
+                </div>
+                
+                <div class="contact-info">
+                    <p><strong>Besoin d'aide ?</strong></p>
+                    <p>Contactez notre service client :</p>
+                    <p>
+                        <i class="fas fa-phone"></i> 
+                        <a href="tel:+237670000000">+237 6 70 00 00 00</a>
+                    </p>
+                    <p>
+                        <i class="fas fa-envelope"></i> 
+                        <a href="mailto:support@ecocity.com">support@ecocity.com</a>
+                    </p>
+                </div>
+                
+            {% else %}
+                <!-- État d'information générale -->
+                <div class="status-icon">
+                    <i class="fas fa-info-circle icon-warning"></i>
+                </div>
+                
+                <div class="message-box message-warning">
+                    <h3>Information sur l'Abonnement</h3>
+                    <p>Statut actuel de votre service de collecte</p>
+                </div>
+                
+                <div class="subscription-info">
+                    <div class="info-item">
+                        <span class="info-label">Abonnement:</span>
+                        <span class="info-value">{{ subscription.plan.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Type:</span>
+                        <span class="info-value">{{ subscription.plan.get_plan_type_display }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Statut:</span>
+                        <span class="info-value">{{ subscription.get_status_display }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Adresse:</span>
+                        <span class="info-value">{{ subscription.address.street }}, {{ subscription.address.city }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date de début:</span>
+                        <span class="info-value">{{ subscription.start_date }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date de fin:</span>
+                        <span class="info-value">{{ subscription.end_date|default:"Non définie" }}</span>
+                    </div>
+                </div>
+                
+                {% if subscription.status == 'active' %}
+                <div class="message-box message-success">
+                    <h4><i class="fas fa-check-circle"></i> Abonnement Actif</h4>
+                    <p>Votre service de collecte fonctionne normalement.</p>
+                </div>
+                
+                <div class="actions">
+                    <a href="{% url 'login' %}" class="btn btn-primary">
+                        <i class="fas fa-user"></i> Mon Compte
+                    </a>
+                    <a href="/" class="btn btn-outline">
+                        <i class="fas fa-home"></i> Accueil
+                    </a>
+                </div>
+                
+                {% elif subscription.status == 'inactive' %}
+                <div class="message-box message-warning">
+                    <h4><i class="fas fa-pause-circle"></i> Abonnement Inactif</h4>
+                    <p>Votre service de collecte est actuellement suspendu.</p>
+                </div>
+                
+                <div class="actions">
+                    <a href="{% url 'qr_renewal_gateway' qr_code.token %}" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Réactiver l'Abonnement
+                    </a>
+                    <a href="{% url 'login' %}" class="btn btn-outline">
+                        <i class="fas fa-sign-in-alt"></i> Se Connecter
+                    </a>
+                </div>
+                
+                {% elif subscription.status == 'suspended' %}
+                <div class="message-box message-warning">
+                    <h4><i class="fas fa-pause"></i> Abonnement Suspendu</h4>
+                    <p>Votre service de collecte est temporairement suspendu.</p>
+                </div>
+                
+                <div class="actions">
+                    <a href="{% url 'login' %}" class="btn btn-primary">
+                        <i class="fas fa-user-cog"></i> Gérer mon Abonnement
+                    </a>
+                    <a href="/" class="btn btn-outline">
+                        <i class="fas fa-home"></i> Accueil
+                    </a>
+                </div>
+                
+                {% elif subscription.status == 'cancelled' %}
+                <div class="message-box message-error">
+                    <h4><i class="fas fa-times-circle"></i> Abonnement Annulé</h4>
+                    <p>Cet abonnement a été définitivement annulé.</p>
+                </div>
+                
+                <div class="actions">
+                    <a href="{% url 'subscription_page' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nouvel Abonnement
+                    </a>
+                    <a href="/" class="btn btn-outline">
+                        <i class="fas fa-home"></i> Accueil
+                    </a>
+                </div>
+                {% endif %}
+                
+                <div class="instructions">
+                    <h4><i class="fas fa-info-circle"></i> Comment Réactiver ?</h4>
+                    <ul>
+                        <li>Cliquez sur "Réactiver l'Abonnement" pour un paiement rapide</li>
+                        <li>Ou connectez-vous à votre compte pour plus d'options</li>
+                        <li>Le paiement est sécurisé et instantané</li>
+                        <li>Le service reprend immédiatement après paiement</li>
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="footer">
+            <p>Service de collecte d'ordures ménagères EcoCity</p>
+            <p>♻️ Contribuons à un environnement plus propre</p>
+        </div>
+    </div>
+
+    <!-- Font Awesome pour les icônes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+</body>
+</html>

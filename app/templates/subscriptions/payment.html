@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Paiement Réabonnement - EcoCity{% endblock %}
+
+{% block content %}
+<style>
+    .payment-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .payment-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .payment-status {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+    }
+    .status-processing {
+        background: #cce7ff;
+        border: 1px solid #b3d9ff;
+        color: #004085;
+    }
+    .status-success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .status-error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--orange-cosmique);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+        margin: 0 auto 15px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: var(--gris-clair);
+        border-radius: 3px;
+        margin: 20px 0;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(to right, var(--orange-cosmique), var(--jaune-dore));
+        width: 0%;
+        transition: width 0.5s ease;
+    }
+    .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        position: relative;
+    }
+    .step {
+        text-align: center;
+        flex: 1;
+        position: relative;
+        z-index: 2;
+    }
+    .step-circle {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid var(--gris-clair);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 8px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    .step.active .step-circle {
+        background: var(--orange-cosmique);
+        border-color: var(--orange-cosmique);
+        color: white;
+    }
+    .step.completed .step-circle {
+        background: var(--vert-success);
+        border-color: var(--vert-success);
+        color: white;
+    }
+    .step-label {
+        font-size: 0.8rem;
+        color: var(--gris-fonce);
+    }
+    .step.active .step-label {
+        color: var(--orange-cosmique);
+        font-weight: 600;
+    }
+    .payment-details {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    .detail-row:last-child {
+        margin-bottom: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--orange-cosmique);
+    }
+</style>
+
+<div class="payment-container">
+    <div class="form-header" style="text-align: center; margin-bottom: 30px;">
+        <a href="{% url 'create_renewal_request' subscription_id=demande.abonnement.id %}" 
+           style="color: var(--orange-cosmique); text-decoration: none; display: inline-flex; align-items: center; margin-bottom: 20px;">
+            <i class="fas fa-arrow-left" style="margin-right: 8px;"></i>
+            Retour à la demande
+        </a>
+        <h1 style="color: var(--orange-cosmique); margin-bottom: 10px;">Paiement Réabonnement</h1>
+        <p style="color: var(--gris-fonce);">
+            Finalisez votre demande de réabonnement
+        </p>
+    </div>
+
+    <!-- Indicateur d'étapes -->
+    <div class="step-indicator">
+        <div class="step completed">
+            <div class="step-circle"><i class="fas fa-check"></i></div>
+            <div class="step-label">Demande</div>
+        </div>
+        <div class="step active">
+            <div class="step-circle">2</div>
+            <div class="step-label">Paiement</div>
+        </div>
+        <div class="step">
+            <div class="step-circle">3</div>
+            <div class="step-label">Confirmation</div>
+        </div>
+    </div>
+
+    
+    <div class="payment-card">
+        <!-- Détails de la demande -->
+        <div class="payment-details">
+            <h3 style="color: var(--orange-cosmique); margin-bottom: 15px;">Détails de la demande</h3>
+            <div class="detail-row">
+                <span>Service:</span>
+                <span>{{ demande.abonnement.get_type_service_display }}</span>
+            </div>
+            <div class="detail-row">
+                <span>Identifiant:</span>
+                <span>{{ demande.abonnement.identifiant_abonne }}</span>
+            </div>
+            {% if demande.offre_choisie %}
+            <div class="detail-row">
+                <span>Offre choisie:</span>
+                <span>
+                    {% for offer in offres %}
+                        {% if offer.id == demande.offre_choisie %}
+                            {{ offer.name }}
+                        {% endif %}
+                    {% endfor %}
+                </span>
+            </div>
+            {% endif %}
+            <div class="detail-row">
+                <span>Montant:</span>
+                <span>{{ demande.montant }} FCFA</span>
+            </div>
+        </div>
+
+        <!-- Formulaire de paiement -->
+        <form method="post" id="paymentForm">
+            {% csrf_token %}
+            
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="phone_number" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--noir);">
+                    Numéro de téléphone MTN Mobile Money *
+                </label>
+                <input type="tel" name="phone_number" id="phone_number" required
+                       placeholder="Ex: 677123456"
+                       pattern="[0-9]{9}" 
+                       title="Entrez 9 chiffres (ex: 677123456)"
+                       style="width: 100%; padding: 12px; border: 2px solid var(--gris-clair); border-radius: 8px; font-size: 1rem;">
+                <small style="color: var(--gris-fonce); margin-top: 5px; display: block;">
+                    Format: 9 chiffres (sans indicatif)
+                </small>
+            </div>
+
+            <!-- Barre de progression -->
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+
+            <!-- État du traitement en temps réel -->
+            <div id="processingSteps" style="margin-bottom: 20px;"></div>
+            <!-- Messages de statut en temps réel -->
+            <div id="paymentStatus" class="payment-status"></div>
+
+
+            <!-- Bouton de soumission -->
+            <div style="text-align: center;">
+                <button type="submit" id="submitBtn"
+                        style="background: linear-gradient(to right, var(--orange-cosmique), var(--jaune-dore)); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; width: 100%;">
+                    <i class="fas fa-credit-card"></i> Procéder au Paiement
+                </button>
+            </div>
+        </form>
+
+        <!-- Indicateur de chargement -->
+        <div id="loadingSpinner" class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loadingText" style="color: var(--gris-fonce); margin: 0;">
+                Traitement de votre paiement en cours...
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const paymentStatus = document.getElementById('paymentStatus');
+    const progressFill = document.getElementById('progressFill');
+    const processingSteps = document.getElementById('processingSteps');
+    
+    // Désactiver le bouton et afficher le chargement
+    submitBtn.disabled = true;
+    submitBtn.style.display = 'none';
+    loadingSpinner.style.display = 'block';
+    paymentStatus.style.display = 'none';
+    
+    // Réinitialiser la progression
+    progressFill.style.width = '0%';
+    processingSteps.innerHTML = '';
+    
+    // Fonction pour mettre à jour l'interface
+    function updateInterface(message, type = 'info', progress = 0) {
+        if (type === 'error') {
+            paymentStatus.className = 'payment-status status-error';
+            paymentStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+            paymentStatus.style.display = 'block';
+            
+            // Réactiver le formulaire
+            submitBtn.disabled = false;
+            submitBtn.style.display = 'block';
+            loadingSpinner.style.display = 'none';
+        } else if (type === 'success') {
+            paymentStatus.className = 'payment-status status-success';
+            paymentStatus.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            paymentStatus.style.display = 'block';
+            
+            // Redirection après succès
+            setTimeout(() => {
+                window.location.href = "{% url 'check_payment_status' request_id=demande.id %}";
+            }, 2000);
+        } else {
+            // Mettre à jour la progression
+            progressFill.style.width = progress + '%';
+            
+            // Ajouter l'étape en cours
+            const stepElement = document.createElement('div');
+            stepElement.style.cssText = 'padding: 8px 12px; background: #e9ecef; border-radius: 5px; margin-bottom: 5px; font-size: 0.9rem;';
+            stepElement.innerHTML = `<i class="fas fa-sync-alt fa-spin" style="margin-right: 8px;"></i> ${message}`;
+            processingSteps.appendChild(stepElement);
+            
+            // Faire défiler vers le bas
+            stepElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+    
+    // Démarrer le processus de paiement
+    processPayment();
+    
+    async function processPayment() {
+        try {
+            const formData = new FormData(document.getElementById('paymentForm'));
+            
+            updateInterface('Initialisation du paiement...', 'info', 10);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            updateInterface('Validation des informations...', 'info', 20);
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            // Vérification du numéro de téléphone
+            const phoneNumber = document.getElementById('phone_number').value;
+            if (!phoneNumber.match(/^[0-9]{9}$/)) {
+                throw new Error('Numéro de téléphone invalide. Format attendu: 9 chiffres');
+            }
+            
+            updateInterface('Connexion au service de paiement...', 'info', 40);
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            
+            updateInterface('Traitement du paiement en cours...', 'info', 60);
+            
+            // Envoi de la requête au serveur - VOTRE FONCTION process_subscription_payment_first EST BLOQUANTE
+            const response = await fetch('', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                updateInterface('Paiement traité avec succès...', 'info', 80);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                updateInterface(data.message || 'Paiement effectué avec succès! Redirection...', 'success', 100);
+            } else {
+                throw new Error(data.message || 'Erreur lors du traitement du paiement');
+            }
+            
+        } catch (error) {
+            console.error('Erreur paiement:', error);
+            updateInterface(error.message, 'error', 0);
+        }
+    }
+});
+</script>
+{% endblock %}

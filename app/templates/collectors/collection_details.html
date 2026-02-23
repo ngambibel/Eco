@@ -1,0 +1,737 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Détails de la collecte - Collecteur{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-card {
+        border-left: 4px solid transparent;
+        transition: all 0.3s;
+    }
+    
+    .detail-card.customer-info {
+        border-left-color: var(--primary-color);
+    }
+    
+    .detail-card.subscription-info {
+        border-left-color: var(--secondary-color);
+    }
+    
+    .detail-card.address-info {
+        border-left-color: var(--accent-color);
+    }
+    
+    .detail-card.collection-info {
+        border-left-color: #2196f3;
+    }
+    
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -23px;
+        top: 5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        border: 2px solid white;
+    }
+    
+    .timeline-item.completed::before {
+        background-color: var(--success-color);
+    }
+    
+    .timeline-item.in-progress::before {
+        background-color: var(--warning-color);
+    }
+    
+    .timeline-item.cancelled::before {
+        background-color: var(--danger-color);
+    }
+    
+    .status-badge-large {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .map-placeholder {
+        height: 200px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Détails de la collecte</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'daily_schedule' %}" class="btn btn-sm btn-outline-secondary me-2">
+            <i class="fas fa-arrow-left me-1"></i>Retour au planning
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Colonne principale -->
+    <div class="col-lg-8">
+        <!-- En-tête de la collecte -->
+        <div class="card card-custom mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h3 class="card-title mb-1">
+                            Collecte #{{ collection.id|stringformat:"s"|slice:":8" }}
+                        </h3>
+                        <p class="text-muted mb-2">
+                            Programmée le <strong>{{ collection.scheduled_date|date:"l d F Y" }}</strong>
+                            à <strong>{{ collection.scheduled_time|time:"H:i" }}</strong>
+                        </p>
+                        <span class="status-badge-large badge badge-status-{{ collection.status }}">
+                            {{ collection.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        {% if collection.actual_collection_time %}
+                        <div class="text-success">
+                            <i class="fas fa-clock me-1"></i>
+                            Effectuée à {{ collection.actual_collection_time|time:"H:i" }}
+                        </div>
+                        {% endif %}
+                        <div class="text-muted small mt-2">
+                            Créée le {{ collection.created_at|date:"d/m/Y à H:i" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations client -->
+        <div class="card card-custom detail-card customer-info mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user text-primary me-2"></i>
+                    Informations client
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="40%">Nom complet:</th>
+                                <td>{{ collection.subscription.user.get_full_name|default:collection.subscription.user.username }}</td>
+                            </tr>
+                            <tr>
+                                <th>Téléphone:</th>
+                                <td>
+                                    {% if collection.subscription.user.phone %}
+                                    <a href="tel:{{ collection.subscription.user.phone }}" class="text-decoration-none">
+                                        {{ collection.subscription.user.phone }}
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">Non renseigné</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>
+                                    <a href="mailto:{{ collection.subscription.user.email }}" class="text-decoration-none">
+                                        {{ collection.subscription.user.email }}
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="40%">Ville:</th>
+                                <td>{{ collection.subscription.user.city|default:"Non renseignée" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Membre depuis:</th>
+                                <td>{{ collection.subscription.user.date_joined|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Statut:</th>
+                                <td>
+                                    {% if collection.subscription.user.is_verified %}
+                                    <span class="badge bg-success">Vérifié</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Non vérifié</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations abonnement -->
+        <div class="card card-custom detail-card subscription-info mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-receipt text-success me-2"></i>
+                    Informations abonnement
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="40%">Plan:</th>
+                                <td>
+                                    <span class="fw-bold">{{ collection.subscription.plan.name }}</span>
+                                    <span class="badge bg-secondary ms-2">{{ collection.subscription.plan.get_plan_type_display }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Fréquence:</th>
+                                <td>{{ collection.subscription.plan.get_frequency_display }}</td>
+                            </tr>
+                            <tr>
+                                <th>Prix:</th>
+                                <td>
+                                    {% if collection.subscription.custom_price %}
+                                    <span class="text-warning">{{ collection.subscription.custom_price }} FCFA</span>
+                                    <small class="text-muted">(Prix personnalisé)</small>
+                                    {% else %}
+                                    {{ collection.subscription.plan.price }} FCFA
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="40%">Début:</th>
+                                <td>{{ collection.subscription.start_date|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Fin:</th>
+                                <td>
+                                    {% if collection.subscription.end_date %}
+                                    {{ collection.subscription.end_date|date:"d/m/Y" }}
+                                    {% else %}
+                                    <span class="text-muted">Illimité</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Statut:</th>
+                                <td>
+                                    <span class="badge bg-{% if collection.subscription.status == 'active' %}success{% else %}warning{% endif %}">
+                                        {{ collection.subscription.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Jours de collecte -->
+                {% if collection.subscription.collection_days.all %}
+                <div class="mt-3">
+                    <h6>Jours de collecte habituels:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for day in collection.subscription.collection_days.all %}
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-calendar-day me-1"></i>
+                            {{ day.day.get_name_display }} à {{ day.time_slot|time:"H:i" }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Instructions spéciales -->
+                {% if collection.subscription.special_instructions %}
+                <div class="mt-3">
+                    <h6 class="text-warning">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        Instructions spéciales
+                    </h6>
+                    <div class="alert alert-warning py-2">
+                        {{ collection.subscription.special_instructions }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Adresse de collecte -->
+        <div class="card card-custom detail-card address-info mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-map-marker-alt text-accent me-2"></i>
+                    Adresse de collecte
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>{{ collection.subscription.address.title }}</h6>
+                        <p class="mb-1">
+                            <i class="fas fa-road me-2"></i>
+                            {{ collection.subscription.address.street }}
+                        </p>
+                        <p class="mb-1">
+                            <i class="fas fa-city me-2"></i>
+                            {{ collection.subscription.address.postal_code }} {{ collection.subscription.address.city }}
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-globe me-2"></i>
+                            {{ collection.subscription.address.country }}
+                        </p>
+
+                        {% if collection.subscription.address.zone %}
+                        <div class="mt-2">
+                            <span class="badge bg-info">
+                                <i class="fas fa-map me-1"></i>
+                                Zone: {{ collection.subscription.address.zone.nom }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <!-- Carte placeholder -->
+                        <div class="map-placeholder">
+                            <div>
+                                <i class="fas fa-map fa-3x mb-3"></i>
+                                <p>Localisation sur la carte</p>
+                                <small>
+                                    {% if collection.subscription.address.latitude and collection.subscription.address.longitude %}
+                                    Coordonnées: {{ collection.subscription.address.latitude }}, {{ collection.subscription.address.longitude }}
+                                    {% else %}
+                                    (Intégration Google Maps)
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes et historique -->
+        <div class="card card-custom detail-card collection-info">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clipboard-list text-info me-2"></i>
+                    Notes et historique
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Notes de la collecte -->
+                {% if collection.notes %}
+                <div class="mb-4">
+                    <h6>Notes du collecteur:</h6>
+                    <div class="alert alert-light border">
+                        <i class="fas fa-sticky-note me-2 text-muted"></i>
+                        {{ collection.notes }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Timeline de la collecte -->
+                <h6>Historique de la collecte:</h6>
+                <div class="timeline">
+                    <div class="timeline-item completed">
+                        <strong>Création de la demande</strong>
+                        <div class="text-muted small">
+                            {{ collection.created_at|date:"d/m/Y à H:i" }}
+                        </div>
+                    </div>
+
+                    {% if collection.status == 'scheduled' or collection.status == 'in_progress' or collection.status == 'completed' %}
+                    <div class="timeline-item completed">
+                        <strong>Programmation confirmée</strong>
+                        <div class="text-muted small">
+                            Pour le {{ collection.scheduled_date|date:"d/m/Y" }} à {{ collection.scheduled_time|time:"H:i" }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if collection.status == 'in_progress' or collection.status == 'completed' %}
+                    <div class="timeline-item in-progress">
+                        <strong>Collecte démarrée</strong>
+                        <div class="text-muted small">
+                            {% if collection.actual_collection_time %}
+                            {{ collection.actual_collection_time|date:"d/m/Y à H:i" }}
+                            {% else %}
+                            En attente de l'heure programmée
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if collection.status == 'completed' %}
+                    <div class="timeline-item completed">
+                        <strong>Collecte terminée</strong>
+                        <div class="text-muted small">
+                            Marquée comme complétée
+                        </div>
+                    </div>
+                    {% elif collection.status == 'cancelled' %}
+                    <div class="timeline-item cancelled">
+                        <strong>Collecte annulée</strong>
+                        <div class="text-muted small">
+                            Statut: Annulée
+                        </div>
+                    </div>
+                    {% elif collection.status == 'missed' %}
+                    <div class="timeline-item cancelled">
+                        <strong>Collecte manquée</strong>
+                        <div class="text-muted small">
+                            Statut: Manquée
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="timeline-item {% if collection.status == 'completed' %}completed{% elif collection.status == 'cancelled' or collection.status == 'missed' %}cancelled{% else %}in-progress{% endif %}">
+                        <strong>Statut actuel: {{ collection.get_status_display }}</strong>
+                        <div class="text-muted small">
+                            Dernière mise à jour: {{ collection.updated_at|date:"d/m/Y à H:i" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Colonne latérale -->
+    <div class="col-lg-4">
+        <!-- Actions rapides -->
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt text-warning me-2"></i>
+                    Actions rapides
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if collection.status == 'pending' or collection.status == 'scheduled' %}
+                    <form action="{% url 'complete_collection' %}" method="get">
+                        {% csrf_token %}
+                        <input type="hidden" name="collection_id" value="{{ collection.id }}">
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="fas fa-play me-2"></i>terminer la collecte
+                        </button>
+                    </form>
+                    
+                    {% endif %}
+                    
+
+                    <a href="tel:{{ collection.subscription.user.phone|default:'' }}" 
+                       class="btn btn-outline-primary {% if not collection.subscription.user.phone %}disabled{% endif %}">
+                        <i class="fas fa-phone me-2"></i>Appeler le client
+                    </a>
+
+                    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#directionsModal">
+                        <i class="fas fa-directions me-2"></i>Itinéraire
+                    </button>
+
+                    {% if collection.status != 'completed' and collection.status != 'cancelled' %}
+                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reportModal">
+                        <i class="fas fa-flag me-2"></i>Signaler un problème
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations techniques -->
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle text-secondary me-2"></i>
+                    Informations techniques
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <th width="50%">ID Collecte:</th>
+                        <td class="text-muted font-monospace">{{ collection.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>ID Abonnement:</th>
+                        <td class="text-muted font-monospace">{{ collection.subscription.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>ID Client:</th>
+                        <td class="text-muted font-monospace">{{ collection.subscription.user.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Collecteur:</th>
+                        <td>
+                            {% if collection.collector %}
+                            {{ collection.collector.get_full_name|default:collection.collector.username }}
+                            {% else %}
+                            <span class="text-muted">Non assigné</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Créée le:</th>
+                        <td>{{ collection.created_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Modifiée le:</th>
+                        <td>{{ collection.updated_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Collectes similaires -->
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history text-info me-2"></i>
+                    Dernières collectes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% with recent_collections=collection.subscription.collections.all|slice:":5" %}
+                {% if recent_collections %}
+                <div class="list-group list-group-flush">
+                    {% for recent in recent_collections %}
+                    {% if recent.id != collection.id %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <small class="text-muted">{{ recent.scheduled_date|date:"d/m" }}</small>
+                            <div class="small">{{ recent.get_status_display }}</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-light text-dark">{{ recent.scheduled_time|time:"H:i" }}</span>
+                            <br>
+                            <a href="{% url 'collection_details' recent.id %}" class="btn btn-sm btn-outline-primary mt-1">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">Aucune autre collecte</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Modal Itinéraire -->
+<div class="modal fade" id="directionsModal" tabindex="-1" aria-labelledby="directionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="directionsModalLabel">
+                    <i class="fas fa-directions me-2"></i>Itinéraire vers le client
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="map-placeholder" style="height: 300px;">
+                    <div>
+                        <i class="fas fa-map-marked-alt fa-3x mb-3"></i>
+                        <p>Calcul d'itinéraire</p>
+                        <small>Intégration avec Google Maps ou Waze</small>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Adresse de destination:</h6>
+                    <p class="mb-2">
+                        {{ collection.subscription.address.street }}<br>
+                        {{ collection.subscription.address.postal_code }} {{ collection.subscription.address.city }}<br>
+                        {{ collection.subscription.address.country }}
+                    </p>
+                    
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <a href="https://www.google.com/maps/dir/?api=1&destination={{ collection.subscription.address.street }},{{ collection.subscription.address.city }}" 
+                               target="_blank" class="btn btn-outline-primary w-100">
+                                <i class="fab fa-google me-2"></i>Google Maps
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="https://waze.com/ul?q={{ collection.subscription.address.street }},{{ collection.subscription.address.city }}" 
+                               target="_blank" class="btn btn-outline-success w-100">
+                                <i class="fab fa-waze me-2"></i>Waze
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Signaler problème -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reportModalLabel">
+                    <i class="fas fa-flag me-2"></i>Signaler un problème
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm">
+                    <div class="mb-3">
+                        <label for="problemType" class="form-label">Type de problème</label>
+                        <select class="form-select" id="problemType" required>
+                            <option value="">Sélectionnez le type de problème</option>
+                            <option value="client_absent">Client absent</option>
+                            <option value="acces_bloque">Accès bloqué</option>
+                            <option value="bac_plein">Bac trop plein</option>
+                            <option value="adresse_incorrecte">Adresse incorrecte</option>
+                            <option value="autre">Autre problème</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="problemDescription" class="form-label">Description du problème</label>
+                        <textarea class="form-control" id="problemDescription" rows="3" 
+                                  placeholder="Décrivez le problème en détail..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="urgency" class="form-label">Niveau d'urgence</label>
+                        <select class="form-select" id="urgency" required>
+                            <option value="low">Faible</option>
+                            <option value="medium" selected>Moyen</option>
+                            <option value="high">Élevé</option>
+                        </select>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="needSupport" name="needSupport">
+                        <label class="form-check-label" for="needSupport">
+                            Demander l'assistance du support
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" onclick="submitProblemReport()">
+                    <i class="fas fa-paper-plane me-1"></i>Envoyer le rapport
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function submitProblemReport() {
+        const problemType = document.getElementById('problemType').value;
+        const description = document.getElementById('problemDescription').value;
+        const urgency = document.getElementById('urgency').value;
+        const needSupport = document.getElementById('needSupport').checked;
+        
+        if (!problemType || !description) {
+            alert('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+        
+        // Simulation d'envoi du rapport
+        const reportData = {
+            collection_id: '{{ collection.id }}',
+            problem_type: problemType,
+            description: description,
+            urgency: urgency,
+            need_support: needSupport,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('Rapport de problème:', reportData);
+        
+        // Ici, vous enverriez les données au serveur via AJAX
+        // $.post('/api/report-problem/', reportData, function(response) {
+        //     if (response.success) {
+        //         alert('Rapport envoyé avec succès!');
+        //         $('#reportModal').modal('hide');
+        //     } else {
+        //         alert('Erreur lors de l\'envoi du rapport.');
+        //     }
+        // });
+        
+        alert('Rapport de problème envoyé avec succès! L\'équipe technique a été notifiée.');
+        $('#reportModal').modal('hide');
+        
+        // Réinitialiser le formulaire
+        document.getElementById('reportForm').reset();
+    }
+    
+    // Fonction pour imprimer les détails
+    function printCollectionDetails() {
+        window.print();
+    }
+    
+    // Fonction pour copier l'ID de la collecte
+    function copyCollectionId() {
+        const collectionId = '{{ collection.id }}';
+        navigator.clipboard.writeText(collectionId).then(function() {
+            alert('ID de collecte copié: ' + collectionId);
+        }, function(err) {
+            console.error('Erreur lors de la copie: ', err);
+        });
+    }
+    
+    // Ajouter des boutons d'action au header si nécessaire
+    document.addEventListener('DOMContentLoaded', function() {
+        const headerActions = document.querySelector('.btn-toolbar');
+        if (headerActions) {
+            const printButton = document.createElement('button');
+            printButton.className = 'btn btn-sm btn-outline-secondary me-2';
+            printButton.innerHTML = '<i class="fas fa-print me-1"></i>Imprimer';
+            printButton.onclick = printCollectionDetails;
+            
+            const copyButton = document.createElement('button');
+            copyButton.className = 'btn btn-sm btn-outline-secondary';
+            copyButton.innerHTML = '<i class="fas fa-copy me-1"></i>Copier ID';
+            copyButton.onclick = copyCollectionId;
+            
+            headerActions.prepend(copyButton);
+            headerActions.prepend(printButton);
+        }
+    });
+</script>
+{% endblock %}

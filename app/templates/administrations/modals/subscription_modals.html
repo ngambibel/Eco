@@ -1,0 +1,72 @@
+<!-- Modal Éditer Abonnement -->
+<div class="modal fade" id="editSubscriptionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Modifier l'Abonnement
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" id="editSubscriptionId" name="subscription_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editSubscriptionUser" class="form-label">Utilisateur</label>
+                            <select class="form-select" id="editSubscriptionUser" name="user" required>
+                                <option value="">Sélectionner un utilisateur</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editSubscriptionPlan" class="form-label">Plan</label>
+                            <select class="form-select" id="editSubscriptionPlan" name="plan" required>
+                                <option value="">Sélectionner un plan</option>
+                                {% for plan in subscription_plans %}
+                                <option value="{{ plan.id }}">{{ plan.name }} - {{ plan.price }}€</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editStartDate" class="form-label">Date de début</label>
+                            <input type="date" class="form-control" id="editStartDate" name="start_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editEndDate" class="form-label">Date de fin</label>
+                            <input type="date" class="form-control" id="editEndDate" name="end_date">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editSubscriptionStatus" class="form-label">Statut</label>
+                            <select class="form-select" id="editSubscriptionStatus" name="status" required>
+                                <option value="active">Actif</option>
+                                <option value="inactive">Inactif</option>
+                                <option value="suspended">Suspendu</option>
+                                <option value="cancelled">Annulé</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editCustomPrice" class="form-label">Prix personnalisé (€)</label>
+                            <input type="number" step="0.01" class="form-control" id="editCustomPrice" name="custom_price">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSpecialInstructions" class="form-label">Instructions spéciales</label>
+                        <textarea class="form-control" id="editSpecialInstructions" name="special_instructions" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Mettre à jour l'abonnement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

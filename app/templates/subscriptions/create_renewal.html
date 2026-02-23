@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Demande de Réabonnement - EcoCity{% endblock %}
+
+{% block content %}
+<style>
+    .erroor-message {
+        background: #fee; border: 1px solid #fcc; color: #c00;
+    }
+    .success-message {
+        background: #efe; border: 1px solid #cfc; color: #060;
+    }
+    .status-indicator {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+    }
+    .status-pending {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+    }
+    .status-processing {
+        background: #cce7ff;
+        border: 1px solid #b3d9ff;
+        color: #004085;
+    }
+    .status-completed {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .status-failed {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .status-icon {
+        font-size: 1.2rem;
+    }
+    .payment-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        position: relative;
+    }
+    .payment-steps::before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--gris-clair);
+        z-index: 1;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+    .step-circle {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid var(--gris-clair);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 8px;
+        transition: all 0.3s;
+    }
+    .step.active .step-circle {
+        background: var(--orange-cosmique);
+        border-color: var(--orange-cosmique);
+        color: white;
+    }
+    .step.completed .step-circle {
+        background: var(--vert-success);
+        border-color: var(--vert-success);
+        color: white;
+    }
+    .step-label {
+        font-size: 0.8rem;
+        text-align: center;
+        color: var(--gris-fonce);
+    }
+    .step.active .step-label {
+        color: var(--orange-cosmique);
+        font-weight: 600;
+    }
+</style>
+
+<div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div class="form-header" style="text-align: center; margin-bottom: 30px;">
+        <a href="{% url 'subscriptions_dashboard_reabonnement' %}" style="color: var(--orange-cosmique); text-decoration: none; display: inline-flex; align-items: center; margin-bottom: 20px;">
+            <i class="fas fa-arrow-left" style="margin-right: 8px;"></i>
+            Retour aux abonnements
+        </a>
+        <h1 style="color: var(--orange-cosmique); margin-bottom: 10px;">Demande de Réabonnement</h1>
+        <p style="color: var(--gris-fonce);">
+            Pour {{ abonnement.get_type_service_display }} - {{ abonnement.identifiant_abonne }}
+        </p>
+    </div>
+
+    <!-- Indicateur de statut existant -->
+    {% if demande_existante %}
+    <div class="status-indicator status-{{ demande_existante.statut|lower }}">
+        <i class="fas 
+            {% if demande_existante.statut == 'EN_ATTENTE' %}fa-clock
+            {% elif demande_existante.statut == 'EN_COURS' %}fa-sync-alt fa-spin
+            {% elif demande_existante.statut == 'COMPLETEE' %}fa-check-circle
+            {% elif demande_existante.statut == 'ANNULEE' %}fa-times-circle
+            {% else %}fa-info-circle{% endif %} status-icon">
+        </i>
+        <div>
+            <strong>Statut actuel :</strong> {{ demande_existante.get_statut_display }}
+            {% if demande_existante.statut == 'EN_ATTENTE' %}
+                - <a href="{% url 'process_payment' request_id=demande_existante.id %}" style="color: inherit; text-decoration: underline;">
+                    Poursuivre le paiement
+                </a>
+            {% elif demande_existante.statut == 'EN_COURS' %}
+                - <a href="{% url 'check_payment_status' request_id=demande_existante.id %}" style="color: inherit; text-decoration: underline;">
+                    Vérifier le statut
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Étapes de paiement -->
+    <div class="payment-steps">
+        <div class="step {% if not demande_existante or demande_existante.statut == 'ANNULEE' %}active{% else %}completed{% endif %}">
+            <div class="step-circle">1</div>
+            <div class="step-label">Demande</div>
+        </div>
+        <div class="step {% if demande_existante and demande_existante.statut == 'EN_ATTENTE' %}active{% elif demande_existante and demande_existante.statut in 'EN_COURS,COMPLETEE' %}completed{% endif %}">
+            <div class="step-circle">2</div>
+            <div class="step-label">Paiement</div>
+        </div>
+        <div class="step {% if demande_existante and demande_existante.statut == 'EN_COURS' %}active{% elif demande_existante and demande_existante.statut == 'COMPLETEE' %}completed{% endif %}">
+            <div class="step-circle">3</div>
+            <div class="step-label">Traitement</div>
+        </div>
+        <div class="step {% if demande_existante and demande_existante.statut == 'COMPLETEE' %}active{% endif %}">
+            <div class="step-circle">4</div>
+            <div class="step-label">Terminé</div>
+        </div>
+    </div>
+
+    <!-- Messages d'erreur/succès -->
+    {% if messages %}
+    <div style="margin-bottom: 20px;">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} {% if message.tags == 'error' %}erroor-message{% else %}success-message{% endif %}" 
+             style="padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not demande_existante or demande_existante.statut == 'ANNULEE' %}
+    <div class="renewal-form" style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <form method="post" id="renewalForm">
+            {% csrf_token %}
+            
+            {% if is_canal %}
+            <!-- Sélection d'offre pour Canal+ -->
+            <div class="form-group" style="margin-bottom: 30px;">
+                <label style="display: block; margin-bottom: 15px; font-weight: 600; color: var(--noir);">
+                    Choisissez votre offre Canal+ *
+                </label>
+                <div class="offers-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    {% for offer in offres %}
+                    <div class="offer-card" 
+                         style="border: 2px solid var(--gris-clair); border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.3s;"
+                         onclick="selectOffer('{{ offer.id }}', '{{ offer.price }}')">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <h4 style="color: var(--orange-cosmique); margin: 0;">{{ offer.name }}</h4>
+                            <span style="background: var(--jaune-dore); color: white; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">
+                                {{ offer.price }} FCFA
+                            </span>
+                        </div>
+                        <p style="color: var(--gris-fonce); margin: 0; font-size: 0.9rem;">{{ offer.description }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="offre_id" id="selected_offer" required>
+                <div id="offer-error" style="color: #c00; font-size: 0.9rem; margin-top: 5px; display: none;">
+                    Veuillez sélectionner une offre
+                </div>
+            </div>
+            {% endif %}
+
+            {% if is_eneo_camwater %}
+            <!-- Montant pour ENEO et Camwater -->
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="montant" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--noir);">
+                    Montant (FCFA) *
+                </label>
+                <input type="number" name="montant" id="montant" required
+                       placeholder="Entrez le montant du réabonnement"
+                       min="100" max="1000000" step="100"
+                       style="width: 100%; padding: 12px; border: 2px solid var(--gris-clair); border-radius: 8px; font-size: 1rem;">
+                <small style="color: var(--gris-fonce); margin-top: 5px; display: block;">
+                    Montant minimum: 100 FCFA
+                </small>
+            </div>
+            {% endif %}
+
+            <!-- Commentaires -->
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="commentaires" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--noir);">
+                    Commentaires (Optionnel)
+                </label>
+                <textarea name="commentaires" id="commentaires" rows="4"
+                          placeholder="Informations supplémentaires..."
+                          style="width: 100%; padding: 12px; border: 2px solid var(--gris-clair); border-radius: 8px; font-size: 1rem; resize: vertical;"></textarea>
+            </div>
+
+            <!-- Bouton de soumission -->
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" id="submitBtn"
+                        style="background: linear-gradient(to right, var(--orange-cosmique), var(--jaune-dore)); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                    <i class="fas fa-paper-plane"></i> Soumettre la Demande
+                </button>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <!-- Actions pour les demandes existantes -->
+    <div class="existing-request-actions" style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: var(--orange-cosmique); margin-bottom: 20px;">
+            Demande de réabonnement existante
+        </h3>
+        
+        <div style="margin-bottom: 25px;">
+            <p><strong>Montant :</strong> {{ demande_existante.montant }} FCFA</p>
+            <p><strong>Date de création :</strong> {{ demande_existante.date_creation|date:"d/m/Y H:i" }}</p>
+            {% if demande_existante.date_maj %}
+            <p><strong>Dernière mise à jour :</strong> {{ demande_existante.date_maj|date:"d/m/Y H:i" }}</p>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            {% if demande_existante.statut == 'EN_ATTENTE' %}
+            <a href="{% url 'process_payment' request_id=demande_existante.id %}" 
+               class="btn btn-primary"
+               style="background: linear-gradient(to right, var(--orange-cosmique), var(--jaune-dore)); color: white; padding: 12px 25px; border-radius: 25px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                <i class="fas fa-credit-card"></i> Procéder au paiement
+            </a>
+            {% elif demande_existante.statut == 'EN_COURS' %}
+            <a href="{% url 'check_payment_status' request_id=demande_existante.id %}" 
+               class="btn btn-primary"
+               style="background: linear-gradient(to right, var(--orange-cosmique), var(--jaune-dore)); color: white; padding: 12px 25px; border-radius: 25px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                <i class="fas fa-sync-alt"></i> Vérifier le statut
+            </a>
+            {% endif %}
+            
+            <a href="{% url 'subscriptions_dashboard' %}" 
+               class="btn btn-secondary"
+               style="background: var(--gris-clair); color: var(--gris-fonce); padding: 12px 25px; border-radius: 25px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                <i class="fas fa-list"></i> Voir mes abonnements
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+let selectedOffer = '';
+
+'{% if is_canal %}'
+function selectOffer(offerId, price) {
+    // Retirer la sélection précédente
+    document.querySelectorAll('.offer-card').forEach(card => {
+        card.style.borderColor = 'var(--gris-clair)';
+        card.style.background = 'white';
+    });
+    
+    // Ajouter la sélection actuelle
+    event.currentTarget.style.borderColor = 'var(--orange-cosmique)';
+    event.currentTarget.style.background = 'var(--gris-clair)';
+    
+    // Mettre à jour l'input caché
+    selectedOffer = offerId;
+    document.getElementById('selected_offer').value = offerId;
+    document.getElementById('offer-error').style.display = 'none';
+}
+
+// Sélection automatique de la première offre pour Canal+
+document.addEventListener('DOMContentLoaded', function() {
+    const firstOffer = document.querySelector('.offer-card');
+    if (firstOffer && !selectedOffer) {
+        firstOffer.click();
+    }
+});
+'{% endif %}'
+
+// Validation du formulaire
+document.getElementById('renewalForm')?.addEventListener('submit', function(e) {
+    '{% if is_canal %}'
+    if (!selectedOffer) {
+        e.preventDefault();
+        document.getElementById('offer-error').style.display = 'block';
+        document.getElementById('offer-error').scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
+    '{% endif %}'
+
+    '{% if is_eneo_camwater %}'
+    const montant = document.getElementById('montant').value;
+    if (!montant || parseFloat(montant) < 100) {
+        e.preventDefault();
+        alert('Veuillez saisir un montant valide (minimum 100 FCFA)');
+        return;
+    }
+    '{% endif %}'
+    
+    // Désactiver le bouton pour éviter les doubles soumissions
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement en cours...';
+});
+
+// Mise à jour automatique du statut si en cours
+"{% if demande_existante and demande_existante.statut == 'EN_COURS' %}"
+setTimeout(() => {
+    window.location.reload();
+}, 10000); // Rafraîchir toutes les 10 secondes
+"{% endif %}"
+</script>
+
+<style>
+.offer-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+}
+
+button:disabled {
+    opacity: 0.7;
+    transform: none !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .offers-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .payment-steps {
+        font-size: 0.8rem;
+    }
+    .step-circle {
+        width: 25px;
+        height: 25px;
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}

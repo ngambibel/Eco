@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Détails de l'Abonnement - EcoCity{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .subscription-title {
+        color: var(--orange-cosmique);
+        font-size: 2.2rem;
+        margin: 0;
+    }
+
+    .status-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .info-card {
+        background: var(--blanc);
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .card-title {
+        color: var(--rouge-poupre);
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--jaune-dore);
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--gris-clair);
+    }
+
+    .detail-label {
+        color: var(--gris-fonce);
+        font-weight: 500;
+    }
+
+    .detail-value {
+        color: var(--noir);
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .history-section {
+        background: var(--blanc);
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+
+    .history-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        margin-bottom: 10px;
+        background: var(--gris-clair);
+        border-radius: 8px;
+    }
+
+    .collection-status {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-completed { background: #d4edda; color: #155724; }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-cancelled { background: #f8d7da; color: #721c24; }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 30px;
+    }
+
+    @media (max-width: 768px) {
+        .detail-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- En-tête -->
+    <div class="detail-header">
+        <div>
+            <h1 class="subscription-title">Abonnement {{ subscription.plan.name }}</h1>
+            <p>Depuis le {{ subscription.start_date|date:"d/m/Y" }}</p>
+        </div>
+        <span class="status-badge status-{{ subscription.status }}">
+            {{ subscription.get_status_display }}
+        </span>
+    </div>
+
+    <!-- Grille d'informations -->
+    <div class="info-grid">
+        <!-- Informations du plan -->
+        <div class="info-card">
+            <h3 class="card-title">📋 Détails du Plan</h3>
+            <div class="detail-item">
+                <span class="detail-label">Type de plan:</span>
+                <span class="detail-value">{{ subscription.plan.get_plan_type_display }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Fréquence:</span>
+                <span class="detail-value">{{ subscription.plan.get_frequency_display }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Prix:</span>
+                <span class="detail-value">{{ subscription.custom_price|default:subscription.plan.price }} FCFA</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Collections/semaine:</span>
+                <span class="detail-value">{{ subscription.plan.max_collections_per_week }}</span>
+            </div>
+        </div>
+
+        <!-- Adresse de collecte -->
+        <div class="info-card">
+            <h3 class="card-title">📍 Adresse de Collecte</h3>
+            <div class="detail-item">
+                <span class="detail-label">Titre:</span>
+                <span class="detail-value">{{ subscription.address.title }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Adresse:</span>
+                <span class="detail-value">{{ subscription.address.street }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Ville:</span>
+                <span class="detail-value">{{ subscription.address.postal_code }} {{ subscription.address.city }}</span>
+            </div>
+            {% if subscription.address.latitude %}
+            <div class="detail-item">
+                <span class="detail-label">Coordonnées:</span>
+                <span class="detail-value">
+                    {{ subscription.address.latitude|floatformat:6 }}, {{ subscription.address.longitude|floatformat:6 }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Programme de collecte -->
+        <div class="info-card">
+            <h3 class="card-title">🔄 Programme de Collecte</h3>
+            {% for sub_day in subscription.collection_days.all %}
+            <div class="detail-item">
+                <span class="detail-label">{{ sub_day.day.get_name_display }}:</span>
+                <span class="detail-value">{{ sub_day.time_slot }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Instructions spéciales -->
+        {% if subscription.special_instructions %}
+        <div class="info-card">
+            <h3 class="card-title">💡 Instructions Spéciales</h3>
+            <p>{{ subscription.special_instructions }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Historique des collectes -->
+    <div class="history-section">
+        <h3 class="card-title">📦 Collectes Récentes</h3>
+        {% for collection in recent_collections %}
+        <div class="history-item">
+            <div>
+                <strong>{{ collection.scheduled_date|date:"d/m/Y" }} à {{ collection.scheduled_time }}</strong>
+                <p>{{ collection.get_status_display }}</p>
+            </div>
+            <span class="collection-status status-{{ collection.status }}">
+                {{ collection.get_status_display }}
+            </span>
+        </div>
+        {% empty %}
+        <p>Aucune collecte programmée.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Historique des paiements -->
+    <div class="history-section">
+        <h3 class="card-title">💳 Paiements Récents</h3>
+        {% for payment in recent_payments %}
+        <div class="history-item">
+            <div>
+                <strong>{{ payment.payment_date|date:"d/m/Y" }}</strong>
+                <p>{{ payment.get_status_display }}</p>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight: bold; color: var(--orange-cosmique);">
+                    {{ payment.amount }} FCFA
+                </div>
+                <small>{{ payment.payment_method|default:"Méthode non spécifiée" }}</small>
+            </div>
+        </div>
+        {% empty %}
+        <p>Aucun paiement enregistré.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="action-buttons">
+        <a href="{% url 'edit_subscription' subscription.id %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Modifier l'abonnement
+        </a>
+        <a href="{% url 'subscriptions_dashboard' %}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+        </a>
+        {% if subscription.status == 'active' %}
+        <form method="post" action="{% url 'suspend_subscription' subscription.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir suspendre cet abonnement ?')">
+                <i class="fas fa-pause"></i> Suspendre l'abonnement
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,383 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Mon Tricycle - Collecteur{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Mon tricycle</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+            <i class="fas fa-print me-1"></i>Imprimer
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-truck-pickup text-success me-2"></i>
+                    Informations du tricycle
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if tricycle %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Nom:</strong>
+                        <p class="mb-0">{{ tricycle.nom }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Immatriculation:</strong>
+                        <p class="mb-0">{{ tricycle.numero_immatriculation }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Capacité:</strong>
+                        <p class="mb-0">{{ tricycle.capacite_kg }} kg</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Couleur:</strong>
+                        <p class="mb-0">{{ tricycle.couleur|default:"Non spécifiée" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Date de mise en service:</strong>
+                        <p class="mb-0">{{ tricycle.date_mise_en_service|date:"d/m/Y" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Statut:</strong>
+                        <p class="mb-0">
+                            <span class="badge bg-{% if tricycle.status == 'active' %}success{% elif tricycle.status == 'maintenance' %}warning{% else %}danger{% endif %}">
+                                {{ tricycle.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                
+                {% if tricycle.notes %}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <strong>Notes techniques:</strong>
+                        <p class="mb-0">{{ tricycle.notes }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-cogs me-2"></i>Actions
+                        </h6>
+                        <div class="btn-group">
+                            {% if tricycle.status == 'active' %}
+                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#maintenanceModal">
+                                <i class="fas fa-tools me-1"></i>Signaler un problème
+                            </button>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailsModal">
+                                <i class="fas fa-info-circle me-1"></i>Détails techniques
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h4 class="text-muted">Aucun tricycle assigné</h4>
+                    <p class="text-muted">Contactez l'administrateur pour vous assigner un tricycle.</p>
+                    <a href="{% url 'collector_dashboard' %}" class="btn btn-primary-custom mt-3">
+                        <i class="fas fa-arrow-left me-1"></i>Retour au tableau de bord
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Historique d'utilisation -->
+        {% if tricycle %}
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line text-info me-2"></i>
+                    Statistiques d'utilisation
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-primary">{{ total_collections }}</h4>
+                                <small class="text-muted">Collectes totales</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-success">{{ monthly_collections }}</h4>
+                                <small class="text-muted">Ce mois</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-warning">{{ weekly_collections }}</h4>
+                                <small class="text-muted">Cette semaine</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-info">{{ daily_collections }}</h4>
+                                <small class="text-muted">Aujourd'hui</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>Performance du tricycle</h6>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: '{{ performance.uptime }}%'" 
+                             aria-valuenow="{{ performance.uptime }}" aria-valuemin="0" aria-valuemax="100">
+                            Disponibilité: {{ performance.uptime }}%
+                        </div>
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: '{{ performance.utilization }} %'" 
+                             aria-valuenow="{{ performance.utilization }}" aria-valuemin="0" aria-valuemax="100">
+                            Utilisation: {{ performance.utilization }}%
+                        </div>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: '{{ performance.efficiency }} %'" 
+                             aria-valuenow="{{ performance.efficiency }}" aria-valuemin="0" aria-valuemax="100">
+                            Efficacité: {{ performance.efficiency }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Photo/Représentation du tricycle -->
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-image text-secondary me-2"></i>
+                    Représentation
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3" style="font-size: 6rem; color: #6c757d;">
+                    <i class="fas fa-truck-pickup"></i>
+                </div>
+                <h4>{{ tricycle.nom }}</h4>
+                <p class="text-muted">{{ tricycle.numero_immatriculation }}</p>
+                
+                <div class="mt-4 p-3 bg-light rounded">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Cette représentation est symbolique. Une photo réelle du tricycle peut être ajoutée par l'administrateur.
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informations de contact -->
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-headset text-primary me-2"></i>
+                    Support technique
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">
+                    En cas de problème technique avec votre tricycle, contactez le support.
+                </p>
+                
+                <div class="mb-3">
+                    <strong><i class="fas fa-phone me-2 text-success"></i>Support technique</strong>
+                    <p class="mb-0">+237 6XX XX XX XX</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong><i class="fas fa-envelope me-2 text-primary"></i>Email</strong>
+                    <p class="mb-0">support@ecocollect.cm</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong><i class="fas fa-clock me-2 text-warning"></i>Horaires</strong>
+                    <p class="mb-0">Lun - Ven: 8h - 18h<br>Sam: 8h - 13h</p>
+                </div>
+                
+                <div class="alert alert-warning small mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> Signalez immédiatement tout problème de sécurité ou technique empêchant l'utilisation normale du tricycle.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+{% if tricycle %}
+<!-- Maintenance Modal -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-labelledby="maintenanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="maintenanceModalLabel">
+                    <i class="fas fa-tools me-2"></i>Signaler un problème
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="maintenanceForm">
+                    <div class="mb-3">
+                        <label for="problemType" class="form-label">Type de problème</label>
+                        <select class="form-select" id="problemType" required>
+                            <option value="">Sélectionnez le type de problème</option>
+                            <option value="mechanical">Problème mécanique</option>
+                            <option value="electrical">Problème électrique</option>
+                            <option value="tire">Problème de pneu</option>
+                            <option value="brake">Problème de frein</option>
+                            <option value="other">Autre problème</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="problemDescription" class="form-label">Description du problème</label>
+                        <textarea class="form-control" id="problemDescription" rows="3" required 
+                                  placeholder="Décrivez le problème en détail..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="urgency" class="form-label">Urgence</label>
+                        <select class="form-select" id="urgency" required>
+                            <option value="low">Faible - Peut attendre</option>
+                            <option value="medium">Moyenne - À réparer bientôt</option>
+                            <option value="high">Élevée - Doit être réparé rapidement</option>
+                            <option value="critical">Critique - Impossible d'utiliser le tricycle</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" onclick="submitMaintenanceRequest()">
+                    <i class="fas fa-paper-plane me-1"></i>Envoyer la demande
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">
+                    <i class="fas fa-info-circle me-2"></i>Détails techniques du tricycle
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Spécifications techniques</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Type:</strong> Tricycle utilitaire</li>
+                            <li><strong>Capacité:</strong> {{ tricycle.capacite_kg }} kg</li>
+                            <li><strong>Dimensions:</strong> Standard</li>
+                            <li><strong>Poids à vide:</strong> ~250 kg</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Entretien</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Dernière révision:</strong> Il y a 15 jours</li>
+                            <li><strong>Prochaine révision:</strong> Dans 2 semaines</li>
+                            <li><strong>Kilométrage:</strong> ~1,250 km</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>Checklist de sécurité quotidienne</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check1">
+                        <label class="form-check-label" for="check1">
+                            Freins en bon état
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check2">
+                        <label class="form-check-label" for="check2">
+                            Pneus gonflés et en bon état
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check3">
+                        <label class="form-check-label" for="check3">
+                            Éclairage fonctionnel
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check4">
+                        <label class="form-check-label" for="check4">
+                            Niveau d'huile vérifié
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary-custom" onclick="markChecklistComplete()">
+                    <i class="fas fa-check me-1"></i>Checklist complétée
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function submitMaintenanceRequest() {
+        const problemType = document.getElementById('problemType').value;
+        const description = document.getElementById('problemDescription').value;
+        const urgency = document.getElementById('urgency').value;
+        
+        if (!problemType || !description) {
+            alert('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+        
+        // Simuler l'envoi de la demande
+        alert('Demande de maintenance envoyée avec succès! Le support technique vous contactera bientôt.');
+        $('#maintenanceModal').modal('hide');
+        
+        // Réinitialiser le formulaire
+        document.getElementById('maintenanceForm').reset();
+    }
+    
+    function markChecklistComplete() {
+        alert('Checklist de sécurité marquée comme complétée!');
+        $('#detailsModal').modal('hide');
+    }
+</script>
+{% endblock %}

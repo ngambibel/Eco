@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Accueil - EcoCity{% endblock %}
+
+{% block content %}
+<!-- Carousel d'annonces -->
+<section class="carousel-section">
+    <div class="carousel-container">
+        <div class="carousel" id="annoncesCarousel">
+            {% for annonce in annonces %}
+            <div class="carousel-slide {% if forloop.first %}active{% endif %}">
+                <img src="{{ annonce.image.url }}" alt="{{ annonce.titre }}" class="carousel-image">
+                <div class="carousel-caption">
+                    <h3>{{ annonce.titre }}</h3>
+                    {% if annonce.description %}
+                    <p>{{ annonce.description }}</p>
+                    {% endif %}
+                    {% if annonce.lien %}
+                    <a href="{{ annonce.lien }}" class="carousel-btn">En savoir plus</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="carousel-slide active">
+                <div class="carousel-placeholder">
+                    <i class="fas fa-recycle"></i>
+                    <h3>Bienvenue sur EcoCity</h3>
+                    <p>Rejoignez notre communauté pour une ville plus propre</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Contrôles du carousel -->
+        <button class="carousel-control prev" onclick="prevSlide()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="carousel-control next" onclick="nextSlide()">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        
+        <!-- Indicateurs -->
+        <div class="carousel-indicators">
+            {% for annonce in annonces %}
+            <span class="indicator {% if forloop.first %}active{% endif %}" onclick="goToSlide( forloop.counter0 )"></span>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+
+
+<!-- Section principale -->
+<section class="hero">
+    <h2>Bienvenue sur EcoCity</h2>
+    <p>Notre application révolutionne la gestion des déchets ménagers en offrant des solutions de collecte intelligentes, flexibles et respectueuses de l'environnement. Rejoignez notre communauté engagée pour une ville plus propre.</p>
+    <a href="{% url 'subscription_page' %}" class="cta-button">Commencer maintenant</a>
+</section>
+
+
+<!-- Section services -->
+<section class="services">
+    <h2>Nos Services</h2>
+    <div class="services-grid">
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3>Collecte Standard</h3>
+            <p>Service régulier de collecte selon votre plan d'abonnement choisi.</p>
+        </div>
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <h3>Planification Flexible</h3>
+            <p>Choisissez vos jours et heures de collecte selon vos besoins.</p>
+        </div>
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fas fa-truck"></i>
+            </div>
+            <h3>Suivi en Temps Réel</h3>
+            <p>Suivez votre collecteur et recevez des notifications en direct.</p>
+        </div>
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fas fa-leaf"></i>
+            </div>
+            <h3>Éco-Responsable</h3>
+            <p>Contribuez à un environnement plus propre et durable.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Section à propos -->
+<section class="about">
+    <h2>Notre Mission</h2>
+    <p>EcoCity s'engage à transformer la gestion des déchets en Afrique grâce à des solutions innovantes qui associent technologie moderne et respect de l'environnement. Nous croyons en une approche communautaire pour créer des villes plus propres et plus saines.</p>
+</section>
+
+<style>
+    /* Styles pour le carousel */
+    .carousel-section {
+        padding: 0 20px;
+        margin: 40px 20px;
+    }
+    
+    .carousel-container {
+        position: relative;
+        max-width: 1200px;
+        margin: 0 auto;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .carousel {
+        position: relative;
+        height: 400px;
+        overflow: hidden;
+    }
+    
+    .carousel-slide {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 0.8s ease-in-out;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .carousel-slide.active {
+        opacity: 1;
+    }
+    
+    .carousel-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .carousel-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
+    
+    .carousel-caption h3 {
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    .carousel-caption p {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+        opacity: 0.9;
+    }
+    
+    .carousel-btn {
+        display: inline-block;
+        background: var(--orange-cosmique);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .carousel-btn:hover {
+        background: var(--jaune-dore);
+        transform: translateY(-2px);
+    }
+    
+    .carousel-placeholder {
+        background: linear-gradient(135deg, var(--orange-cosmique), var(--jaune-dore));
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+    }
+    
+    .carousel-placeholder i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+    }
+    
+    .carousel-control {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.8);
+        border: none;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: var(--orange-cosmique);
+        transition: all 0.3s;
+        z-index: 10;
+    }
+    
+    .carousel-control:hover {
+        background: white;
+        transform: translateY(-50%) scale(1.1);
+    }
+    
+    .carousel-control.prev {
+        left: 20px;
+    }
+    
+    .carousel-control.next {
+        right: 20px;
+    }
+    
+    .carousel-indicators {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        z-index: 10;
+    }
+    
+    .indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .indicator.active {
+        background: white;
+        transform: scale(1.2);
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .carousel {
+            height: 300px;
+        }
+        
+        .carousel-caption {
+            padding: 20px;
+        }
+        
+        .carousel-caption h3 {
+            font-size: 1.4rem;
+        }
+        
+        .carousel-caption p {
+            font-size: 1rem;
+        }
+        
+        .carousel-control {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .carousel {
+            height: 250px;
+        }
+        
+        .carousel-section {
+            margin: 20px 10px;
+            padding: 0 10px;
+        }
+        
+        .carousel-caption h3 {
+            font-size: 1.2rem;
+        }
+        
+        .carousel-placeholder i {
+            font-size: 3rem;
+        }
+    }
+</style>
+
+<script>
+    // Script pour le carousel
+    let currentSlide = 0;
+    let slides = document.querySelectorAll('.carousel-slide');
+    let indicators = document.querySelectorAll('.indicator');
+    let autoSlideInterval;
+    
+    function showSlide(index) {
+        // Masquer toutes les slides
+        slides.forEach(slide => slide.classList.remove('active'));
+        indicators.forEach(indicator => indicator.classList.remove('active'));
+        
+        // Afficher la slide courante
+        currentSlide = (index + slides.length) % slides.length;
+        slides[currentSlide].classList.add('active');
+        if (indicators.length > 0) {
+            indicators[currentSlide].classList.add('active');
+        }
+    }
+    
+    function nextSlide() {
+        showSlide(currentSlide + 1);
+        resetAutoSlide();
+    }
+    
+    function prevSlide() {
+        showSlide(currentSlide - 1);
+        resetAutoSlide();
+    }
+    
+    function goToSlide(index) {
+        showSlide(index);
+        resetAutoSlide();
+    }
+    
+    function startAutoSlide() {
+        autoSlideInterval = setInterval(nextSlide, 5000); // Change toutes les 5 secondes
+    }
+    
+    function resetAutoSlide() {
+        clearInterval(autoSlideInterval);
+        startAutoSlide();
+    }
+    
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        if (slides.length > 1) {
+            startAutoSlide();
+            
+            // Pause au survol
+            const carousel = document.getElementById('annoncesCarousel');
+            carousel.addEventListener('mouseenter', () => clearInterval(autoSlideInterval));
+            carousel.addEventListener('mouseleave', startAutoSlide);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réabonnement Rapide - EcoCity</title>
+    <style>
+        :root {
+            --orange-cosmique: #FF6B35;
+            --rouge-poupre: #C53D3D;
+            --blanc: #FFFFFF;
+            --gris-clair: #F8F9FA;
+            --gris-fonce: #6C757D;
+            --noir: #212529;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: var(--blanc);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--orange-cosmique), var(--rouge-poupre));
+            color: var(--blanc);
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .subscription-info {
+            background: var(--gris-clair);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .info-label {
+            color: var(--gris-fonce);
+            font-weight: 500;
+        }
+        
+        .info-value {
+            color: var(--noir);
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--gris-fonce);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--orange-cosmique);
+        }
+        
+        .payment-amount {
+            background: linear-gradient(135deg, var(--orange-cosmique), var(--rouge-poupre));
+            color: var(--blanc);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        .amount-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .amount-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            gap: 8px;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background: var(--orange-cosmique);
+            color: var(--blanc);
+        }
+        
+        .btn-primary:hover {
+            background: var(--rouge-poupre);
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background: var(--gris-clair);
+            color: var(--gris-fonce);
+            font-size: 0.9rem;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo img {
+            height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <h1 style="color: white; margin: 0;">♻️ EcoCity</h1>
+            </div>
+            <h1>Réabonnement Rapide</h1>
+            <p>Scannez et payez en 2 minutes</p>
+        </div>
+        
+        <div class="content">
+            {% if error %}
+            <div class="alert alert-error" style="display: block;">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <div class="subscription-info">
+                <div class="info-item">
+                    <span class="info-label">Abonnement:</span>
+                    <span class="info-value">{{ plan.name }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Type:</span>
+                    <span class="info-value">{{ plan.get_plan_type_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Adresse:</span>
+                    <span class="info-value">{{ address.street }}, {{ address.city }}</span>
+                </div>
+            </div>
+            
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="payment-amount">
+                    <div class="amount-label">Montant à payer</div>
+                    <div class="amount-value">{{ amount }} FCFA</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="phoneNumber">Numéro de téléphone</label>
+                    <input type="tel" class="form-control" id="phoneNumber" name="phone_number" 
+                           placeholder="6XXXXXXXX" required pattern="6[0-9]{8}">
+                    <small style="color: var(--gris-fonce); display: block; margin-top: 5px;">
+                        Format: 6XXXXXXXX (sans indicatif)
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="network">Opérateur mobile</label>
+                    <select class="form-control" id="network" name="network" required>
+                        <option value="">Sélectionnez votre opérateur</option>
+                        <option value="mtn">MTN</option>
+                        <option value="orange">Orange</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-credit-card"></i> Payer et s'abonner
+                </button>
+            </form>
+        </div>
+        
+        <div class="footer">
+            <p>Service de collecte d'ordures ménagères</p>
+            <p>💰 Paiement 100% sécurisé</p>
+        </div>
+    </div>
+
+    <!-- Font Awesome pour les icônes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+</body>
+</html>

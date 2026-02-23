@@ -1,0 +1,102 @@
+<!-- templates/notifications/notification_list.html -->
+{% extends "base.html" %}
+
+{% block title %}Notifications - EcoCity{% endblock %}
+
+{% block content %}
+<div class="notifications-container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div class="notifications-header" style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
+        <h1 style="color: var(--orange-cosmique); margin: 0;">Mes Notifications</h1>
+        <button id="markAllRead" class="cta-button" style="padding: 8px 16px; font-size: 0.9rem;">
+            <i class="fas fa-check-double"></i> Tout marquer comme lu
+        </button>
+    </div>
+
+    <div class="notifications-list">
+        {% if notifications %}
+            {% for notification in notifications %}
+            <div class="notification-item {% if not notification.is_read %}unread{% endif %}" 
+                 style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid '{% if notification.notification_type == 'success' %}#28a745{% elif notification.notification_type == 'warning' %}#ffc107{% elif notification.notification_type == 'error' %}'#dc3545'{% else %}'#007bff'{% endif %}';">
+                <div class="notification-header" style="display: flex; justify-content: between; align-items: start; margin-bottom: 10px;">
+                    <div>
+                        <h3 style="margin: 0 0 5px 0; color: var(--noir); font-size: 1.1rem;">
+                            {{ notification.title }}
+                        </h3>
+                        <span style="color: var(--gris-fonce); font-size: 0.9rem;">
+                            <i class="far fa-clock"></i> {{ notification.created_at|date:"d/m/Y H:i" }}
+                        </span>
+                    </div>
+                    {% if not notification.is_read %}
+                    <span class="unread-badge" style="background: var(--orange-cosmique); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">
+                        Nouveau
+                    </span>
+                    {% endif %}
+                </div>
+                <p style="margin: 0 0 15px 0; color: var(--noir); line-height: 1.5;">
+                    {{ notification.message }}
+                </p>
+                {% if notification.action_url %}
+                <div class="notification-actions">
+                    <a href="{{ notification.action_url }}" class="cta-button" style="padding: 6px 12px; font-size: 0.8rem;">
+                        Voir les détails
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-notifications" style="text-align: center; padding: 40px; color: var(--gris-fonce);">
+                <i class="far fa-bell" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;"></i>
+                <h3 style="color: var(--gris-fonce);">Aucune notification</h3>
+                <p>Vous n'avez aucune notification pour le moment.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Marquer toutes les notifications comme lues
+    document.getElementById('markAllRead').addEventListener('click', function() {
+        fetch('{% url "mark_all_read" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour l'interface
+                document.querySelectorAll('.unread').forEach(item => {
+                    item.classList.remove('unread');
+                    const badge = item.querySelector('.unread-badge');
+                    if (badge) badge.remove();
+                });
+                // Mettre à jour le compteur
+                updateNotificationCount();
+            }
+        });
+    });
+
+    // Mettre à jour le compteur de notifications
+    function updateNotificationCount() {
+        fetch('{% url "unread_count" %}')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            });
+    }
+});
+</script>
+{% endblock %}

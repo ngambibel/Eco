@@ -1,0 +1,51 @@
+<header class="navbar navbar-custom sticky-top py-3">
+    <div class="container-fluid">
+        <button class="navbar-toggler d-md-none" type="button" id="sidebarToggle">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="d-flex align-items-center">
+            <h4 class="mb-0 text-primary">
+                <i class="fas fa-recycle me-2"></i>
+                EcoCollect - Collecteur
+            </h4>
+        </div>
+        
+        <div class="d-flex align-items-center">
+            <div class="me-3 text-end d-none d-md-block">
+                <div class="fw-bold" id="currentDate"></div>
+                <div class="text-muted small" id="currentTime"></div>
+            </div>
+            
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" 
+                   data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="position-relative me-2">
+                        <i class="fas fa-bell fa-lg text-muted"></i>
+                        {% if unread_notifications_count > 0 %}
+                        <span class="notification-badge">{{ unread_notifications_count }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-none d-md-block">
+                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                        <div class="text-muted small">Collecteur</div>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=2e7d32&color=fff" 
+                         alt="Profile" class="rounded-circle ms-2" width="40" height="40">
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'collector_profile' %}">
+                        <i class="fas fa-user me-2"></i>Mon profil
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'collector_tricycle' %}">
+                        <i class="fas fa-truck-pickup me-2"></i>Mon tricycle
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'logout' %}">
+                        <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>

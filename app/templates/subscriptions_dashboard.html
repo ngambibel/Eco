@@ -1,0 +1,861 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Mes Abonnements - EcoCity{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .dashboard-header h1 {
+        color: var(--orange-cosmique);
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+
+    .subscriptions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .subscription-card {
+        background: var(--blanc);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border-left: 5px solid var(--orange-cosmique);
+        transition: transform 0.3s ease;
+    }
+
+    .subscription-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .subscription-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .subscription-title {
+        color: var(--rouge-poupre);
+        font-size: 1.4rem;
+        margin: 0;
+    }
+
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-suspended {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .subscription-details {
+        margin-bottom: 20px;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--gris-clair);
+    }
+
+    .detail-label {
+        color: var(--gris-fonce);
+        font-weight: 500;
+    }
+
+    .detail-value {
+        color: var(--noir);
+        font-weight: 600;
+    }
+
+    .subscription-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+    }
+
+    .btn-primary {
+        background: var(--orange-cosmique);
+        color: var(--blanc);
+    }
+
+    .btn-primary:hover {
+        background: var(--rouge-poupre);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 2px solid var(--orange-cosmique);
+        color: var(--orange-cosmique);
+    }
+
+    .btn-outline:hover {
+        background: var(--orange-cosmique);
+        color: var(--blanc);
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: var(--blanc);
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .btn-success {
+        background: #28a745;
+        color: var(--blanc);
+    }
+
+    .btn-success:hover {
+        background: #218838;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: var(--blanc);
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--gris-fonce);
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: var(--rouge-poupre);
+        margin-bottom: 10px;
+    }
+
+    .next-collection {
+        background: linear-gradient(135deg, var(--orange-cosmique), var(--jaune-dore));
+        color: var(--blanc);
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+    }
+
+    .next-collection h3 {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .collection-date {
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: var(--blanc);
+        margin: 10% auto;
+        padding: 30px;
+        border-radius: 15px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--gris-clair);
+        padding-bottom: 15px;
+    }
+
+    .modal-title {
+        color: var(--rouge-poupre);
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .close-modal {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--gris-fonce);
+    }
+
+    .close-modal:hover {
+        color: var(--rouge-poupre);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--gris-fonce);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 15px;
+        border: 2px solid var(--gris-clair);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--orange-cosmique);
+    }
+
+    .payment-amount {
+        background: var(--gris-clair);
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .amount-display {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--rouge-poupre);
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--orange-cosmique);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+        margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .status-checking {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        margin: 20px 0;
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .subscriptions-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .subscription-actions {
+            flex-direction: column;
+        }
+        
+        .btn {
+            justify-content: center;
+        }
+
+        .modal-content {
+            margin: 5% auto;
+            width: 95%;
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Mes Abonnements</h1>
+        <p>Gérez vos abonnements et programmes de collecte</p>
+    </div>
+
+    <!-- Alertes globales -->
+    <div id="globalAlert" class="alert" style="display: none;"></div>
+
+    <!-- Prochaine collecte -->
+    {% if next_collection %}
+    <div class="next-collection">
+        <h3><i class="fas fa-truck"></i> Prochaine collecte</h3>
+        <div class="collection-date">
+            {{ next_collection.scheduled_date }} à {{ next_collection.scheduled_time }}
+        </div>
+        <p>Adresse: {{ next_collection.subscription.address.street }}, {{ next_collection.subscription.address.city }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Liste des abonnements -->
+    <div class="subscriptions-grid">
+        {% for subscription in subscriptions %}
+        <div class="subscription-card" id="subscription-{{ subscription.id }}">
+            <div class="subscription-header">
+                <h3 class="subscription-title">{{ subscription.plan.name }}</h3>
+                <span class="status-badge status-{{ subscription.status }}">
+                    {{ subscription.get_status_display }}
+                </span>
+            </div>
+            
+            <div class="subscription-details">
+                <div class="detail-item">
+                    <span class="detail-label">Type:</span>
+                    <span class="detail-value">{{ subscription.plan.get_plan_type_display }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Fréquence:</span>
+                    <span class="detail-value">{{ subscription.plan.get_frequency_display }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Prix:</span>
+                    <span class="detail-value" id="price-{{ subscription.id }}">{{ subscription.custom_price|default:subscription.plan.price }} FCFA</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Adresse:</span>
+                    <span class="detail-value">{{ subscription.address.title }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Jours de collecte:</span>
+                    <span class="detail-value">
+                        {% for day in subscription.collection_days.all %}
+                            {{ day.day.get_name_display }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Date de fin:</span>
+                    <span class="detail-value">{{ subscription.end_date }}</span>
+                </div>
+            </div>
+
+            <div class="subscription-actions">
+                <a href="{% url 'edit_subscription' subscription.id %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
+                <a href="{% url 'subscription_detail' subscription.id %}" class="btn btn-outline">
+                    <i class="fas fa-eye"></i> Détails
+                </a>
+                {% if subscription.status == 'active' %}
+                <form method="post" action="{% url 'suspend_subscription' subscription.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Suspendre cet abonnement ?')">
+                        <i class="fas fa-pause"></i> Suspendre
+                    </button>
+                </form>
+                {% endif %}
+                {% if subscription.status == 'inactive' %}
+                <button type="button" class="btn btn-success" onclick="openRenewalModal('{{ subscription.id }}')">
+                    <i class="fas fa-sync-alt"></i> Se réabonner
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>Aucun abonnement actif</h3>
+            <p>Vous n'avez pas encore souscrit à un service de collecte.</p>
+            <a href="{% url 'subscription_page' %}" class="btn btn-primary" style="margin-top: 15px;">
+                <i class="fas fa-plus"></i> Souscrire maintenant
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Statistiques rapides -->
+    {% if subscriptions %}
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+        <div style="background: var(--blanc); padding: 20px; border-radius: 10px; text-align: center;">
+            <h4 style="color: var(--orange-cosmique); margin-bottom: 10px;">Abonnements actifs</h4>
+            <p style="font-size: 2rem; font-weight: bold; color: var(--rouge-poupre);">
+                {{ active_subscriptions_count }}
+            </p>
+        </div>
+        <div style="background: var(--blanc); padding: 20px; border-radius: 10px; text-align: center;">
+            <h4 style="color: var(--orange-cosmique); margin-bottom: 10px;">Prochaine collecte</h4>
+            <p style="font-size: 1.2rem; font-weight: bold; color: var(--rouge-poupre);">
+                {% if next_collection %}
+                    {{ next_collection.scheduled_date|date:"d/m" }}
+                {% else %}
+                    Aucune
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de réabonnement -->
+<div id="renewalModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Renouveler l'abonnement</h3>
+            <button type="button" class="close-modal" onclick="closeRenewalModal()">&times;</button>
+        </div>
+        
+        <div id="renewalAlert" class="alert" style="display: none;"></div>
+        
+        <div id="paymentForm">
+            <div class="payment-amount">
+                <div class="form-label">Montant à payer</div>
+                <div class="amount-display" id="modalAmount">0 FCFA</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="phoneNumber">Numéro de téléphone</label>
+                <input type="tel" class="form-control" id="phoneNumber" placeholder="6XXXXXXXX" required>
+                <small style="color: var(--gris-fonce);">Format: 6XXXXXXXX (sans indicatif)</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="network">Opérateur mobile</label>
+                <select class="form-control" id="network" required>
+                    <option value="">Sélectionnez votre opérateur</option>
+                    <option value="mtn">MTN</option>
+                    <option value="orange">Orange</option>
+                </select>
+            </div>
+            
+            <div class="subscription-actions">
+                <button type="button" class="btn btn-primary" onclick="processRenewalWithPayment()" id="renewBtn">
+                    <i class="fas fa-credit-card"></i> Payer et renouveler
+                </button>
+                <button type="button" class="btn btn-outline" onclick="closeRenewalModal()">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                {% for subscription in subscriptions %}    
+                    <a href="{% url 'generate_qr_code' subscription.id %}" class="btn btn-outline">
+                        <i class="fas fa-qrcode"></i> QR Code
+                    </a>
+                {% endfor %}
+                
+            </div>
+        </div>
+        
+        <div id="statusChecking" class="status-checking" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Vérification du statut du paiement...</p>
+        </div>
+        
+        <div class="loading-spinner" id="renewalLoading">
+    <div class="spinner"></div>
+    <p>Traitement en cours...</p>
+    <p style="font-size: 0.9rem; margin-top: 10px; color: #666;">
+        <strong>Instructions :</strong><br>
+        • Votre opérateur va vous envoyer une demande de confirmation<br>
+        • Composez le code USSD si demandé :<br>
+        &nbsp;&nbsp;- MTN : <strong>#150*50#</strong><br>
+        &nbsp;&nbsp;- Orange : <strong>*126#</strong><br>
+        • La vérification automatique peut prendre jusqu'à 3 minutes
+    </p>
+</div>
+    </div>
+</div>
+
+<!-- CSRF Token caché pour AJAX -->
+<input type="hidden" id="csrf_token" value="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSubscriptionId = null;
+let transactionReference = null;
+let statusCheckInterval = null;
+let statusCheckAttempts = 0;
+const MAX_STATUS_CHECKS = 36; // 3 minutes (36 * 5 secondes)
+
+function openRenewalModal(subscriptionId) {
+    console.log('Opening modal for subscription:', subscriptionId);
+    currentSubscriptionId = subscriptionId;
+    
+    // Récupérer le prix de l'abonnement
+    const priceElement = document.getElementById(`price-${subscriptionId}`);
+    let price = '0';
+    if (priceElement) {
+        price = priceElement.textContent.replace(' FCFA', '').trim();
+        console.log('Found price:', price);
+    }
+    
+    // Mettre à jour l'affichage du montant
+    document.getElementById('modalAmount').textContent = `${price} FCFA`;
+    
+    // Réinitialiser le modal
+    document.getElementById('renewalAlert').style.display = 'none';
+    document.getElementById('paymentForm').style.display = 'block';
+    document.getElementById('statusChecking').style.display = 'none';
+    document.getElementById('renewalLoading').style.display = 'none';
+    
+    // Réinitialiser les champs
+    document.getElementById('phoneNumber').value = '';
+    document.getElementById('network').value = '';
+    
+    // Afficher le modal
+    document.getElementById('renewalModal').style.display = 'block';
+}
+
+function closeRenewalModal() {
+    console.log('Closing modal');
+    document.getElementById('renewalModal').style.display = 'none';
+    currentSubscriptionId = null;
+    transactionReference = null;
+    statusCheckAttempts = 0;
+    
+    if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+    }
+}
+
+function showAlert(elementId, message, type) {
+    const alertElement = document.getElementById(elementId);
+    alertElement.textContent = message;
+    alertElement.className = `alert alert-${type}`;
+    alertElement.style.display = 'block';
+    console.log(`Alert [${type}]:`, message);
+}
+
+function hideAlert(elementId) {
+    document.getElementById(elementId).style.display = 'none';
+}
+
+function showLoading() {
+    document.getElementById('renewalLoading').style.display = 'block';
+    document.getElementById('renewBtn').disabled = true;
+}
+
+function hideLoading() {
+    document.getElementById('renewalLoading').style.display = 'none';
+    document.getElementById('renewBtn').disabled = false;
+}
+
+function getCSRFToken() {
+    let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        return csrfToken.value;
+    }
+    
+    csrfToken = document.getElementById('csrf_token');
+    if (csrfToken) {
+        return csrfToken.value;
+    }
+    
+    console.error('CSRF token not found');
+    return '';
+}
+
+async function processRenewalWithPayment() {
+    console.log('Starting payment process for subscription:', currentSubscriptionId);
+    
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    const network = document.getElementById('network').value;
+    
+    if (!phoneNumber || !network) {
+        showAlert('renewalAlert', 'Veuillez remplir tous les champs requis.', 'error');
+        return;
+    }
+    
+    if (!phoneNumber.match(/^6[0-9]{8}$/)) {
+        showAlert('renewalAlert', 'Format de numéro invalide. Utilisez: 6XXXXXXXX', 'error');
+        return;
+    }
+    
+    showLoading();
+    hideAlert('renewalAlert');
+    
+    try {
+        const formData = new FormData();
+        formData.append('phone_number', phoneNumber);
+        formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+        const url = `/subscription/${currentSubscriptionId}/renew-with-payment/`;
+        console.log('Making request to:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        console.log('Response status:', response.status);
+        
+        // Vérifier si la réponse est du JSON
+        const contentType = response.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            if (response.status === 404) {
+                throw new Error(`URL non trouvée (404). Vérifiez la configuration.`);
+            }
+            const text = await response.text();
+            console.error('Non-JSON response:', text.substring(0, 500));
+            throw new Error(`Réponse non-JSON du serveur. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        hideLoading();
+        
+        if (data.success) {
+            if (data.transaction_id) {
+                transactionReference = data.transaction_id;
+                console.log('Transaction reference:', transactionReference);
+                showAlert('renewalAlert', data.message, 'success');
+                startStatusChecking();
+            } else {
+                showAlert('renewalAlert', data.message, 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            }
+        } else {
+            showAlert('renewalAlert', data.message, 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Detailed error:', error);
+        
+        if (error.message.includes('404')) {
+            showAlert('renewalAlert', 'Erreur de configuration. Contactez le support.', 'error');
+        } else if (error.message.includes('JSON')) {
+            showAlert('renewalAlert', 'Erreur serveur. Veuillez réessayer.', 'error');
+        } else {
+            showAlert('renewalAlert', 'Erreur de connexion. Veuillez réessayer.', 'error');
+        }
+    }
+}
+
+function startStatusChecking() {
+    console.log('Starting status checking for transaction:', transactionReference);
+    document.getElementById('paymentForm').style.display = 'none';
+    document.getElementById('statusChecking').style.display = 'block';
+    statusCheckAttempts = 0;
+    
+    // Vérifier le statut toutes les 5 secondes
+    statusCheckInterval = setInterval(checkPaymentStatus, 5000);
+    
+    // Première vérification immédiate
+    setTimeout(checkPaymentStatus, 2000);
+}
+
+async function checkPaymentStatus() {
+    if (!transactionReference) {
+        console.error('No transaction reference for status check');
+        return;
+    }
+    
+    statusCheckAttempts++;
+    console.log(`Checking payment status for: ${transactionReference} (attempt ${statusCheckAttempts})`);
+    
+    // Arrêter après 3 minutes (36 tentatives)
+    if (statusCheckAttempts >= MAX_STATUS_CHECKS) {
+        console.log('Max status check attempts reached');
+        clearInterval(statusCheckInterval);
+        showAlert('renewalAlert', 'Temps de vérification écoulé. Le paiement a pris trop de temps.', 'error');
+        document.getElementById('paymentForm').style.display = 'block';
+        document.getElementById('statusChecking').style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/subscription/check-renewal-status/?transaction_reference=${transactionReference}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('Non-JSON response during status check');
+            return;
+        }
+
+        const data = await response.json();
+        console.log('Status check response:', data);
+        
+        if (data.success) {
+            const status = data.status;
+            
+            if (status === 'SUCCESSFUL') {
+                console.log('Payment successful, completing renewal');
+                clearInterval(statusCheckInterval);
+                await completeRenewalProcess();
+            } else if (status === 'FAILED' || status === 'ERROR') {
+                console.log('Payment failed:', data.message);
+                clearInterval(statusCheckInterval);
+                showAlert('renewalAlert', `Paiement échoué: ${data.message}`, 'error');
+                document.getElementById('paymentForm').style.display = 'block';
+                document.getElementById('statusChecking').style.display = 'none';
+            } else if (status === 'PENDING') {
+                console.log('Payment still pending');
+                // Continuer à vérifier
+            } else {
+                console.log('Unknown status:', status);
+                // Continuer à vérifier
+            }
+        } else {
+            console.log('Status check failed:', data.message);
+            // Continuer à vérifier malgré l'erreur
+        }
+    } catch (error) {
+        console.error('Error during status check:', error);
+        // Continuer à vérifier malgré l'erreur
+    }
+}
+
+async function completeRenewalProcess() {
+    console.log('Completing renewal process');
+    
+    try {
+        const response = await fetch('/subscription/process-renewal/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                transaction_reference: transactionReference
+            })
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response in completion:', text.substring(0, 500));
+            throw new Error('Réponse non-JSON lors de la finalisation');
+        }
+
+        const data = await response.json();
+        console.log('Completion response:', data);
+        
+        if (data.success) {
+            showAlert('renewalAlert', '✅ ' + data.message, 'success');
+            document.getElementById('statusChecking').style.display = 'none';
+            
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        } else {
+            showAlert('renewalAlert', '❌ ' + data.message, 'error');
+            document.getElementById('paymentForm').style.display = 'block';
+            document.getElementById('statusChecking').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error during completion:', error);
+        showAlert('renewalAlert', '❌ Erreur lors de la finalisation.', 'error');
+    }
+}
+
+// Gestion des clics en dehors du modal
+window.onclick = function(event) {
+    const modal = document.getElementById('renewalModal');
+    if (event.target === modal) {
+        closeRenewalModal();
+    }
+}
+
+// Gestion de la touche Échap
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeRenewalModal();
+    }
+});
+
+console.log('Renewal subscription script loaded');
+</script>
+{% endblock %}

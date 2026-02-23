@@ -1,0 +1,309 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Traiter la collecte - Collecteur{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collection-map {
+        height: 300px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .customer-info-card {
+        border-left: 4px solid var(--primary-color);
+    }
+    
+    .subscription-info-card {
+        border-left: 4px solid var(--secondary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Traiter la collecte</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'daily_schedule' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Retour au planning
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tasks text-primary me-2"></i>
+                    Détails de la collecte
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="collectionForm">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card customer-info-card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">
+                                        <i class="fas fa-user me-2"></i>Informations client
+                                    </h6>
+                                    <p class="mb-1"><strong>Nom:</strong> {{ collection.subscription.user.get_full_name|default:collection.subscription.user.username }}</p>
+                                    <p class="mb-1"><strong>Téléphone:</strong> {{ collection.subscription.user.phone|default:"Non renseigné" }}</p>
+                                    <p class="mb-0"><strong>Email:</strong> {{ collection.subscription.user.email }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card subscription-info-card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success">
+                                        <i class="fas fa-receipt me-2"></i>Abonnement
+                                    </h6>
+                                    <p class="mb-1"><strong>Plan:</strong> {{ collection.subscription.plan.name }}</p>
+                                    <p class="mb-1"><strong>Fréquence:</strong> {{ collection.subscription.plan.get_frequency_display }}</p>
+                                    <p class="mb-0"><strong>Prix:</strong> {{ collection.subscription.plan.price }} FCFA</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title text-info">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Adresse de collecte
+                                    </h6>
+                                    <p class="mb-1 fw-bold">{{ collection.subscription.address.title }}</p>
+                                    <p class="mb-1">{{ collection.subscription.address.street }}</p>
+                                    <p class="mb-0">{{ collection.subscription.address.postal_code }} {{ collection.subscription.address.city }}</p>
+                                    {% if collection.subscription.address.zone %}
+                                    <p class="mb-0 text-muted">Zone: {{ collection.subscription.address.zone.nom }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if collection.subscription.special_instructions %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-warning">
+                                <div class="card-body">
+                                    <h6 class="card-title text-warning">
+                                        <i class="fas fa-exclamation-circle me-2"></i>Instructions spéciales
+                                    </h6>
+                                    <p class="mb-0">{{ collection.subscription.special_instructions }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="collection-map d-flex align-items-center justify-content-center">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-map fa-3x mb-3"></i>
+                                    <p>Carte interactive de localisation</p>
+                                    <small>(Intégration Google Maps ou OpenStreetMap)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-edit me-2"></i>Notes de collecte
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="{{ form.notes.id_for_label }}" class="form-label">Observations</label>
+                                        {{ form.notes }}
+                                        <div class="form-text">
+                                            Notez toute observation particulière concernant cette collecte.
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Statut de la collecte</label>
+                                        <div>
+                                            {% if collection.status == 'pending' or collection.status == 'scheduled' %}
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Cette collecte est programmée. Cliquez sur "Démarrer la collecte" pour commencer.
+                                            </div>
+                                            <button type="submit" name="action" value="start" class="btn btn-primary-custom btn-lg w-100">
+                                                <i class="fas fa-play me-2"></i>Démarrer la collecte
+                                            </button>
+                                            {% elif collection.status == 'in_progress' %}
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-clock me-2"></i>
+                                                Cette collecte est en cours. Cliquez sur "Terminer la collecte" une fois terminée.
+                                            </div>
+                                            <button type="submit" name="action" value="complete" class="btn btn-success btn-lg w-100">
+                                                <i class="fas fa-check me-2"></i>Terminer la collecte
+                                            </button>
+                                            {% else %}
+                                            <div class="alert alert-secondary">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                Cette collecte est déjà terminée.
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if collection.status == 'in_progress' %}
+                                    <div class="mb-3">
+                                        <label class="form-label">Problèmes rencontrés</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="problems" value="client_absent" id="problem1">
+                                            <label class="form-check-label" for="problem1">
+                                                Client absent
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="problems" value="bac_plein" id="problem2">
+                                            <label class="form-check-label" for="problem2">
+                                                Bac trop plein
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="problems" value="acces_difficile" id="problem3">
+                                            <label class="form-check-label" for="problem3">
+                                                Accès difficile
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="problems" value="autre" id="problem4">
+                                            <label class="form-check-label" for="problem4">
+                                                Autre problème
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Informations rapides -->
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle text-info me-2"></i>
+                    Informations rapides
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Date programmée:</strong>
+                    <p class="mb-0">{{ collection.scheduled_date|date:"d/m/Y" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Heure programmée:</strong>
+                    <p class="mb-0">{{ collection.scheduled_time|time:"H:i" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Statut actuel:</strong>
+                    <p class="mb-0">
+                        <span class="badge badge-status-{{ collection.status }}">
+                            {{ collection.get_status_display }}
+                        </span>
+                    </p>
+                </div>
+                
+                {% if collection.actual_collection_time %}
+                <div class="mb-3">
+                    <strong>Heure réelle:</strong>
+                    <p class="mb-0">{{ collection.actual_collection_time|time:"H:i" }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <strong>Collecteur assigné:</strong>
+                    <p class="mb-0">
+                        {% if collection.collector %}
+                        {{ collection.collector.get_full_name|default:collection.collector.username }}
+                        {% else %}
+                        <span class="text-muted">Non assigné</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Historique des collectes -->
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history text-secondary me-2"></i>
+                    Dernières collectes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_collections %}
+                <div class="list-group list-group-flush">
+                    {% for recent in recent_collections %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <small class="text-muted">{{ recent.scheduled_date|date:"d/m" }}</small>
+                            <div class="small">{{ recent.get_status_display }}</div>
+                        </div>
+                        <span class="badge bg-{% if recent.status == 'completed' %}success{% else %}warning{% endif %}">
+                            {{ recent.scheduled_time|time:"H:i" }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">Aucune collecte précédente</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('collectionForm').addEventListener('submit', function(e) {
+        const action = document.querySelector('button[type="submit"][clicked=true]').value;
+        
+        if (action === 'start') {
+            if (!confirm('Êtes-vous sûr de vouloir démarrer cette collecte ?')) {
+                e.preventDefault();
+            }
+        } else if (action === 'complete') {
+            if (!confirm('Êtes-vous sûr d\'avoir terminé cette collecte ?')) {
+                e.preventDefault();
+            }
+        }
+        
+        // Store which button was clicked
+        const buttons = document.querySelectorAll('button[type="submit"]');
+        buttons.forEach(button => {
+            button.addEventListener('click', function() {
+                buttons.forEach(btn => btn.removeAttribute('clicked'));
+                this.setAttribute('clicked', 'true');
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+<div class="row">
+    <div class="col-md-6">
+        <h6 class="text-muted mb-3">Informations Client</h6>
+        <div class="mb-3">
+            <strong>Nom complet:</strong>
+            <p class="mb-1">{{ demande.abonnement.client.get_full_name|default:"Non spécifié" }}</p>
+        </div>
+        <div class="mb-3">
+            <strong>Email:</strong>
+            <p class="mb-1">{{ demande.abonnement.client.email }}</p>
+        </div>
+        <div class="mb-3">
+            <strong>Téléphone:</strong>
+            <p class="mb-1">{{ demande.abonnement.client.phone_number|default:"Non spécifié" }}</p>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <h6 class="text-muted mb-3">Détails de la Demande</h6>
+        <div class="mb-3">
+            <strong>ID Demande:</strong>
+            <p class="mb-1">#{{ demande.id }}</p>
+        </div>
+        <div class="mb-3">
+            <strong>Identifiant Abonné:</strong>
+            <p class="mb-1">{{ demande.abonnement.identifiant_abonne }}</p>
+        </div>
+        <div class="mb-3">
+            <strong>Montant:</strong>
+            <p class="mb-1 fw-bold text-primary">{{ demande.montant }} FCFA</p>
+        </div>
+        <div class="mb-3">
+            <strong>Offre choisie:</strong>
+            <p class="mb-1">{{ demande.offre_choisie|default:"Non spécifié" }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <strong>Statut:</strong>
+            <span class="status-badge status-{{ demande.statut|lower }} ms-2">
+                {{ demande.get_statut_display }}
+            </span>
+        </div>
+        <div class="mb-3">
+            <strong>Date de demande:</strong>
+            <p class="mb-1">{{ demande.date_demande|date:"d/m/Y H:i" }}</p>
+        </div>
+        {% if demande.date_traitement %}
+        <div class="mb-3">
+            <strong>Date de traitement:</strong>
+            <p class="mb-1">{{ demande.date_traitement|date:"d/m/Y H:i" }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-6">
+        <div class="mb-3">
+            <strong>Facture:</strong>
+            {% if facture_exists %}
+            <span class="badge bg-success ms-2">Disponible</span>
+            {% else %}
+            <span class="badge bg-warning ms-2">Non uploadée</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if demande.commentaires %}
+<div class="row mt-3">
+    <div class="col-12">
+        <h6 class="text-muted mb-3">Commentaires</h6>
+        <div class="card bg-light">
+            <div class="card-body">
+                <p class="mb-0">{{ demande.commentaires|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-end">
+            {% if demande.statut == 'EN_ATTENTE' or demande.statut == 'EN_COURS' %}
+            <button class="btn btn-primary me-2" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#traiterDemandeModal"
+                    data-id="{{ demande.id }}">
+                <i class="fas fa-cog me-1"></i>Traiter
+            </button>
+            {% endif %}
+            
+            <button class="btn btn-info me-2" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#uploadFactureModal"
+                    data-id="{{ demande.id }}">
+                <i class="fas fa-file-invoice me-1"></i>Facture
+            </button>
+            
+            <form method="post" action="{% url 'supprimer_demande_reabonnement' demande.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')">
+                    <i class="fas fa-trash me-1"></i>Supprimer
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

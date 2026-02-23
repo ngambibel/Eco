@@ -1,0 +1,373 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Mon Profil - Collecteur{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Mon profil</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+            <i class="fas fa-print me-1"></i>Imprimer
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <!-- Carte de profil -->
+        <div class="card card-custom mb-4">
+            <div class="card-body text-center">
+                <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=2e7d32&color=fff&size=120" 
+                     alt="Profile" class="rounded-circle mb-3" width="120" height="120">
+                <h4>{{ user.get_full_name|default:user.username }}</h4>
+                <p class="text-muted">Collecteur</p>
+                
+                <div class="d-flex justify-content-center mb-3">
+                    <div class="mx-2 text-center">
+                        <div class="h5 mb-0">{{ performance_rating }}/5</div>
+                        <small class="text-muted">Performance</small>
+                    </div>
+                    <div class="mx-2 text-center">
+                        <div class="h5 mb-0">{{ total_collections }}</div>
+                        <small class="text-muted">Collectes</small>
+                    </div>
+                    <div class="mx-2 text-center">
+                        <div class="h5 mb-0">{{ months_active }}</div>
+                        <small class="text-muted">Mois</small>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= performance_rating %}
+                            <i class="fas fa-star text-warning"></i>
+                        {% else %}
+                            <i class="far fa-star text-warning"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informations de contact -->
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-address-card text-primary me-2"></i>
+                    Contact
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong><i class="fas fa-phone me-2 text-success"></i>Téléphone</strong>
+                    <p class="mb-0">{{ user.phone|default:"Non renseigné" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong><i class="fas fa-envelope me-2 text-primary"></i>Email</strong>
+                    <p class="mb-0">{{ user.email }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong><i class="fas fa-map-marker-alt me-2 text-danger"></i>Ville</strong>
+                    <p class="mb-0">{{ user.city|default:"Non renseignée" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong><i class="fas fa-calendar-alt me-2 text-info"></i>Membre depuis</strong>
+                    <p class="mb-0">{{ user.date_joined|date:"d/m/Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <!-- Statistiques personnelles -->
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar text-success me-2"></i>
+                    Mes statistiques
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-primary">{{ monthly_collections }}</h4>
+                                <small class="text-muted">Ce mois</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-success">{{ weekly_collections }}</h4>
+                                <small class="text-muted">Cette semaine</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-warning">{{ completion_rate }}%</h4>
+                                <small class="text-muted">Taux de réussite</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h4 class="text-info">{{ avg_daily_collections }}</h4>
+                                <small class="text-muted">Moyenne/jour</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Performance mensuelle</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: '{{ monthly_performance }}%'" 
+                                 aria-valuenow="{{ monthly_performance }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ monthly_performance }}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Satisfaction client</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-info" role="progressbar" 
+                                 style="width: '{{ customer_satisfaction }}%'" 
+                                 aria-valuenow="{{ customer_satisfaction }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ customer_satisfaction }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Formulaires d'édition -->
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <ul class="nav nav-tabs card-header-tabs" id="profileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" 
+                                data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                            Informations personnelles
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="security-tab" data-bs-toggle="tab" 
+                                data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">
+                            Sécurité
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="preferences-tab" data-bs-toggle="tab" 
+                                data-bs-target="#preferences" type="button" role="tab" aria-controls="preferences" aria-selected="false">
+                            Préférences
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="profileTabsContent">
+                    <!-- Onglet Informations personnelles -->
+                    <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                        <form method="post" action="{% url 'update_profile' %}">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="firstName" class="form-label">Prénom</label>
+                                    <input type="text" class="form-control" id="firstName" name="first_name" 
+                                           value="{{ user.first_name }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="lastName" class="form-label">Nom</label>
+                                    <input type="text" class="form-control" id="lastName" name="last_name" 
+                                           value="{{ user.last_name }}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ user.email }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="phone" class="form-label">Téléphone</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" 
+                                           value="{{ user.phone|default:'' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="city" class="form-label">Ville</label>
+                                <select class="form-select" id="city" name="city">
+                                    <option value="">Sélectionnez votre ville</option>
+                                    {% for city in cities %}
+                                    <option value="{{ city.id }}" {% if user.city.id == city.id %}selected{% endif %}>
+                                        {{ city.city }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Adresse</label>
+                                <textarea class="form-control" id="address" name="address" rows="2" 
+                                          placeholder="Votre adresse complète">{{ user.address|default:'' }}</textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary-custom">
+                                <i class="fas fa-save me-1"></i>Enregistrer les modifications
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Onglet Sécurité -->
+                    <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+                        <form method="post" action="{% url 'change_password' %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label">Mot de passe actuel</label>
+                                <input type="password" class="form-control" id="currentPassword" name="current_password" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="newPassword" class="form-label">Nouveau mot de passe</label>
+                                    <input type="password" class="form-control" id="newPassword" name="new_password" required>
+                                    <div class="form-text">
+                                        Au moins 8 caractères avec des chiffres et lettres.
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="confirmPassword" class="form-label">Confirmer le mot de passe</label>
+                                    <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary-custom">
+                                <i class="fas fa-key me-1"></i>Changer le mot de passe
+                            </button>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <h6>Sessions actives</h6>
+                        <div class="alert alert-info small">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Vous êtes actuellement connecté sur cet appareil.
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="logoutOtherSessions()">
+                            <i class="fas fa-sign-out-alt me-1"></i>Déconnecter les autres sessions
+                        </button>
+                    </div>
+                    
+                    <!-- Onglet Préférences -->
+                    <div class="tab-pane fade" id="preferences" role="tabpanel" aria-labelledby="preferences-tab">
+                        <form method="post" action="{% url 'update_preferences' %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Notifications</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifEmail" name="notif_email" checked>
+                                    <label class="form-check-label" for="notifEmail">
+                                        Notifications par email
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifSMS" name="notif_sms">
+                                    <label class="form-check-label" for="notifSMS">
+                                        Notifications par SMS
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifPush" name="notif_push" checked>
+                                    <label class="form-check-label" for="notifPush">
+                                        Notifications push dans l'application
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="language" class="form-label">Langue</label>
+                                <select class="form-select" id="language" name="language">
+                                    <option value="fr" selected>Français</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="timezone" class="form-label">Fuseau horaire</label>
+                                <select class="form-select" id="timezone" name="timezone">
+                                    <option value="UTC+1" selected>UTC+1 (Afrique/Douala)</option>
+                                    <option value="UTC+0">UTC+0 (GMT)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Préférences d'affichage</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="theme" id="themeLight" value="light" checked>
+                                    <label class="form-check-label" for="themeLight">
+                                        Thème clair
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="theme" id="themeDark" value="dark">
+                                    <label class="form-check-label" for="themeDark">
+                                        Thème sombre
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary-custom">
+                                <i class="fas fa-save me-1"></i>Enregistrer les préférences
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function logoutOtherSessions() {
+        if (confirm('Êtes-vous sûr de vouloir déconnecter toutes les autres sessions ?')) {
+            // Simuler la déconnexion des autres sessions
+            alert('Toutes les autres sessions ont été déconnectées.');
+        }
+    }
+    
+    // Validation des mots de passe
+    document.querySelector('form[action*="change_password"]').addEventListener('submit', function(e) {
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (newPassword !== confirmPassword) {
+            e.preventDefault();
+            alert('Les mots de passe ne correspondent pas.');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            e.preventDefault();
+            alert('Le mot de passe doit contenir au moins 8 caractères.');
+            return;
+        }
+    });
+</script>
+{% endblock %}

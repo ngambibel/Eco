@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - EcoCity{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirm-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        text-align: center;
+    }
+
+    .confirm-card {
+        background: var(--blanc);
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .warning-icon {
+        font-size: 4rem;
+        color: var(--orange-cosmique);
+        margin-bottom: 20px;
+    }
+
+    .confirm-title {
+        color: var(--rouge-poupre);
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+    }
+
+    .subscription-info {
+        background: var(--gris-clair);
+        padding: 20px;
+        border-radius: 10px;
+        margin: 25px 0;
+        text-align: left;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .info-label {
+        color: var(--gris-fonce);
+        font-weight: 500;
+    }
+
+    .info-value {
+        color: var(--noir);
+        font-weight: 600;
+    }
+
+    .consequences {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 20px 0;
+        text-align: left;
+    }
+
+    .consequences h4 {
+        color: #856404;
+        margin-bottom: 10px;
+    }
+
+    .consequences ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .consequences li {
+        color: #856404;
+        margin-bottom: 5px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-warning {
+        background: var(--orange-cosmique);
+        color: var(--blanc);
+    }
+
+    .btn-warning:hover {
+        background: var(--rouge-poupre);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 2px solid var(--gris-fonce);
+        color: var(--gris-fonce);
+    }
+
+    .btn-outline:hover {
+        background: var(--gris-fonce);
+        color: var(--blanc);
+    }
+
+    @media (max-width: 768px) {
+        .confirm-card {
+            padding: 25px;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .btn {
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-container">
+    <div class="confirm-card">
+        {% if subscription.status == 'active' %}
+        <!-- Mode suspension -->
+        <div class="warning-icon">
+            <i class="fas fa-pause-circle"></i>
+        </div>
+        <h1 class="confirm-title">Suspendre votre abonnement</h1>
+        <p>Êtes-vous sûr de vouloir suspendre votre abonnement ?</p>
+        
+        <div class="subscription-info">
+            <div class="info-item">
+                <span class="info-label">Plan:</span>
+                <span class="info-value">{{ subscription.plan.name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Type:</span>
+                <span class="info-value">{{ subscription.plan.get_plan_type_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Prix:</span>
+                <span class="info-value">{{ subscription.custom_price|default:subscription.plan.price }} FCFA</span>
+            </div>
+        </div>
+
+        <div class="consequences">
+            <h4><i class="fas fa-exclamation-triangle"></i> Conséquences de la suspension :</h4>
+            <ul>
+                <li>Aucune collecte ne sera programmée pendant la suspension</li>
+                <li>Aucun paiement ne sera facturé pendant cette période</li>
+                <li>Vos préférences et historique seront conservés</li>
+                <li>Vous pourrez réactiver votre abonnement à tout moment</li>
+            </ul>
+        </div>
+
+        <form method="post" class="action-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="suspend">
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-pause"></i> Confirmer la suspension
+                </button>
+                <a href="{% url 'subscriptions:subscriptions_dashboard' %}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> Annuler
+                </a>
+            </div>
+        </form>
+
+        {% else %}
+        <!-- Mode réactivation -->
+        <div class="warning-icon" style="color: #28a745;">
+            <i class="fas fa-play-circle"></i>
+        </div>
+        <h1 class="confirm-title">Réactiver votre abonnement</h1>
+        <p>Êtes-vous sûr de vouloir réactiver votre abonnement ?</p>
+        
+        <div class="subscription-info">
+            <div class="info-item">
+                <span class="info-label">Plan:</span>
+                <span class="info-value">{{ subscription.plan.name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Statut actuel:</span>
+                <span class="info-value">{{ subscription.get_status_display }}</span>
+            </div>
+        </div>
+
+        <div class="consequences" style="background: #d4edda; border-color: #c3e6cb;">
+            <h4 style="color: #155724;"><i class="fas fa-info-circle"></i> Avantages de la réactivation :</h4>
+            <ul style="color: #155724;">
+                <li>Les collectes reprendront selon votre programme habituel</li>
+                <li>La facturation recommencera à partir de la date de réactivation</li>
+                <li>Tous vos paramètres seront restaurés</li>
+            </ul>
+        </div>
+
+        <form method="post" class="action-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reactivate">
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-warning" style="background: #28a745;">
+                    <i class="fas fa-play"></i> Confirmer la réactivation
+                </button>
+                <a href="{% url 'subscriptions:subscriptions_dashboard' %}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> Annuler
+                </a>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

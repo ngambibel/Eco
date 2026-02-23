@@ -1,0 +1,199 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Programme du jour - Collecteur{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Programme de collecte du jour</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'daily_schedule' %}?date={{ prev_date|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <span class="btn btn-sm btn-outline-primary disabled">{{ current_date|date:"l d F Y" }}</span>
+            <a href="{% url 'daily_schedule' %}?date={{ next_date|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+        <a href="{% url 'daily_schedule' %}" class="btn btn-sm btn-primary-custom">
+            <i class="fas fa-sync-alt me-1"></i>Aujourd'hui
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card card-custom">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list-ol text-primary me-2"></i>
+                    Liste des collectes
+                </h5>
+                <span class="badge bg-primary">{{ collections|length }} collecte(s)</span>
+            </div>
+            <div class="card-body">
+                {% if collections %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Heure</th>
+                                <th>Client</th>
+                                <th>Adresse</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                                <th>details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for collection in collections %}
+                            <tr>
+                                <td>
+                                    <strong>{{ collection.scheduled_time|time:"H:i" }}</strong>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ collection.subscription.user.get_full_name|default:collection.subscription.user.username }}</div>
+                                    <small class="text-muted">{{ collection.subscription.plan.name }}</small>
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 200px;">
+                                        {{ collection.subscription.address.street }}
+                                    </div>
+                                    <small class="text-muted">{{ collection.subscription.address.city }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge badge-status-{{ collection.status }}" style="color: blue;">
+                                        {{ collection.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        
+                                        {% if collection.status == 'pending' or collection.status == 'scheduled' %}
+                                        <a href="" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check me-1"></i> 
+                                        </a>
+                                        {% else %}
+
+                                        <button class="btn btn-sm btn-secondary" disabled>
+                                            <i class="fas fa-check me-1"></i>effectués  
+                                        {% endif %}
+
+                                    </div>
+                                </td>
+                                <td>
+                                    <form action="{% url 'collection_details' %}" method="get">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" value="{{collection.id}}" name="collection_id">
+                                            <i class="fas fa-eye me-1"></i>Détails
+                                        </button>
+                                    </form>
+                                    
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">Aucune collecte programmée</h4>
+                    <p class="text-muted">Il n'y a pas de collecte prévue pour cette date.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Statistiques du jour -->
+        <div class="card card-custom mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie text-success me-2"></i>
+                    Statistiques du jour
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Total des collectes:</strong>
+                    <span class="float-end fw-bold">{{ daily_stats.total }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Terminées:</strong>
+                    <span class="float-end text-success">{{ daily_stats.completed }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>En cours:</strong>
+                    <span class="float-end text-primary">{{ daily_stats.in_progress }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>En attente:</strong>
+                    <span class="float-end text-warning">{{ daily_stats.pending }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Taux d'accomplissement:</strong>
+                    <span class="float-end fw-bold text-primary">{{ daily_stats.completion_rate }}%</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Carte des zones -->
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-map-marked-alt text-info me-2"></i>
+                    Zones à couvrir
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if zones %}
+                <div class="list-group list-group-flush">
+                    {% for zone in zones %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <h6 class="mb-1">{{ zone.nom }}</h6>
+                            <small class="text-muted">{{ zone.ville }}</small>
+                        </div>
+                        <span class="badge bg-info">{{ zone.collection_count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-map-marker-alt fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">Aucune zone assignée</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions spéciales -->
+{% if special_instructions %}
+<div class="row">
+    <div class="col-12">
+        <div class="card card-custom border-warning">
+            <div class="card-header bg-warning text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Instructions spéciales pour aujourd'hui
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for instruction in special_instructions %}
+                    <li class="list-group-item">
+                        <strong>{{ instruction.subscription.user.get_full_name|default:instruction.subscription.user.username }}:</strong>
+                        {{ instruction.subscription.special_instructions }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

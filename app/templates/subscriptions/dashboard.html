@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% load static %}
+{% load facture_tags %}
+
+{% block title %}Mes Abonnements - EcoCity{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <!-- En-tête -->
+    <div class="dashboard-header" style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: var(--orange-cosmique); margin-bottom: 10px;">Mes Abonnements</h1>
+        <p style="color: var(--gris-fonce); font-size: 1.1rem;">Gérez vos abonnements et demandes de réabonnement</p>
+        <center>
+            <img src="{% static 'images/canal.jpg' %}" alt="canal logo" style="height: 50px; vertical-align: middle; margin-left: 15px;">
+        </center>
+    </div>
+    
+    <!-- Bouton Nouvel Abonnement -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <a href="{% url 'create_subscription' %}" class="cta-button" style="text-decoration: none;">
+            <i class="fas fa-plus-circle"></i> Nouvel Abonnement
+        </a>    
+    </div>
+
+    <!-- Section Abonnements Actifs -->
+    <div class="subscriptions-section" style="background: white; border-radius: 15px; padding: 30px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <h2 style="color: var(--rouge-poupre); margin-bottom: 25px; display: flex; align-items: center;">
+            <i class="fas fa-list-alt" style="margin-right: 10px;"></i>
+            Mes Abonnements
+        </h2>
+
+        {% if abonnements %}
+            <div class="subscriptions-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                {% for abonnement in abonnements %}
+                <div class="subscription-card" style="border: 2px solid var(--gris-clair); border-radius: 10px; padding: 20px; transition: all 0.3s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                        <div>
+                            <h3 style="color: var(--orange-cosmique); margin-bottom: 5px;">
+                                {% if abonnement.get_type_service_display == 'Canal+' %}
+                                <img src="{% static 'images/canal.jpg' %}" alt="canal logo" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+                                {% elif abonnement.get_type_service_display == 'Eneo' %}
+                                <img src="{% static 'images/eneo.png' %}" alt="eneo logo" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+                                {% elif abonnement.get_type_service_display == 'Cam Water' %}
+                                <img src="{% static 'images/water.jpg' %}" alt="camwater logo" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+                                {% endif %}
+
+                                {{ abonnement.get_type_service_display }}
+                                
+                            </h3>
+                            <p style="color: var(--gris-fonce); margin: 0;">
+                                ID: {{ abonnement.identifiant_abonne }}
+                            </p>
+                        </div>
+                        <span class="status-badge" style="background: var(--jaune-dore); color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem;">
+                            {% if abonnement.est_actif %}Actif{% else %}Inactif{% endif %}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                        
+                        {% if demandes_recentes %}
+                        {% for demande in demandes_recentes %}
+                            {% if not demande.abonnement == abonnement %}
+                                <a href="{% url 'create_renewal_request' abonnement.id %}" 
+                                    class="btn-primary" 
+                                    style="flex: 1; background: var(--orange-cosmique); color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; transition: background 0.3s; min-width: 120px;">
+                                <i class="fas fa-sync-alt"></i> Réabonnement
+                                </a>
+
+                                <form method="post" action="{% url 'delete_subscription' abonnement.id %}" 
+                                    style="flex: 0 0 auto; margin: 0;"
+                                    onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonnement ?');">
+                                    {% csrf_token %}
+                                        <button type="submit" class="btn-danger" 
+                                            style="background: var(--rouge-poupre); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background 0.3s;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                </form>
+                            {% endif %}
+                            
+                            {% if demande.abonnement == abonnement %}
+                                <h3 style="color: var(--gris-fonce); margin-top: 15px;">
+                                    nous travaillons à votre reabonement... <br>
+                                    vous beneficierez de la semaine si vous aviez un abonnement actif précédemment
+                                </h3>
+                            {% endif %}
+                        {% endfor %}
+                        {% else %}
+                           
+                            
+                            <!-- Bouton Télécharger Facture -->
+                            {% for facture in factures %}
+                                {% if facture.demande == abonnement %}
+                                <a href="{{ facture.fichier.url }}" 
+                                   target="_blank"
+                                   class="btn-success" 
+                                   style="flex: 1; background: var(--vert-success); color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; transition: background 0.3s; min-width: 50px;">
+                                    <i class="fas fa-file-invoice-dollar"></i> Facture
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+
+                            
+
+                            <!-- Bouton Supprimer -->
+                            <form method="post" action="{% url 'delete_subscription' abonnement.id %}" 
+                                style="flex: 0 0 auto; margin: 0;"
+                                onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonnement ?');">
+                                {% csrf_token %}
+                                    <button type="submit" class="btn-danger" 
+                                        style="background: var(--rouge-poupre); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background 0.3s;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                            </form>
+                        {% endif %}
+                        
+                        {% if factures %}
+                         <!-- Bouton Réabonnement -->
+                            <a href="{% url 'create_renewal_request' abonnement.id %}" 
+                                class="btn-primary" 
+                                style="flex: 1; background: var(--orange-cosmique); color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; transition: background 0.3s; min-width: 120px;">
+                            <i class="fas fa-sync-alt"></i> Réabonnement
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Affichage des factures disponibles -->
+                    {% with abonnement_factures=factures|filter_factures:abonnement %}
+                        {% if abonnement_factures %}
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gris-clair);">
+                            <h4 style="color: var(--gris-fonce); margin-bottom: 10px; font-size: 0.9rem;">
+                                <i class="fas fa-file-invoice"></i> Factures disponibles:
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                {% for facture in abonnement_factures %}
+                                <div style="display: flex; justify-content: between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 5px;">
+                                    <div>
+                                        
+                                        </span>
+                                        {% if facture.est_payee %}
+                                        <span style="background: var(--vert-success); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 8px;">
+                                            Payée
+                                        </span>
+                                        {% else %}
+                                        <span style="background: var(--orange-cosmique); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 8px;">
+                                            En attente
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <center>
+                                        <a href="{{ facture.fichier.url }}" 
+                                            target="_blank"
+                                            class="btn-download" 
+                                            style="background: var(--jaune-dore); color: white; border: none; padding: 5px 10px; border-radius: 3px; text-decoration: none; font-size: 0.8rem; cursor: pointer; transition: background 0.3s;">
+                                            <i class="fas fa-download"></i> Télécharger
+                                        </a>
+                                    </center>
+                                    
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-inbox" style="font-size: 50px; color: var(--gris-fonce); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--gris-fonce); margin-bottom: 10px;">Aucun abonnement</h3>
+                <p style="color: var(--gris-fonce);">Commencez par créer votre premier abonnement</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Section Demandes Récentes -->
+    {% if demandes_recentes %}
+    <div class="requests-section" style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <h2 style="color: var(--rouge-poupre); margin-bottom: 25px; display: flex; align-items: center;">
+            <i class="fas fa-history" style="margin-right: 10px;"></i>
+            Demandes Récentes
+        </h2>
+
+        <div class="requests-list">
+            {% for demande in demandes_recentes %}
+            <div class="request-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--gris-clair);">
+                <div>
+                    <h4 style="color: var(--noir); margin-bottom: 5px;">
+                        {{ demande.abonnement.get_type_service_display }}
+                    </h4>
+                    <p style="color: var(--gris-fonce); margin: 0; font-size: 0.9rem;">
+                        {{ demande.montant }} FCFA • {{ demande.date_demande|date:"d/m/Y H:i" }}
+                    </p>
+                </div>
+                <span class="status-badge 
+                    {% if demande.statut == 'TRAITEE' %}status-success
+                    {% elif demande.statut == 'EN_COURS' %}status-warning
+                    {% elif demande.statut == 'REJETEE' %}status-error
+                    {% else %}status-info{% endif %}"
+                    style="padding: 5px 15px; border-radius: 15px; font-size: 0.8rem; font-weight: 500;">
+                    {{ demande.get_statut_display }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.subscription-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: var(--orange-cosmique);
+}
+
+.btn-primary:hover {
+    background: var(--jaune-dore) !important;
+}
+
+.btn-danger:hover {
+    background: #8B0000 !important;
+}
+
+.btn-success:hover {
+    background: #2E8B57 !important;
+}
+
+.btn-download:hover {
+    background: var(--orange-cosmique) !important;
+}
+
+.status-success { background: #4CAF50; color: white; }
+.status-warning { background: #FF9800; color: white; }
+.status-error { background: #f44336; color: white; }
+.status-info { background: #2196F3; color: white; }
+
+@media (max-width: 768px) {
+    .subscriptions-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .subscription-card {
+        padding: 15px !important;
+    }
+    
+    .subscription-card > div:last-child {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .subscription-card > div:last-child a,
+    .subscription-card > div:last-child form {
+        flex: 1 !important;
+        min-width: 100% !important;
+    }
+}
+</style>
+{% endblock %}

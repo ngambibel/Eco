@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}QR Code Réabonnement - EcoCity{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div class="header" style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: var(--orange-cosmique);">QR Code de Réabonnement</h1>
+        <p>Scannez ce QR code pour un réabonnement rapide</p>
+    </div>
+
+    <div class="qr-card" style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
+        <div class="subscription-info" style="margin-bottom: 30px;">
+            <h3 style="color: var(--rouge-poupre);">{{ subscription.plan.name }}</h3>
+            <p><strong>Adresse:</strong> {{ subscription.address.street }}, {{ subscription.address.city }}</p>
+            <p><strong>Prix:</strong> {{ subscription.custom_price|default:subscription.plan.price }} FCFA</p>
+        </div>
+
+        <div class="qr-code-container" style="margin: 20px 0;">
+            {% if qr_code.qr_code_image %}
+                <img src="{{ qr_code.qr_code_image.url }}" alt="QR Code Réabonnement" style="max-width: 300px; width: 100%; border: 1px solid #ddd; border-radius: 10px;">
+            {% else %}
+                <p style="color: #dc3545;">QR code non généré</p>
+            {% endif %}
+        </div>
+
+        <div class="qr-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 0.9rem; color: #666;">
+                <strong>URL de réabonnement:</strong><br>
+                <span style="word-break: break-all; font-family: monospace;">{{ renewal_url }}</span>
+            </p>
+        </div>
+
+        <div class="actions" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            {% if qr_code.qr_code_image %}
+                <a href="{% url 'download_qr_code' subscription.id %}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Télécharger QR Code
+                </a>
+            {% endif %}
+            <a href="{% url 'subscriptions_dashboard' %}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+            </a>
+        </div>
+    </div>
+
+    <div class="instructions" style="background: #e7f3ff; padding: 20px; border-radius: 10px; margin-top: 30px;">
+        <h4 style="color: var(--orange-cosmique); margin-bottom: 15px;">
+            <i class="fas fa-info-circle"></i> Instructions d'utilisation
+        </h4>
+        <ul style="text-align: left;">
+            <li>Imprimez ce QR code et affichez-le sur votre porte</li>
+            <li>En cas d'expiration, scannez le code pour vous réabonner rapidement</li>
+            <li>Aucune connexion requise - le réabonnement se fait en 2 étapes</li>
+            <li>Le même numéro de téléphone sera utilisé pour les notifications</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

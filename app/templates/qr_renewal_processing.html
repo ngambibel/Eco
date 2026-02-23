@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement en cours - EcoCity</title>
+    <style>
+        /* Gardez tous les styles existants */
+        :root {
+            --orange-cosmique: #FF6B35;
+            --rouge-poupre: #C53D3D;
+            --blanc: #FFFFFF;
+            --gris-clair: #F8F9FA;
+            --gris-fonce: #6C757D;
+            --noir: #212529;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: var(--blanc);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--orange-cosmique), var(--rouge-poupre));
+            color: var(--blanc);
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--orange-cosmique);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-message {
+            margin: 20px 0;
+            font-size: 1.1rem;
+            color: var(--gris-fonce);
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .instructions h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            color: #856404;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .transaction-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .transaction-info p {
+            margin: 5px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Paiement en cours</h1>
+            <p>Vérification de votre transaction</p>
+        </div>
+        
+        <div class="content">
+            <div class="spinner"></div>
+            
+            <div class="status-message">
+                <p>Vérification du statut de votre paiement...</p>
+            </div>
+
+            <div class="transaction-info">
+                <p><strong>Transaction:</strong> {{ transaction_id }}</p>
+                <p><strong>Montant:</strong> {{ amount }} FCFA</p>
+                <p><strong>Téléphone:</strong> {{ phone_number }}</p>
+            </div>
+            
+            <div class="instructions">
+                <h4><i class="fas fa-info-circle"></i> Instructions importantes</h4>
+                <ul>
+                    <li>Votre opérateur va vous envoyer une demande de confirmation</li>
+                    <li>Composez le code USSD si demandé :</li>
+                    <li><strong>MTN :</strong> #150*50#</li>
+                    <li><strong>Orange :</strong> *126#</li>
+                    <li>La vérification automatique peut prendre 2-3 minutes</li>
+                    <li>Ne fermez pas cette page</li>
+                </ul>
+            </div>
+            
+            <div id="statusAlert" class="alert" style="display: none;"></div>
+            
+            <div id="successContent" style="display: none;">
+                <div style="color: #28a745; font-size: 4rem; margin: 20px 0;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3 style="color: #155724; margin-bottom: 10px;">Paiement Réussi !</h3>
+                <p>Votre abonnement a été activé avec succès.</p>
+                <p>Redirection en cours...</p>
+            </div>
+
+            <!-- CSRF Token caché pour les requêtes AJAX -->
+            {% csrf_token %}
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour récupérer le token CSRF
+        function getCSRFToken() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            return csrfToken ? csrfToken.value : '';
+        }
+
+        const transactionId = "{{ transaction_id }}";
+        const qrToken = "{{ qr_code.token }}";
+        let checkCount = 0;
+        const maxChecks = 36; // 3 minutes
+        
+        function checkPaymentStatus() {
+            checkCount++;
+            
+            if (checkCount >= maxChecks) {
+                showError('Temps de vérification écoulé. Veuillez vérifier manuellement votre solde.');
+                return;
+            }
+            
+            // Créer les données du formulaire avec le token CSRF
+            const formData = new FormData();
+            formData.append('transaction_id', transactionId);
+            formData.append('qr_token', qrToken);
+            formData.append('csrfmiddlewaretoken', getCSRFToken());
+            
+        fetch("{% url 'check_qr_renewal_status' %}", {  // Utilisez le nom de l'URL Django
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()  // Ajout dans le header aussi
+        }
+    })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Status check response:', data);
+                
+                if (data.success) {
+                    // Paiement réussi
+                    document.querySelector('.spinner').style.display = 'none';
+                    document.querySelector('.status-message').style.display = 'none';
+                    document.querySelector('.instructions').style.display = 'none';
+                    document.querySelector('.transaction-info').style.display = 'none';
+                    document.getElementById('successContent').style.display = 'block';
+                    
+                    if (data.redirect_url) {
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 3000);
+                    }
+                } else if (data.status === 'PENDING') {
+                    // Continuer à vérifier
+                    setTimeout(checkPaymentStatus, 5000);
+                } else {
+                    // Échec du paiement
+                    showError(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Continuer à vérifier malgré l'erreur (peut être temporaire)
+                if (checkCount < maxChecks) {
+                    setTimeout(checkPaymentStatus, 5000);
+                } else {
+                    showError('Erreur de connexion. Veuillez vérifier manuellement le statut.');
+                }
+            });
+        }
+        
+        function showError(message) {
+            const alert = document.getElementById('statusAlert');
+            alert.textContent = message;
+            alert.className = 'alert alert-error';
+            alert.style.display = 'block';
+            document.querySelector('.spinner').style.display = 'none';
+            
+            // Ajouter un bouton pour réessayer
+            const retryButton = document.createElement('button');
+            retryButton.textContent = 'Réessayer';
+            retryButton.style.marginTop = '10px';
+            retryButton.style.padding = '8px 16px';
+            retryButton.style.backgroundColor = 'var(--orange-cosmique)';
+            retryButton.style.color = 'white';
+            retryButton.style.border = 'none';
+            retryButton.style.borderRadius = '5px';
+            retryButton.style.cursor = 'pointer';
+            retryButton.onclick = function() {
+                location.reload();
+            };
+            alert.appendChild(retryButton);
+        }
+        
+        // Démarrer la vérification après 2 secondes
+        setTimeout(checkPaymentStatus, 2000);
+    </script>
+
+    <!-- Font Awesome pour les icônes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+</body>
+</html>

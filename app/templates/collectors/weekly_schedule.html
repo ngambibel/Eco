@@ -1,0 +1,107 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Programme de la semaine - Collecteur{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Programme de la semaine</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'daily_schedule' %}" class="btn btn-sm btn-primary-custom">
+            <i class="fas fa-calendar-day me-1"></i>Vue du jour
+        </a>
+    </div>
+</div>
+
+<!-- Statistiques de la semaine -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card card-custom text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ week_stats.total }}</h3>
+                <p class="text-muted mb-0">Total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom text-center">
+            <div class="card-body">
+                <h3 class="text-success">{{ week_stats.completed }}</h3>
+                <p class="text-muted mb-0">Terminées</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom text-center">
+            <div class="card-body">
+                <h3 class="text-warning">{{ week_stats.scheduled }}</h3>
+                <p class="text-muted mb-0">Programmées</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom text-center">
+            <div class="card-body">
+                <h3 class="text-info">{{ week_stats.in_progress }}</h3>
+                <p class="text-muted mb-0">En cours</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Programme par jour -->
+<div class="row">
+    {% for day_date in week_dates %}
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    {{ day_date|date:"l d/m" }}
+                    <span class="badge bg-primary float-end">
+                        {{ collections_by_day|length }}
+                    </span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% with day_collections=collections_by_day %}
+                {% if day_collections %}
+                <div class="list-group list-group-flush">
+                    {% for collection in day_collections %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <strong>{{ collection.scheduled_time|time:"H:i" }}</strong>
+                            <div class="small text-muted">
+                                {{ collection.subscription.user.get_full_name }}
+                            </div>
+                        </div>
+                        <span class="badge badge-status-{{ collection.status }}">
+                            {{ collection.get_status_display }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-wind fa-2x mb-2"></i>
+                    <p class="mb-0">Aucune collecte</p>
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{% url 'daily_schedule' %}?date={{ day_date|date:'Y-m-d' }}" 
+                   class="btn btn-sm btn-outline-primary w-100">
+                    Voir le détail
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Filtre template pour récupérer un élément d'un dictionnaire
+</script>
+{% endblock %}

@@ -1,0 +1,511 @@
+<div class="demande-details">
+    <!-- En-tête avec ID et statut -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Détails de la Demande #{{ demande.id }}</h4>
+                <span class="status-badge status-{{ demande.statut|lower }} fs-6">
+                    {{ demande.get_statut_display }}
+                </span>
+            </div>
+            <hr>
+        </div>
+    </div>
+
+    <!-- Informations Client et Demande -->
+    <div class="row">
+        <!-- Colonne Informations Client -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user me-2 text-primary"></i>
+                        Informations Client
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Nom complet</label>
+                        <p class="mb-2 fs-6">{{ demande.abonnement.client.get_full_name|default:"Non spécifié" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Email</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-envelope me-2 text-muted"></i>
+                            {{ demande.abonnement.client.email }}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Téléphone</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-phone me-2 text-muted"></i>
+                            {{ demande.abonnement.client.phone_number|default:"Non spécifié" }}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Adresse</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+                            {{ demande.abonnement.client.address|default:"Non spécifiée"|truncatewords:10 }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne Détails de la Demande -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2 text-info"></i>
+                        Détails de la Demande
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Identifiant Abonné</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-id-card me-2 text-muted"></i>
+                            {{ demande.abonnement.identifiant_abonne }}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Montant</label>
+                        <p class="mb-2 fs-4 fw-bold text-primary">
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            {{ demande.montant }} FCFA
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Offre choisie</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-satellite-dish me-2 text-muted"></i>
+                            {{ demande.offre_choisie|default:"Non spécifiée" }}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Service</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-tv me-2 text-muted"></i>
+                            {{ demande.abonnement.get_type_service_display }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informations de Dates et Facture -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt me-2 text-warning"></i>
+                        Informations Temporelles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Date de demande</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-clock me-2 text-muted"></i>
+                            {{ demande.date_demande|date:"d/m/Y à H:i" }}
+                        </p>
+                    </div>
+                    
+                    {% if demande.date_traitement %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Date de traitement</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-check-circle me-2 text-muted"></i>
+                            {{ demande.date_traitement|date:"d/m/Y à H:i" }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Durée depuis la demande</label>
+                        <p class="mb-2 fs-6">
+                            <i class="fas fa-hourglass-half me-2 text-muted"></i>
+                            {{ demande.date_demande|timesince }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-invoice me-2 text-success"></i>
+                        Informations Facture
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if facture_exists %}
+                    <div class="alert alert-success">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle fa-2x me-3"></i>
+                            <div>
+                                <h6 class="alert-heading mb-1">Facture disponible</h6>
+                                <p class="mb-0">Une facture a été générée pour cette demande</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations de la facture existante -->
+                    {% with facture=demande.abonnement.facture %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Numéro de facture</label>
+                        <p class="mb-2 fs-6">{{ facture.numero_facture }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Date d'émission</label>
+                        <p class="mb-2 fs-6">{{ facture.date_emission|date:"d/m/Y" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Date d'échéance</label>
+                        <p class="mb-2 fs-6">
+                            {% if facture.date_echeance|date:"Y-m-d" < today|date:"Y-m-d" %}
+                                <span class="text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    {{ facture.date_echeance|date:"d/m/Y" }} (Échue)
+                                </span>
+                            {% else %}
+                                {{ facture.date_echeance|date:"d/m/Y" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Statut de paiement</label>
+                        <p class="mb-2 fs-6">
+                            {% if facture.est_payee %}
+                                <span class="badge bg-success">Payée</span>
+                            {% else %}
+                                <span class="badge bg-warning">En attente</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endwith %}
+                    
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                            <div>
+                                <h6 class="alert-heading mb-1">Aucune facture</h6>
+                                <p class="mb-0">Aucune facture n'a été uploadée pour cette demande</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commentaires -->
+    {% if demande.commentaires %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-comments me-2 text-info"></i>
+                        Commentaires & Historique
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="comment-section">
+                        {{ demande.commentaires|linebreaks }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tools me-2 text-primary"></i>
+                        Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- Action Traiter -->
+                        {% if demande.statut == 'EN_ATTENTE' or demande.statut == 'EN_COURS' %}
+                        <button class="btn btn-primary btn-action" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#traiterDemandeModal"
+                                data-id="{{ demande.id }}">
+                            <i class="fas fa-cog me-2"></i>
+                            Traiter la demande
+                        </button>
+                        {% endif %}
+                        
+                        <!-- Action Facture -->
+                        <button class="btn btn-info btn-action" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#uploadFactureModal"
+                                data-id="{{ demande.id }}">
+                            <i class="fas fa-file-invoice me-2"></i>
+                            {% if facture_exists %}
+                                Modifier la facture
+                            {% else %}
+                                Uploader une facture
+                            {% endif %}
+                        </button>
+                        
+                        <!-- Télécharger facture si elle existe -->
+                        {% if facture_exists %}
+                        <a href="{% url 'telecharger_facture' demande.abonnement.facture.id %}" 
+                           class="btn btn-success btn-action"
+                           target="_blank">
+                            <i class="fas fa-download me-2"></i>
+                            Télécharger facture
+                        </a>
+                        {% endif %}
+                        
+                        <!-- Action Supprimer -->
+                        <form method="post" 
+                              action="{% url 'supprimer_demande_reabonnement' demande.id %}" 
+                              class="d-inline"
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement cette demande ? Cette action est irréversible.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-action">
+                                <i class="fas fa-trash me-2"></i>
+                                Supprimer
+                            </button>
+                        </form>
+                        
+                        <!-- Action Imprimer -->
+                        <button class="btn btn-outline-secondary btn-action" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i>
+                            Imprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline du statut -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Historique du Statut
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item {% if demande.statut == 'EN_ATTENTE' %}current{% endif %}">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">En attente</h6>
+                                <small class="text-muted">Statut initial - {{ demande.date_demande|date:"d/m/Y H:i" }}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {% if demande.statut == 'EN_COURS' %}current{% endif %}">
+                            <div class="timeline-marker {% if demande.statut == 'EN_COURS' %}bg-warning{% else %}bg-secondary{% endif %}"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">En cours de traitement</h6>
+                                {% if demande.statut == 'EN_COURS' or demande.statut == 'TRAITEE' or demande.statut == 'REJETEE' %}
+                                    <small class="text-muted">Début du traitement</small>
+                                {% else %}
+                                    <small class="text-muted">En attente de traitement</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {% if demande.statut == 'TRAITEE' %}current{% endif %}">
+                            <div class="timeline-marker {% if demande.statut == 'TRAITEE' %}bg-success{% else %}bg-secondary{% endif %}"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Traitée</h6>
+                                {% if demande.statut == 'TRAITEE' and demande.date_traitement %}
+                                    <small class="text-muted">Terminée - {{ demande.date_traitement|date:"d/m/Y H:i" }}</small>
+                                {% else %}
+                                    <small class="text-muted">En attente de finalisation</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {% if demande.statut == 'REJETEE' %}current{% endif %}">
+                            <div class="timeline-marker {% if demande.statut == 'REJETEE' %}bg-danger{% else %}bg-secondary{% endif %}"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Rejetée</h6>
+                                {% if demande.statut == 'REJETEE' and demande.date_traitement %}
+                                    <small class="text-muted">Rejetée - {{ demande.date_traitement|date:"d/m/Y H:i" }}</small>
+                                {% else %}
+                                    <small class="text-muted">Non rejetée</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.demande-details {
+    font-family: 'Inter', sans-serif;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 12px;
+}
+
+.card-header {
+    border-bottom: 1px solid #e9ecef;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.status-en_attente {
+    background-color: #FFF3CD;
+    color: #856404;
+    border: 1px solid #FFEAA7;
+}
+
+.status-en_cours {
+    background-color: #CCE5FF;
+    color: #004085;
+    border: 1px solid #B3D7FF;
+}
+
+.status-traitee {
+    background-color: #D4EDDA;
+    color: #155724;
+    border: 1px solid #C3E6CB;
+}
+
+.status-rejetee {
+    background-color: #F8D7DA;
+    color: #721C24;
+    border: 1px solid #F5C6CB;
+}
+
+.btn-action {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 0 0 3px #e9ecef;
+}
+
+.timeline-item.current .timeline-marker {
+    box-shadow: 0 0 0 3px var(--primary-color);
+}
+
+.timeline-content {
+    padding-left: 10px;
+}
+
+.comment-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+.form-label {
+    margin-bottom: 4px;
+}
+
+@media (max-width: 768px) {
+    .btn-action {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .d-flex.flex-wrap {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des boutons d'action dans les modaux
+    const traiterBtn = document.querySelector('.btn-action[data-bs-target="#traiterDemandeModal"]');
+    const factureBtn = document.querySelector('.btn-action[data-bs-target="#uploadFactureModal"]');
+    
+    if (traiterBtn) {
+        traiterBtn.addEventListener('click', function() {
+            const demandeId = this.getAttribute('data-id');
+            document.getElementById('demande_id_traitement').value = demandeId;
+        });
+    }
+    
+    if (factureBtn) {
+        factureBtn.addEventListener('click', function() {
+            const demandeId = this.getAttribute('data-id');
+            document.getElementById('demande_id_facture').value = demandeId;
+        });
+    }
+});
+</script>

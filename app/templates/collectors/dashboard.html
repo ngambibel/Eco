@@ -1,0 +1,263 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Tableau de bord - Collecteur{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Tableau de bord</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary">Aujourd'hui</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary">Semaine</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary">Mois</button>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-custom stats-card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                            Collectes aujourd'hui
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-gray-800">{{ today_stats.total }}</div>
+                        <div class="mt-2">
+                            <span class="badge bg-success">{{ today_stats.completed }} terminées</span>
+                            <span class="badge bg-warning">{{ today_stats.pending }} en attente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar-day fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-custom stats-card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                            Collectes cette semaine
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-gray-800">{{ week_stats.total }}</div>
+                        <div class="mt-2 text-success text-sm">
+                            <i class="fas fa-arrow-up"></i>
+                            {{ week_stats.completion_rate }}% de taux d'accomplissement
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-line fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-custom stats-card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                            Clients actifs
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-gray-800">{{ active_clients_count }}</div>
+                        <div class="mt-2 text-info text-sm">
+                            dans {{ active_zones_count }} zones
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-custom stats-card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                            Performance aujourd'hui
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-gray-800">{{ performance_rating }}/5</div>
+                        <div class="mt-2">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= performance_rating %}
+                                    <i class="fas fa-star text-warning"></i>
+                                {% else %}
+                                    <i class="far fa-star text-warning"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-trophy fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Prochaines collectes -->
+    <div class="col-lg-8 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock text-primary me-2"></i>
+                    Prochaines collectes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_collections %}
+                <div class="list-group list-group-flush">
+                    {% for collection in upcoming_collections %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center collection-item px-0">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3 text-center">
+                                <div class="fw-bold text-primary">{{ collection.scheduled_time|time:"H:i" }}</div>
+                                <small class="text-muted">{{ collection.scheduled_date|date:"d/m" }}</small>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">{{ collection.subscription.user.get_full_name|default:collection.subscription.user.username }}</h6>
+                                <p class="mb-1 text-muted small">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ collection.subscription.address.street }}, {{ collection.subscription.address.city }}
+                                </p>
+                                {% if collection.subscription.special_instructions %}
+                                <p class="mb-0 text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    {{ collection.subscription.special_instructions|truncatewords:10 }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge badge-status-{{ collection.status }} mb-2">{{ collection.get_status_display }}</span>
+                            <br>
+                            <a href="{% url 'process_collection' collection.id %}" class="btn btn-sm btn-primary-custom">
+                                <i class="fas fa-play me-1"></i>Démarrer
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5 class="text-muted">Aucune collecte programmée</h5>
+                    <p class="text-muted">Toutes les collectes prévues pour aujourd'hui sont terminées.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informations tricycle -->
+    <div class="col-lg-4 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-truck-pickup text-success me-2"></i>
+                    Mon tricycle
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if tricycle %}
+                <div class="text-center mb-4">
+                    <i class="fas fa-truck-pickup fa-3x text-success mb-3"></i>
+                    <h4>{{ tricycle.nom }}</h4>
+                    <p class="text-muted">{{ tricycle.numero_immatriculation }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Statut:</strong>
+                    <span class="badge bg-{% if tricycle.status == 'active' %}success{% elif tricycle.status == 'maintenance' %}warning{% else %}danger{% endif %} float-end">
+                        {{ tricycle.get_status_display }}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Capacité:</strong>
+                    <span class="float-end">{{ tricycle.capacite_kg }} kg</span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Mise en service:</strong>
+                    <span class="float-end">{{ tricycle.date_mise_en_service|date:"d/m/Y" }}</span>
+                </div>
+                
+                {% if tricycle.notes %}
+                <div class="mb-3">
+                    <strong>Notes:</strong>
+                    <p class="text-muted small mt-1">{{ tricycle.notes }}</p>
+                </div>
+                {% endif %}
+                
+                <a href="{% url 'collector_tricycle' %}" class="btn btn-outline-success w-100 mt-3">
+                    <i class="fas fa-info-circle me-1"></i>Détails complets
+                </a>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h5 class="text-muted">Aucun tricycle assigné</h5>
+                    <p class="text-muted">Contactez l'administrateur pour vous assigner un tricycle.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertes et notifications -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bell text-warning me-2"></i>
+                    Alertes récentes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_notifications %}
+                <div class="list-group list-group-flush">
+                    {% for notification in recent_notifications %}
+                    <div class="list-group-item d-flex align-items-start px-0">
+                        <div class="me-3">
+                            <i class="fas fa-{% if notification.notification_type == 'warning' %}exclamation-triangle text-warning{% elif notification.notification_type == 'error' %}exclamation-circle text-danger{% else %}info-circle text-primary{% endif %} fa-lg"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">{{ notification.title }}</h6>
+                            <p class="mb-1 text-muted">{{ notification.message }}</p>
+                            <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                        </div>
+                        {% if not notification.is_read %}
+                        <span class="badge bg-primary">Nouveau</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-check fa-2x text-success mb-2"></i>
+                    <p class="text-muted mb-0">Aucune alerte récente</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

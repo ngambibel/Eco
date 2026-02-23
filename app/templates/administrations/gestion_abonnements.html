@@ -1,0 +1,808 @@
+{% extends 'administrations/base.html' %}
+{% load static %}
+
+{% block title %}Ecocity - Gestion des Abonnements{% endblock %}
+
+{% block page_title %}Gestion des Abonnements et Utilisateurs{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Styles spécifiques à la page abonnements */
+    .subscription-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .subscription-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2E8B57, #27AE60);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .qr-code-container {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .qr-code-image {
+        max-width: 200px;
+        height: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px;
+        background: white;
+    }
+    
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+    
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-inactive {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-suspended {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .action-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .search-box {
+        position: relative;
+    }
+    
+    .search-box input {
+        padding-left: 40px;
+        border-radius: 25px;
+    }
+    
+    .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+    }
+    
+    .filter-dropdown {
+        border-radius: 8px;
+    }
+    
+    .stats-card {
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        margin-bottom: 20px;
+    }
+    
+    .stats-card.primary {
+        background: linear-gradient(135deg, #2E8B57, #27AE60);
+    }
+    
+    .stats-card.secondary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+    
+    .stats-card.warning {
+        background: linear-gradient(135deg, #f39c12, #e74c3c);
+    }
+    
+    .user-details-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .tab-content {
+        background: white;
+        border-radius: 0 0 12px 12px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        padding: 12px 24px;
+        font-weight: 500;
+        color: #6c757d;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background: white;
+        color: #2E8B57;
+        border-bottom: 3px solid #2E8B57;
+    }
+    
+    .table-responsive {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .table th {
+        border-top: none;
+        font-weight: 600;
+        color: #2E8B57;
+        background-color: #f8f9fa;
+    }
+    
+    .highlight-row {
+        transition: background-color 0.3s ease;
+    }
+    
+    .highlight-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Statistiques en haut -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card primary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3>{{ total_subscriptions }}</h3>
+                        <p class="mb-0">Abonnements Totaux</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card secondary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3>{{ active_subscriptions }}</h3>
+                        <p class="mb-0">Abonnements Actifs</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3>{{ suspended_subscriptions }}</h3>
+                        <p class="mb-0">Abonnements Suspendus</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-pause-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="background: linear-gradient(135deg, #3498db, #2c3e50);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3>{{ total_users }}</h3>
+                        <p class="mb-0">Utilisateurs</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-user-friends fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barre de recherche et filtres -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Rechercher un utilisateur ou abonnement...">
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary filter-dropdown dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-filter me-2"></i>Filtrer par Statut
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item filter-option" data-filter="all" href="#">Tous</a></li>
+                                        <li><a class="dropdown-item filter-option" data-filter="active" href="#">Actifs</a></li>
+                                        <li><a class="dropdown-item filter-option" data-filter="inactive" href="#">Inactifs</a></li>
+                                        <li><a class="dropdown-item filter-option" data-filter="suspended" href="#">Suspendus</a></li>
+                                    </ul>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary filter-dropdown dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-sort me-2"></i>Trier par
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item sort-option" data-sort="date-desc" href="#">Date (Récent)</a></li>
+                                        <li><a class="dropdown-item sort-option" data-sort="date-asc" href="#">Date (Ancien)</a></li>
+                                        <li><a class="dropdown-item sort-option" data-sort="name-asc" href="#">Nom (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-option" data-sort="name-desc" href="#">Nom (Z-A)</a></li>
+                                    </ul>
+                                </div>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                                    <i class="fas fa-plus me-2"></i>Nouvel Utilisateur
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenu principal avec onglets -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white border-0">
+                    <ul class="nav nav-tabs card-header-tabs" id="subscriptionTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="subscriptions-tab" data-bs-toggle="tab" data-bs-target="#subscriptions" type="button" role="tab">
+                                <i class="fas fa-receipt me-2"></i>Abonnements
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+                                <i class="fas fa-users me-2"></i>Utilisateurs
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="qr-tab" data-bs-toggle="tab" data-bs-target="#qr" type="button" role="tab">
+                                <i class="fas fa-qrcode me-2"></i>Génération QR
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="tab-content" id="subscriptionTabsContent">
+                    <!-- Onglet Abonnements -->
+                    <div class="tab-pane fade show active" id="subscriptions" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="subscriptionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Utilisateur</th>
+                                        <th>Plan</th>
+                                        <th>Date Début</th>
+                                        <th>Date Fin</th>
+                                        <th>Statut</th>
+                                        <th>Zone</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for subscription in subscriptions %}
+                                    <tr class="highlight-row subscription-row" data-status="{{ subscription.status }}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-3">
+                                                    {{ subscription.user.first_name|first|upper }}{{ subscription.user.last_name|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ subscription.user.get_full_name }}</strong>
+                                                    <div class="text-muted small">{{ subscription.user.phone }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong>{{ subscription.plan.name }}</strong>
+                                            <div class="text-muted small">{{ subscription.plan.get_frequency_display }}</div>
+                                        </td>
+                                        <td>{{ subscription.start_date|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if subscription.end_date %}
+                                                {{ subscription.end_date|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if subscription.status == 'active' %}
+                                                <span class="status-badge status-active">Actif</span>
+                                            {% elif subscription.status == 'inactive' %}
+                                                <span class="status-badge status-inactive">Inactif</span>
+                                            {% elif subscription.status == 'suspended' %}
+                                                <span class="status-badge status-suspended">Suspendu</span>
+                                            {% else %}
+                                                <span class="status-badge">{{ subscription.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if subscription.zone %}
+                                                {{ subscription.zone.nom }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#editSubscriptionModal"
+                                                        data-id="{{ subscription.id }}"
+                                                        data-user="{{ subscription.user.id }}"
+                                                        data-plan="{{ subscription.plan.id }}"
+                                                        data-status="{{ subscription.status }}">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-info generate-qr-btn"
+                                                        data-subscription-id="{{ subscription.id }}"
+                                                        data-user-name="{{ subscription.user.get_full_name }}"
+                                                        data-user-phone="{{ subscription.user.phone }}">
+                                                    <i class="fas fa-qrcode"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="return confirmAction('Êtes-vous sûr de vouloir supprimer cet abonnement ?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">Aucun abonnement trouvé</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if subscriptions.has_other_pages %}
+                        <nav aria-label="Pagination des abonnements">
+                            <ul class="pagination justify-content-center">
+                                {% if subscriptions.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ subscriptions.previous_page_number }}">Précédent</a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in subscriptions.paginator.page_range %}
+                                <li class="page-item {% if subscriptions.number == num %}active{% endif %}">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endfor %}
+                                
+                                {% if subscriptions.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ subscriptions.next_page_number }}">Suivant</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Onglet Utilisateurs -->
+                    <div class="tab-pane fade" id="users" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="usersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Utilisateur</th>
+                                        <th>Type</th>
+                                        <th>Téléphone</th>
+                                        <th>Ville</th>
+                                        <th>Date d'inscription</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                    <tr class="highlight-row">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-3">
+                                                    {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ user.get_full_name }}</strong>
+                                                    <div class="text-muted small">{{ user.email }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ user.get_user_type_display }}</span>
+                                        </td>
+                                        <td>{{ user.phone|default:"-" }}</td>
+                                        <td>
+                                            {% if user.city %}
+                                                {{ user.city.city }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ user.date_joined|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if user.is_verified %}
+                                                <span class="status-badge status-active">Vérifié</span>
+                                            {% else %}
+                                                <span class="status-badge status-inactive">Non vérifié</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-outline-primary edit-user-btn"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#editUserModal"
+                                                        data-user-id="{{ user.id }}"
+                                                        data-first-name="{{ user.first_name }}"
+                                                        data-last-name="{{ user.last_name }}"
+                                                        data-email="{{ user.email }}"
+                                                        data-phone="{{ user.phone }}"
+                                                        data-user-type="{{ user.user_type }}"
+                                                        data-city="{{ user.city.id }}">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-info"
+                                                        onclick="viewUserDetails('{{ user.id }}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="return confirmAction('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">Aucun utilisateur trouvé</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Onglet Génération QR -->
+                    <div class="tab-pane fade" id="qr" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-white">
+                                        <h5 class="card-title mb-0">
+                                            <i class="fas fa-qrcode me-2"></i>Générer un Code QR
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="qrGenerationForm">
+                                            <div class="mb-3">
+                                                <label for="subscriptionSelect" class="form-label">Sélectionner un abonnement</label>
+                                                <select class="form-select" id="subscriptionSelect" required>
+                                                    <option value="">Choisir un abonnement...</option>
+                                                    {% for subscription in subscriptions %}
+                                                    <option value="{{ subscription.id }}" 
+                                                            data-user-name="{{ subscription.user.get_full_name }}"
+                                                            data-user-phone="{{ subscription.user.phone }}"
+                                                            data-plan="{{ subscription.plan.name }}">
+                                                        {{ subscription.user.get_full_name }} - {{ subscription.plan.name }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="qrSize" class="form-label">Taille du QR Code</label>
+                                                <select class="form-select" id="qrSize">
+                                                    <option value="200">Petit (200px)</option>
+                                                    <option value="300" selected>Moyen (300px)</option>
+                                                    <option value="400">Grand (400px)</option>
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary w-100">
+                                                <i class="fas fa-barcode me-2"></i>Générer le QR Code
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="qrResult" class="text-center" style="display: none;">
+                                    <div class="qr-code-container">
+                                        <h4 class="mb-3" style="color: #2E8B57;">
+                                            <i class="fas fa-recycle me-2"></i>ECOCITY
+                                        </h4>
+                                        <div id="qrCodeImage" class="mb-3"></div>
+                                        <div id="userInfo" class="mb-3">
+                                            <!-- Les informations utilisateur seront insérées ici -->
+                                        </div>
+                                        <div class="d-grid gap-2">
+                                            <button id="downloadQrBtn" class="btn btn-success">
+                                                <i class="fas fa-download me-2"></i>Télécharger le QR Code
+                                            </button>
+                                            <button id="printQrBtn" class="btn btn-outline-secondary">
+                                                <i class="fas fa-print me-2"></i>Imprimer
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="qrPlaceholder" class="text-center">
+                                    <i class="fas fa-qrcode fa-5x text-muted mb-3"></i>
+                                    <p class="text-muted">Sélectionnez un abonnement pour générer le QR Code</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+{% include 'administrations/modals/user_modals.html' %}
+{% include 'administrations/modals/subscription_modals.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    // Filtrage et recherche
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const filterOptions = document.querySelectorAll('.filter-option');
+        const subscriptionRows = document.querySelectorAll('.subscription-row');
+        
+        // Recherche en temps réel
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            
+            subscriptionRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        // Filtrage par statut
+        filterOptions.forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.preventDefault();
+                const filter = this.getAttribute('data-filter');
+                
+                subscriptionRows.forEach(row => {
+                    if (filter === 'all' || row.getAttribute('data-status') === filter) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Génération de QR Code
+        const qrForm = document.getElementById('qrGenerationForm');
+        const qrResult = document.getElementById('qrResult');
+        const qrPlaceholder = document.getElementById('qrPlaceholder');
+        const qrCodeImage = document.getElementById('qrCodeImage');
+        const userInfo = document.getElementById('userInfo');
+        const downloadQrBtn = document.getElementById('downloadQrBtn');
+        
+        // Remplacer la fonction de génération de QR Code par celle qui récupère depuis la base
+qrForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const subscriptionSelect = document.getElementById('subscriptionSelect');
+    const subscriptionId = subscriptionSelect.value;
+    
+    if (!subscriptionId) return;
+    
+    // Afficher un indicateur de chargement
+    qrCodeImage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div>';
+    qrPlaceholder.style.display = 'none';
+    qrResult.style.display = 'block';
+    
+    // Récupérer le QR Code existant depuis la base de données
+    fetch(`/administrations/gestion-abonnements/recuperer-qr/${subscriptionId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Afficher le QR Code existant
+                qrCodeImage.innerHTML = `<img src="${data.qr_code_url}" alt="QR Code" class="qr-code-image" style="max-width: 100%; height: auto;">`;
+                
+                // Afficher les informations utilisateur
+                userInfo.innerHTML = `
+                    <div class="user-details">
+                        <h6 class="mb-2">Informations de l'abonné</h6>
+                        <p class="mb-1"><strong>Nom:</strong> ${data.user_name}</p>
+                        <p class="mb-1"><strong>Téléphone:</strong> ${data.user_phone}</p>
+                        <p class="mb-0"><strong>Plan:</strong> ${data.plan_name}</p>
+                        <p class="mb-0"><strong>Date début:</strong> ${data.start_date}</p>
+                    </div>
+                `;
+                
+                // Configurer le bouton de téléchargement
+                downloadQrBtn.onclick = function() {
+                    const link = document.createElement('a');
+                    link.download = `QRCode_ECOCITY_${data.user_name.replace(/\s+/g, '_')}.png`;
+                    link.href = data.qr_code_url;
+                    link.click();
+                };
+                
+            } else {
+                // Si aucun QR Code n'existe, proposer d'en générer un
+                if (!data.exists) {
+                    qrCodeImage.innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Aucun QR Code trouvé pour cet abonnement.
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-primary btn-sm" onclick="genererNouveauQR('${subscriptionId}')">
+                                    <i class="fas fa-qrcode me-1"></i>Générer un QR Code
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    qrCodeImage.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Erreur lors du chargement du QR Code: ${data.error}
+                        </div>
+                    `;
+                }
+                userInfo.innerHTML = '';
+            }
+        })
+        .catch(error => {
+            qrCodeImage.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erreur de connexion: ${error}
+                </div>
+            `;
+            userInfo.innerHTML = '';
+        });
+});
+
+// Fonction pour générer un nouveau QR Code
+function genererNouveauQR(subscriptionId) {
+    // Afficher un indicateur de chargement
+    qrCodeImage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Génération...</span></div>';
+    
+    fetch(`/administrations/gestion-abonnements/generer-qr/${subscriptionId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recharger la page pour afficher le nouveau QR Code
+                location.reload();
+            } else {
+                qrCodeImage.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Erreur lors de la génération: ${data.error}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            qrCodeImage.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erreur de connexion: ${error}
+                </div>
+            `;
+        });
+}
+
+// Modification des boutons de génération rapide pour utiliser le QR existant
+document.querySelectorAll('.generate-qr-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const subscriptionId = this.getAttribute('data-subscription-id');
+        
+        // Sélectionner l'abonnement dans le dropdown
+        document.getElementById('subscriptionSelect').value = subscriptionId;
+        
+        // Basculer vers l'onglet QR
+        document.getElementById('qr-tab').click();
+        
+        // Déclencher la récupération du QR existant
+        setTimeout(() => {
+            qrForm.dispatchEvent(new Event('submit'));
+        }, 300);
+    });
+});
+        
+       
+        
+        // Édition d'utilisateur
+        document.querySelectorAll('.edit-user-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.getAttribute('data-user-id');
+                const firstName = this.getAttribute('data-first-name');
+                const lastName = this.getAttribute('data-last-name');
+                const email = this.getAttribute('data-email');
+                const phone = this.getAttribute('data-phone');
+                const userType = this.getAttribute('data-user-type');
+                const city = this.getAttribute('data-city');
+                
+                // Remplir le modal avec les données
+                document.getElementById('editUserId').value = userId;
+                document.getElementById('editFirstName').value = firstName;
+                document.getElementById('editLastName').value = lastName;
+                document.getElementById('editEmail').value = email;
+                document.getElementById('editPhone').value = phone;
+                document.getElementById('editUserType').value = userType;
+                if (city) {
+                    document.getElementById('editCity').value = city;
+                }
+            });
+        });
+    });
+    
+    function viewUserDetails(userId) {
+        // Implémentez la vue détaillée de l'utilisateur
+        alert(`Voir les détails de l'utilisateur ID: ${userId}`);
+        // Vous pouvez rediriger vers une page de détail ou ouvrir un modal
+    }
+    
+    function confirmAction(message) {
+        return confirm(message || 'Êtes-vous sûr de vouloir effectuer cette action ?');
+    }
+</script>
+{% endblock %}

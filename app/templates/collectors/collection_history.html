@@ -1,0 +1,136 @@
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Historique des collectes - Collecteur{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2">Historique des collectes</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+            <i class="fas fa-print me-1"></i>Imprimer
+        </button>
+    </div>
+</div>
+
+<!-- Filtres -->
+<div class="card card-custom mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Statut</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">Tous les statuts</option>
+                    <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Terminées</option>
+                    <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Annulées</option>
+                    <option value="missed" {% if current_status == 'missed' %}selected{% endif %}>Manquées</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">Du</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label for="date_to" class="form-label">Au</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div>
+                    <button type="submit" class="btn btn-primary-custom me-2">
+                        <i class="fas fa-filter me-1"></i>Filtrer
+                    </button>
+                    <a href="{% url 'collection_history' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Effacer
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Résultats -->
+<div class="card card-custom">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            {{ total_collections }} collecte(s) trouvée(s)
+        </h5>
+        <div class="btn-group">
+            {% if has_previous %}
+            <a href="?page={{ current_page|add:'-1' }}{% if current_status %}&status={{ current_status }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+               class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="btn btn-sm btn-outline-primary disabled">
+                Page {{ current_page }}
+            </span>
+            
+            {% if has_next %}
+            <a href="?page={{ current_page|add:'1' }}{% if current_status %}&status={{ current_status }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+               class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% if collections %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Heure</th>
+                        <th>Client</th>
+                        <th>Adresse</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for collection in collections %}
+                    <tr>
+                        <td>{{ collection.scheduled_date|date:"d/m/Y" }}</td>
+                        <td>{{ collection.scheduled_time|time:"H:i" }}</td>
+                        <td>
+                            <strong>{{ collection.subscription.user.get_full_name|default:collection.subscription.user.username }}</strong>
+                            <br>
+                            <small class="text-muted">{{ collection.subscription.plan.name }}</small>
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 200px;">
+                                {{ collection.subscription.address.street }}
+                            </div>
+                            <small class="text-muted">{{ collection.subscription.address.city }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-status-{{ collection.status }}">
+                                {{ collection.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'collection_details' collection.id %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">Aucune collecte trouvée</h4>
+            <p class="text-muted">Aucune collecte ne correspond à vos critères de recherche.</p>
+            <a href="{% url 'collection_history' %}" class="btn btn-primary-custom">
+                Voir tout l'historique
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,756 @@
+{% extends 'administrations/base.html' %}
+{% load static %}
+
+{% block title %}Gestion des Réabonnements Canal+ - Ecocity{% endblock %}
+
+{% block page_title %}Gestion des Réabonnements Canal+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 500;
+    }
+    
+    .status-en_attente {
+        background-color: #FFF3CD;
+        color: #856404;
+    }
+    
+    .status-en_cours {
+        background-color: #CCE5FF;
+        color: #004085;
+    }
+    
+    .status-traitee {
+        background-color: #D4EDDA;
+        color: #155724;
+    }
+    
+    .status-rejetee {
+        background-color: #F8D7DA;
+        color: #721C24;
+    }
+    
+    .demande-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid #0061c3;
+    }
+    
+    .demande-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    
+    .action-btn {
+        padding: 5px 10px;
+        font-size: 0.85rem;
+        margin: 2px;
+    }
+    
+    .filter-section {
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #0061c3, #2C3E50);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+    }
+    
+    .upload-area:hover {
+        border-color: #0061c3;
+        background-color: #e9ecef;
+    }
+    
+    .upload-area.dragover {
+        border-color: #0061c3;
+        background-color: #e3f2fd;
+    }
+    
+    .facture-preview {
+        max-width: 100%;
+        max-height: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    
+    .modal-lg-custom {
+        max-width: 800px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">Gestion des Demandes de Réabonnement</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nouvelleDemandeModal">
+                <i class="fas fa-plus me-2"></i>Nouvelle Demande
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="h2 mb-0">{{ total_demandes }}</h3>
+                    <p class="mb-0">Total Demandes</p>
+                </div>
+                <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                    <i class="fas fa-list-alt fa-lg"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="h2 mb-0">{{ demandes_en_attente }}</h3>
+                    <p class="mb-0">En Attente</p>
+                </div>
+                <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                    <i class="fas fa-clock fa-lg"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="h2 mb-0">{{ demandes_traitees }}</h3>
+                    <p class="mb-0">Traitées</p>
+                </div>
+                <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                    <i class="fas fa-check-circle fa-lg"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="h2 mb-0">{{ demandes_rejetees }}</h3>
+                    <p class="mb-0">Rejetées</p>
+                </div>
+                <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                    <i class="fas fa-times-circle fa-lg"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtres -->
+<div class="filter-section">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="statutFilter" class="form-label">Statut</label>
+                <select class="form-select" id="statutFilter">
+                    <option value="">Tous les statuts</option>
+                    <option value="EN_ATTENTE">En attente</option>
+                    <option value="EN_COURS">En cours</option>
+                    <option value="TRAITEE">Traitées</option>
+                    <option value="REJETEE">Rejetées</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="dateDebutFilter" class="form-label">Date de début</label>
+                <input type="date" class="form-control" id="dateDebutFilter">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="dateFinFilter" class="form-label">Date de fin</label>
+                <input type="date" class="form-control" id="dateFinFilter">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="rechercheFilter" class="form-label">Recherche</label>
+                <input type="text" class="form-control" id="rechercheFilter" placeholder="ID, client, identifiant...">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-outline-secondary me-2" id="resetFilters">
+                    <i class="fas fa-redo me-1"></i>Réinitialiser
+                </button>
+                <button class="btn btn-primary" id="appliquerFiltres">
+                    <i class="fas fa-filter me-1"></i>Appliquer les filtres
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des demandes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Liste des Demandes</h5>
+                <div class="d-flex align-items-center">
+                    <span class="me-2 text-muted">Afficher:</span>
+                    <select class="form-select form-select-sm w-auto" id="itemsPerPage">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="demandesTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Client</th>
+                                <th>Identifiant Abonné</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                                <th>Date Demande</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for demande in demandes %}
+                            <tr data-statut="{{ demande.statut }}" data-date="{{ demande.date_demande|date:'Y-m-d' }}">
+                                <td>
+                                    <strong>#{{ demande.id }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2">
+                                            <i class="fas fa-user-circle text-muted"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ demande.abonnement.client.get_full_name|default:demande.abonnement.client.username }}</div>
+                                            <small class="text-muted">{{ demande.abonnement.client.email }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ demande.abonnement.identifiant_abonne }}</td>
+                                <td class="fw-bold">{{ demande.montant }} FCFA</td>
+                                <td>
+                                    <span class="status-badge status-{{ demande.statut|lower }}">
+                                        {{ demande.get_statut_display }}
+                                    </span>
+                                </td>
+                                <td>{{ demande.date_demande|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary action-btn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#detailDemandeModal"
+                                                data-id="{{ demande.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if demande.statut == 'EN_ATTENTE' or demande.statut == 'EN_COURS' %}
+                                        <button class="btn btn-sm btn-outline-success action-btn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#traiterDemandeModal"
+                                                data-id="{{ demande.id }}">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-outline-info action-btn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#uploadFactureModal"
+                                                data-id="{{ demande.id }}">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">Aucune demande de réabonnement trouvée</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if demandes.has_other_pages %}
+                <nav aria-label="Pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if demandes.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ demandes.previous_page_number }}" aria-label="Précédent">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Précédent">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for i in demandes.paginator.page_range %}
+                            {% if demandes.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                            {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if demandes.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ demandes.next_page_number }}" aria-label="Suivant">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Suivant">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nouvelle Demande -->
+<div class="modal fade" id="nouvelleDemandeModal" tabindex="-1" aria-labelledby="nouvelleDemandeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nouvelleDemandeModalLabel">Nouvelle Demande de Réabonnement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'creer_demande_reabonnement' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="client" class="form-label">Client *</label>
+                                <select class="form-select" id="client" name="client" required>
+                                    <option value="">Sélectionner un client</option>
+                                    {% for client in clients %}
+                                    <option value="{{ client.id }}">{{ client.get_full_name|default:client.username }} - {{ client.email }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="identifiant_abonne" class="form-label">Identifiant Abonné *</label>
+                                <input type="text" class="form-control" id="identifiant_abonne" name="identifiant_abonne" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="montant" class="form-label">Montant (FCFA) *</label>
+                                <input type="number" class="form-control" id="montant" name="montant" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="offre_choisie" class="form-label">Offre Choisie</label>
+                                <select class="form-select" id="offre_choisie" name="offre_choisie">
+                                    <option value="">Sélectionner une offre</option>
+                                    <option value="CANAL+ ESSENTIEL">CANAL+ ESSENTIEL</option>
+                                    <option value="CANAL+ FAMILY">CANAL+ FAMILY</option>
+                                    <option value="CANAL+ COMPLETE">CANAL+ COMPLETE</option>
+                                    <option value="CANAL+ MAX">CANAL+ MAX</option>
+                                    <option value="CANAL+ SPORT">CANAL+ SPORT</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="commentaires" class="form-label">Commentaires</label>
+                        <textarea class="form-control" id="commentaires" name="commentaires" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer la demande</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails Demande -->
+<div class="modal fade" id="detailDemandeModal" tabindex="-1" aria-labelledby="detailDemandeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailDemandeModalLabel">Détails de la Demande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detailDemandeContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Traiter Demande -->
+<div class="modal fade" id="traiterDemandeModal" tabindex="-1" aria-labelledby="traiterDemandeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="traiterDemandeModalLabel">Traiter la Demande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'traiter_demande_reabonnement' %}">
+                {% csrf_token %}
+                <input type="hidden" id="demande_id_traitement" name="demande_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nouveau_statut" class="form-label">Nouveau Statut *</label>
+                        <select class="form-select" id="nouveau_statut" name="nouveau_statut" required>
+                            <option value="EN_COURS">En cours de traitement</option>
+                            <option value="TRAITEE">Traité</option>
+                            <option value="REJETEE">Rejeté</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commentaires_traitement" class="form-label">Commentaires</label>
+                        <textarea class="form-control" id="commentaires_traitement" name="commentaires" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Upload Facture -->
+<div class="modal fade" id="uploadFactureModal" tabindex="-1" aria-labelledby="uploadFactureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg-custom">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFactureModalLabel">Télécharger une Facture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'upload_facture_reabonnement' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" id="demande_id_facture" name="demande_id">
+                <div class="modal-body">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="upload-area" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <h5>Glissez-déposez votre facture ici</h5>
+                                <p class="text-muted">ou</p>
+                                <input type="file" id="fichier_facture" name="fichier_facture" accept=".pdf,.jpg,.jpeg,.png" hidden>
+                                <button type="button" class="btn btn-primary" id="browseFileBtn">
+                                    <i class="fas fa-folder-open me-2"></i>Parcourir les fichiers
+                                </button>
+                                <p class="small text-muted mt-2">Formats acceptés: PDF, JPG, PNG (max. 10MB)</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row" id="filePreview" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-file me-2"></i>
+                                        <span id="fileName">fichier.pdf</span>
+                                        <span id="fileSize" class="text-muted ms-2">(0 KB)</span>
+                                    </div>
+                                    <button type="button" class="btn-close" id="removeFileBtn"></button>
+                                </div>
+                            </div>
+                            <div id="imagePreviewContainer" class="text-center">
+                                <!-- Aperçu de l'image si c'est une image -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="numero_facture" class="form-label">Numéro de Facture *</label>
+                                <input type="text" class="form-control" id="numero_facture" name="numero_facture" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date_echeance" class="form-label">Date d'Échéance *</label>
+                                <input type="date" class="form-control" id="date_echeance" name="date_echeance" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="submitFactureBtn" disabled>Télécharger la facture</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filtrage des demandes
+        const statutFilter = document.getElementById('statutFilter');
+        const dateDebutFilter = document.getElementById('dateDebutFilter');
+        const dateFinFilter = document.getElementById('dateFinFilter');
+        const rechercheFilter = document.getElementById('rechercheFilter');
+        const appliquerFiltresBtn = document.getElementById('appliquerFiltres');
+        const resetFiltersBtn = document.getElementById('resetFilters');
+        const demandesTable = document.getElementById('demandesTable');
+        const rows = demandesTable.querySelectorAll('tbody tr');
+        
+        function filtrerDemandes() {
+            const statut = statutFilter.value;
+            const dateDebut = dateDebutFilter.value;
+            const dateFin = dateFinFilter.value;
+            const recherche = rechercheFilter.value.toLowerCase();
+            
+            rows.forEach(row => {
+                let afficher = true;
+                const statutRow = row.getAttribute('data-statut');
+                const dateRow = row.getAttribute('data-date');
+                const texteRow = row.textContent.toLowerCase();
+                
+                // Filtre par statut
+                if (statut && statutRow !== statut) {
+                    afficher = false;
+                }
+                
+                // Filtre par date
+                if (dateDebut && dateRow < dateDebut) {
+                    afficher = false;
+                }
+                if (dateFin && dateRow > dateFin) {
+                    afficher = false;
+                }
+                
+                // Filtre par recherche
+                if (recherche && !texteRow.includes(recherche)) {
+                    afficher = false;
+                }
+                
+                row.style.display = afficher ? '' : 'none';
+            });
+        }
+        
+        appliquerFiltresBtn.addEventListener('click', filtrerDemandes);
+        
+        resetFiltersBtn.addEventListener('click', function() {
+            statutFilter.value = '';
+            dateDebutFilter.value = '';
+            dateFinFilter.value = '';
+            rechercheFilter.value = '';
+            filtrerDemandes();
+        });
+        
+        // Modal Détails Demande
+        const detailDemandeModal = document.getElementById('detailDemandeModal');
+        if (detailDemandeModal) {
+            detailDemandeModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const demandeId = button.getAttribute('data-id');
+                
+                // Charger les détails de la demande via AJAX
+                fetch(`/${demandeId}/details/`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('detailDemandeContent').innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        document.getElementById('detailDemandeContent').innerHTML = 
+                            '<div class="alert alert-danger">Erreur lors du chargement des détails</div>';
+                    });
+            });
+        }
+        
+        // Modal Traiter Demande
+        const traiterDemandeModal = document.getElementById('traiterDemandeModal');
+        if (traiterDemandeModal) {
+            traiterDemandeModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const demandeId = button.getAttribute('data-id');
+                document.getElementById('demande_id_traitement').value = demandeId;
+            });
+        }
+        
+        // Modal Upload Facture
+        const uploadFactureModal = document.getElementById('uploadFactureModal');
+        if (uploadFactureModal) {
+            uploadFactureModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const demandeId = button.getAttribute('data-id');
+                document.getElementById('demande_id_facture').value = demandeId;
+                
+                // Réinitialiser le formulaire d'upload
+                document.getElementById('fichier_facture').value = '';
+                document.getElementById('filePreview').style.display = 'none';
+                document.getElementById('submitFactureBtn').disabled = true;
+                document.getElementById('numero_facture').value = '';
+                document.getElementById('date_echeance').value = '';
+            });
+        }
+        
+        // Gestion de l'upload de fichiers
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fichier_facture');
+        const browseFileBtn = document.getElementById('browseFileBtn');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const removeFileBtn = document.getElementById('removeFileBtn');
+        const submitFactureBtn = document.getElementById('submitFactureBtn');
+        
+        browseFileBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                handleFileSelection(file);
+            }
+        });
+        
+        // Drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            uploadArea.classList.add('dragover');
+        }
+        
+        function unhighlight() {
+            uploadArea.classList.remove('dragover');
+        }
+        
+        uploadArea.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                handleFileSelection(files[0]);
+            }
+        });
+        
+        function handleFileSelection(file) {
+            // Vérification du type de fichier
+            const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            if (!validTypes.includes(file.type)) {
+                alert('Type de fichier non supporté. Veuillez sélectionner un fichier PDF, JPG ou PNG.');
+                return;
+            }
+            
+            // Vérification de la taille (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Le fichier est trop volumineux. Taille maximale: 10MB.');
+                return;
+            }
+            
+            // Afficher les informations du fichier
+            fileName.textContent = file.name;
+            fileSize.textContent = `(${(file.size / 1024).toFixed(2)} KB)`;
+            filePreview.style.display = 'block';
+            submitFactureBtn.disabled = false;
+            
+            // Aperçu pour les images
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreviewContainer.innerHTML = `<img src="${e.target.result}" class="facture-preview" alt="Aperçu de la facture">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreviewContainer.innerHTML = '<p class="text-muted"><i class="fas fa-file-pdf fa-3x"></i><br>Aperçu non disponible pour les fichiers PDF</p>';
+            }
+        }
+        
+        removeFileBtn.addEventListener('click', function() {
+            fileInput.value = '';
+            filePreview.style.display = 'none';
+            submitFactureBtn.disabled = true;
+        });
+        
+        // Générer un numéro de facture automatique
+        document.getElementById('numero_facture').value = 'FACT-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+        
+        // Définir la date d'échéance par défaut (dans 30 jours)
+        const today = new Date();
+        const echeance = new Date(today);
+        echeance.setDate(today.getDate() + 30);
+        document.getElementById('date_echeance').valueAsDate = echeance;
+    });
+</script>
+{% endblock %}

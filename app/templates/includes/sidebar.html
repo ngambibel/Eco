@@ -1,0 +1,58 @@
+<div class="position-sticky pt-3">
+    <div class="sidebar-header p-3 text-center border-bottom">
+        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=fff&color=2e7d32&bold=true" 
+             alt="Logo" class="rounded-circle mb-2" width="60" height="60">
+        <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
+        <p class="text-light small mb-0">Collecteur</p>
+        {% if user.tricycle_set.first %}
+        <p class="text-light small">{{ user.tricycle_set.first.nom }}</p>
+        {% endif %}
+    </div>
+    
+    <ul class="nav flex-column mt-3">
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'collector_dashboard' %}active{% endif %}" 
+               href="{% url 'collector_dashboard' %}">
+                <i class="fas fa-tachometer-alt"></i>
+                Tableau de bord
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'daily_schedule' %}active{% endif %}" 
+               href="{% url 'daily_schedule' %}">
+                <i class="fas fa-calendar-day"></i>
+                Programme du jour
+                {% if today_collections_count > 0 %}
+                <span class="badge bg-warning float-end">{{ today_collections_count }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'weekly_schedule' %}active{% endif %}" 
+               href="{% url 'weekly_schedule' %}">
+                <i class="fas fa-calendar-week"></i>
+                Programme de la semaine
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'collection_history' %}active{% endif %}" 
+               href="{% url 'collection_history' %}">
+                <i class="fas fa-history"></i>
+                Historique des collectes
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'collector_tricycle' %}active{% endif %}" 
+               href="{% url 'collector_tricycle' %}">
+                <i class="fas fa-truck-pickup"></i>
+                Mon tricycle
+            </a>
+        </li>
+        <li class="nav-item mt-4">
+            <a class="nav-link text-warning" href="{% url 'logout' %}">
+                <i class="fas fa-sign-out-alt"></i>
+                Déconnexion
+            </a>
+        </li>
+    </ul>
+</div>

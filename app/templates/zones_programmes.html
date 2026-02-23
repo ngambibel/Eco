@@ -1,0 +1,682 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Zones et Programmes - EcoCity{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Styles spécifiques à la page zones */
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .page-title {
+        color: var(--orange-cosmique);
+        font-size: 2.2rem;
+        margin-bottom: 15px;
+    }
+    
+    .page-subtitle {
+        color: var(--gris-fonce);
+        font-size: 1.2rem;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    /* Filtres */
+    .filters-section {
+        background-color: var(--blanc);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .filters-title {
+        color: var(--rouge-poupre);
+        margin-bottom: 15px;
+        font-size: 1.4rem;
+    }
+    
+    .filter-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: center;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .filter-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--noir);
+    }
+    
+    .filter-select {
+        width: 100%;
+        padding: 12px 15px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        background-color: var(--gris-clair);
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--orange-cosmique);
+        box-shadow: 0 0 0 2px rgba(142, 38, 1, 0.2);
+    }
+    
+    /* Conteneur des zones */
+    .zones-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+    
+    .zone-card {
+        background-color: var(--blanc);
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s, box-shadow 0.3s;
+        border-top: 4px solid var(--jaune-dore);
+    }
+    
+    .zone-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .zone-header {
+        padding: 20px;
+        background: linear-gradient(135deg, var(--orange-cosmique), var(--jaune-dore));
+        color: var(--blanc);
+    }
+    
+    .zone-name {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .zone-city {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .zone-body {
+        padding: 20px;
+    }
+    
+    .zone-description {
+        color: var(--gris-fonce);
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+    
+    .zone-status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .status-active {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #2e7d32;
+    }
+    
+    .status-inactive {
+        background-color: rgba(244, 67, 54, 0.2);
+        color: #c62828;
+    }
+    
+    /* Section programmes */
+    .programmes-section {
+        margin-top: 30px;
+    }
+    
+    .programmes-title {
+        font-size: 1.2rem;
+        color: var(--rouge-poupre);
+        margin-bottom: 15px;
+        border-bottom: 2px solid var(--gris-clair);
+        padding-bottom: 8px;
+    }
+    
+    .programme-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background-color: var(--gris-clair);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        transition: background-color 0.3s;
+    }
+    
+    .programme-item:hover {
+        background-color: #e9e9e9;
+    }
+    
+    .programme-info {
+        flex: 1;
+    }
+    
+    .programme-day {
+        font-weight: 600;
+        color: var(--noir);
+        margin-bottom: 5px;
+    }
+    
+    .programme-time {
+        color: var(--gris-fonce);
+        font-size: 0.9rem;
+    }
+    
+    .programme-tricycle {
+        font-size: 0.9rem;
+        color: var(--orange-cosmique);
+        font-weight: 600;
+    }
+    
+    .programme-availability {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .availability-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    
+    .available {
+        background-color: #4caf50;
+    }
+    
+    .limited {
+        background-color: #ff9800;
+    }
+    
+    .unavailable {
+        background-color: #f44336;
+    }
+    
+    .availability-text {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    /* Section tricycles */
+    .tricycles-section {
+        margin-top: 50px;
+    }
+    
+    .section-title {
+        text-align: center;
+        color: var(--rouge-poupre);
+        font-size: 1.8rem;
+        margin-bottom: 30px;
+    }
+    
+    .tricycles-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+    }
+    
+    .tricycle-card {
+        background-color: var(--blanc);
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s;
+        border-top: 4px solid var(--orange-cosmique);
+    }
+    
+    .tricycle-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .tricycle-header {
+        padding: 20px;
+        background-color: var(--gris-clair);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .tricycle-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--noir);
+    }
+    
+    .tricycle-id {
+        font-size: 0.9rem;
+        color: var(--gris-fonce);
+        background-color: var(--blanc);
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
+    
+    .tricycle-body {
+        padding: 20px;
+    }
+    
+    .tricycle-detail {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .detail-label {
+        font-weight: 600;
+        color: var(--noir);
+    }
+    
+    .detail-value {
+        color: var(--gris-fonce);
+    }
+    
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .status-active {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #2e7d32;
+    }
+    
+    .status-maintenance {
+        background-color: rgba(255, 152, 0, 0.2);
+        color: #ef6c00;
+    }
+    
+    .status-inactive {
+        background-color: rgba(244, 67, 54, 0.2);
+        color: #c62828;
+    }
+    
+    /* Message d'information */
+    .info-message {
+        background-color: rgba(33, 150, 243, 0.1);
+        border-left: 4px solid #2196f3;
+        padding: 15px 20px;
+        margin-bottom: 30px;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .info-message p {
+        margin: 0;
+        color: #1565c0;
+    }
+    
+    /* Aucun résultat */
+    .no-results {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: var(--blanc);
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .no-results-icon {
+        font-size: 3rem;
+        color: var(--gris-fonce);
+        margin-bottom: 20px;
+    }
+    
+    .no-results-text {
+        color: var(--gris-fonce);
+        font-size: 1.1rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-container {
+            padding: 15px;
+        }
+        
+        .page-title {
+            font-size: 1.8rem;
+        }
+        
+        .page-subtitle {
+            font-size: 1rem;
+        }
+        
+        .zones-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .tricycles-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .filter-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .filter-group {
+            min-width: 100%;
+        }
+        
+        .programme-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .programme-availability {
+            align-self: flex-end;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1 class="page-title">Zones de Collecte et Programmes des Tricycles</h1>
+        <p class="page-subtitle">Découvrez les zones desservies par notre service de collecte des ordures ménagères et les horaires des tricycles dans votre secteur.</p>
+    </div>
+    
+    <div class="info-message">
+        <p><i class="fas fa-info-circle"></i> Les programmes sont mis à jour régulièrement. Vérifiez cette page pour les changements éventuels.</p>
+    </div>
+    
+    <div class="filters-section">
+        <h2 class="filters-title">Filtrer les résultats</h2>
+        <div class="filter-controls">
+            <div class="filter-group">
+                <label class="filter-label" for="city-filter">Ville</label>
+                <select id="city-filter" class="filter-select">
+                    <option value="all">Toutes les villes</option>
+                    {% for city in cities %}
+                    <option value="{{ city.id }}">{{ city.city }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label" for="day-filter">Jour de collecte</label>
+                <select id="day-filter" class="filter-select">
+                    <option value="all">Tous les jours</option>
+                    <option value="lundi">Lundi</option>
+                    <option value="mardi">Mardi</option>
+                    <option value="mercredi">Mercredi</option>
+                    <option value="jeudi">Jeudi</option>
+                    <option value="vendredi">Vendredi</option>
+                    <option value="samedi">Samedi</option>
+                    <option value="dimanche">Dimanche</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label" for="status-filter">Statut de la zone</label>
+                <select id="status-filter" class="filter-select">
+                    <option value="all">Tous les statuts</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <button id="reset-filters" class="cta-button" style="padding: 10px 20px; margin-top: 25px;">
+                    <i class="fas fa-redo"></i> Réinitialiser
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="zones-content">
+        {% if zones %}
+            <div class="zones-container" id="zones-container">
+                {% for zone in zones %}
+                <div class="zone-card" 
+                     data-city="{{ zone.ville.id }}" 
+                     data-status="{% if zone.is_active %}active{% else %}inactive{% endif %}"
+                     data-days="{% for programme in zone.programmes_tricycle.all %}{% if programme.is_active %}{{ programme.jour_semaine }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}">
+                    <div class="zone-header">
+                        <h3 class="zone-name">{{ zone.nom }}</h3>
+                        <p class="zone-city">{{ zone.ville.city }}</p>
+                    </div>
+                    
+                    <div class="zone-body">
+                        {% if zone.description %}
+                        <p class="zone-description">{{ zone.description }}</p>
+                        {% endif %}
+                        
+                        <span class="zone-status {% if zone.is_active %}status-active{% else %}status-inactive{% endif %}">
+                            {% if zone.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                        
+                        {% if zone.programmes_tricycle.all %}
+                        <div class="programmes-section">
+                            <h4 class="programmes-title">Programmes de collecte</h4>
+                            
+                            {% for programme in zone.programmes_tricycle.all %}
+                            {% if programme.is_active %}
+                            <div class="programme-item" data-day="{{ programme.jour_semaine }}">
+                                <div class="programme-info">
+                                    <div class="programme-day">{{ programme.get_jour_semaine_display }}</div>
+                                    <div class="programme-time">{{ programme.heure_debut|time:"H:i" }} - {{ programme.heure_fin|time:"H:i" }}</div>
+                                    <div class="programme-tricycle">{{ programme.tricycle.nom }}</div>
+                                </div>
+                                
+                                <div class="programme-availability">
+                                    <div class="availability-indicator {% if programme.places_disponibles > 10 %}available{% elif programme.places_disponibles > 0 %}limited{% else %}unavailable{% endif %}"></div>
+                                    <span class="availability-text">
+                                        {% if programme.places_disponibles > 10 %}
+                                            Places disponibles
+                                        {% elif programme.places_disponibles > 0 %}
+                                            Peu de places
+                                        {% else %}
+                                            Complet
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p style="color: var(--gris-fonce); font-style: italic; margin-top: 15px;">
+                            Aucun programme de collecte disponible pour cette zone.
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-results">
+                <div class="no-results-icon">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <h3 class="no-results-text">Aucune zone de collecte disponible pour le moment.</h3>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="tricycles-section">
+        <h2 class="section-title">Notre Flotte de Tricycles</h2>
+        
+        {% if tricycles %}
+            <div class="tricycles-container">
+                {% for tricycle in tricycles %}
+                <div class="tricycle-card">
+                    <div class="tricycle-header">
+                        <h3 class="tricycle-name">{{ tricycle.nom }}</h3>
+                        <span class="tricycle-id">{{ tricycle.numero_immatriculation }}</span>
+                    </div>
+                    
+                    <div class="tricycle-body">
+                        <div class="tricycle-detail">
+                            <span class="detail-label">Capacité:</span>
+                            <span class="detail-value">{{ tricycle.capacite_kg }} kg</span>
+                        </div>
+                        
+                        <div class="tricycle-detail">
+                            <span class="detail-label">Mise en service:</span>
+                            <span class="detail-value">{{ tricycle.date_mise_en_service|date:"d/m/Y" }}</span>
+                        </div>
+                        
+                        <div class="tricycle-detail">
+                            <span class="detail-label">Statut:</span>
+                            <span class="status-badge 
+                                {% if tricycle.status == 'active' %}status-active
+                                {% elif tricycle.status == 'maintenance' %}status-maintenance
+                                {% else %}status-inactive{% endif %}">
+                                {{ tricycle.get_status_display }}
+                            </span>
+                        </div>
+                        
+                        {% if tricycle.conducteur %}
+                        <div class="tricycle-detail">
+                            <span class="detail-label">Conducteur:</span>
+                            <span class="detail-value">{{ tricycle.conducteur.get_full_name|default:tricycle.conducteur.username }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-results">
+                <div class="no-results-icon">
+                    <i class="fas fa-truck-pickup"></i>
+                </div>
+                <h3 class="no-results-text">Aucun tricycle disponible pour le moment.</h3>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Récupérer les éléments de filtre
+        const cityFilter = document.getElementById('city-filter');
+        const dayFilter = document.getElementById('day-filter');
+        const statusFilter = document.getElementById('status-filter');
+        const resetButton = document.getElementById('reset-filters');
+        const zoneCards = document.querySelectorAll('.zone-card');
+        
+        // Fonction pour vérifier si une zone correspond aux filtres
+        function zoneMatchesFilters(zoneCard) {
+            const selectedCity = cityFilter.value;
+            const selectedDay = dayFilter.value;
+            const selectedStatus = statusFilter.value;
+            const zoneCity = zoneCard.getAttribute('data-city');
+            const zoneStatus = zoneCard.getAttribute('data-status');
+            const zoneDays = zoneCard.getAttribute('data-days').split(',');
+            
+            // Filtrer par ville
+            if (selectedCity !== 'all' && zoneCity !== selectedCity) {
+                return false;
+            }
+            
+            // Filtrer par statut
+            if (selectedStatus !== 'all' && zoneStatus !== selectedStatus) {
+                return false;
+            }
+            
+            // Filtrer par jour
+            if (selectedDay !== 'all' && !zoneDays.includes(selectedDay)) {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Fonction pour appliquer les filtres
+        function applyFilters() {
+            let visibleCount = 0;
+            
+            zoneCards.forEach(card => {
+                if (zoneMatchesFilters(card)) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Gérer l'affichage du message "Aucun résultat"
+            const zonesContainer = document.getElementById('zones-container');
+            const noResultsElement = document.querySelector('.no-results');
+            
+            if (visibleCount === 0 && zoneCards.length > 0) {
+                if (!noResultsElement) {
+                    const noResultsHTML = `
+                        <div class="no-results">
+                            <div class="no-results-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <h3 class="no-results-text">Aucune zone ne correspond à vos critères de recherche.</h3>
+                            <p>Essayez de modifier vos filtres pour voir plus de résultats.</p>
+                        </div>
+                    `;
+                    document.getElementById('zones-content').innerHTML = noResultsHTML;
+                }
+            } else if (noResultsElement && visibleCount > 0) {
+                noResultsElement.remove();
+            }
+        }
+        
+        // Fonction pour réinitialiser les filtres
+        function resetFilters() {
+            cityFilter.value = 'all';
+            dayFilter.value = 'all';
+            statusFilter.value = 'all';
+            applyFilters();
+        }
+        
+        // Ajouter les écouteurs d'événements
+        cityFilter.addEventListener('change', applyFilters);
+        dayFilter.addEventListener('change', applyFilters);
+        statusFilter.addEventListener('change', applyFilters);
+        resetButton.addEventListener('click', resetFilters);
+        
+        // Initialiser les filtres
+        applyFilters();
+        
+        // Debug: Afficher les données dans la console
+        console.log('Zones chargées:', zoneCards.length);
+        zoneCards.forEach(card => {
+            console.log('Zone:', {
+                city: card.getAttribute('data-city'),
+                status: card.getAttribute('data-status'),
+                days: card.getAttribute('data-days')
+            });
+        });
+    });
+</script>
+{% endblock %}

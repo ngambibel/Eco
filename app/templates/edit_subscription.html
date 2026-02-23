@@ -1,0 +1,1154 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Modifier l'abonnement - EcoCity{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-subscription-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .edit-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .edit-header h1 {
+        color: var(--orange-cosmique);
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+
+    .edit-tabs {
+        display: flex;
+        background: var(--blanc);
+        border-radius: 10px 10px 0 0;
+        overflow-x: auto;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .tab {
+        padding: 15px 25px;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+    }
+
+    .tab.active {
+        border-bottom-color: var(--orange-cosmique);
+        color: var(--orange-cosmique);
+        font-weight: 600;
+    }
+
+    .tab-content {
+        background: var(--blanc);
+        padding: 30px;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+
+    .tab-pane {
+        display: none;
+    }
+
+    .tab-pane.active {
+        display: block;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .section-title {
+        color: var(--rouge-poupre);
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+        border-bottom: 2px solid var(--jaune-dore);
+        padding-bottom: 10px;
+    }
+
+    /* Styles pour les cartes de plan */
+    .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .plan-card {
+        border: 2px solid var(--gris-clair);
+        border-radius: 10px;
+        padding: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        position: relative;
+    }
+
+    .plan-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--orange-cosmique);
+    }
+
+    .plan-card.selected {
+        border-color: var(--orange-cosmique);
+        background: linear-gradient(135deg, #fff5f0, #fffbf0);
+    }
+
+    .plan-card h3 {
+        color: var(--rouge-poupre);
+        margin-bottom: 10px;
+    }
+
+    .plan-price {
+        font-size: 2rem;
+        color: var(--orange-cosmique);
+        font-weight: bold;
+        margin: 15px 0;
+    }
+
+    .plan-features {
+        list-style: none;
+        text-align: left;
+        margin: 15px 0;
+        padding: 0;
+    }
+
+    .plan-features li {
+        padding: 8px 0;
+        color: var(--gris-fonce);
+        display: flex;
+        align-items: center;
+    }
+
+    .plan-features li:before {
+        content: "✓";
+        color: var(--jaune-dore);
+        font-weight: bold;
+        margin-right: 10px;
+    }
+
+    /* Styles pour les jours de collecte */
+    .days-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .day-card {
+        border: 2px solid var(--gris-clair);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: var(--blanc);
+    }
+
+    .day-card:hover {
+        border-color: var(--orange-cosmique);
+        transform: translateY(-2px);
+    }
+
+    .day-card.selected {
+        background: var(--orange-cosmique);
+        color: var(--blanc);
+        border-color: var(--orange-cosmique);
+    }
+
+    /* Styles pour la géolocalisation */
+    .location-preview {
+        background: var(--gris-clair);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+    }
+
+    .location-preview h4 {
+        color: var(--rouge-poupre);
+        margin-bottom: 10px;
+    }
+
+    .location-status {
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .location-status.detecting {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .location-status.success {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+
+    .location-status.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .map-container {
+        height: 400px;
+        background: var(--gris-clair);
+        border-radius: 10px;
+        margin-bottom: 20px;
+        overflow: hidden;
+        position: relative;
+        border: 2px solid var(--gris-clair);
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+
+    .gps-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+    }
+
+    .gps-indicator.active {
+        color: #28a745;
+        border: 1px solid #28a745;
+    }
+
+    .gps-indicator.inactive {
+        color: var(--rouge-poupre);
+        border: 1px solid var(--rouge-poupre);
+    }
+
+    .location-controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .address-search {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .address-search input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 2px solid var(--gris-clair);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .address-search input:focus {
+        outline: none;
+        border-color: var(--orange-cosmique);
+    }
+
+    /* Styles pour le formulaire */
+    .address-form {
+        display: grid;
+        gap: 20px;
+        margin-top: 25px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--rouge-poupre);
+    }
+
+    .form-group input, 
+    .form-group textarea, 
+    .form-group select {
+        padding: 12px 15px;
+        border: 2px solid var(--gris-clair);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus, 
+    .form-group textarea:focus, 
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--orange-cosmique);
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 15px 0;
+    }
+
+    .form-check-input {
+        width: 18px;
+        height: 18px;
+    }
+
+    .form-check-label {
+        color: var(--noir);
+        font-weight: 500;
+    }
+
+    /* Boutons */
+    .form-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 40px;
+        padding-top: 25px;
+        border-top: 2px solid var(--gris-clair);
+    }
+
+    .btn {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: var(--orange-cosmique);
+        color: var(--blanc);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: var(--rouge-poupre);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 2px solid var(--orange-cosmique);
+        color: var(--orange-cosmique);
+    }
+
+    .btn-outline:hover {
+        background: var(--orange-cosmique);
+        color: var(--blanc);
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: var(--blanc);
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+        transform: translateY(-2px);
+    }
+
+    .btn-large {
+        padding: 15px 35px;
+        font-size: 1.1rem;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    /* Indicateurs de validation */
+    .step-validation {
+        margin-top: 15px;
+        padding: 12px 15px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        display: none;
+    }
+
+    .validation-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .validation-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { 
+            opacity: 0; 
+            transform: translateY(20px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .gps-pulse {
+        animation: pulse 2s infinite;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .edit-tabs {
+            flex-direction: column;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--gris-clair);
+            border-left: 3px solid transparent;
+        }
+        
+        .tab.active {
+            border-left-color: var(--orange-cosmique);
+            border-bottom-color: var(--gris-clair);
+        }
+        
+        .plans-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .days-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .location-controls {
+            flex-direction: column;
+        }
+        
+        .address-search {
+            flex-direction: column;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .tab-content {
+            padding: 20px 15px;
+        }
+        
+        .days-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .plan-card {
+            padding: 20px 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-subscription-container">
+    <div class="edit-header">
+        <h1>Modifier l'abonnement</h1>
+        <p>Personnalisez votre programme de collecte et votre localisation</p>
+    </div>
+
+    <!-- Onglets de navigation -->
+    <div class="edit-tabs">
+        <div class="tab active" data-tab="location">
+            <i class="fas fa-map-marker-alt"></i> Localisation
+        </div>
+        <div class="tab" data-tab="schedule">
+            <i class="fas fa-calendar-alt"></i> Programme
+        </div>
+        <div class="tab" data-tab="plan">
+            <i class="fas fa-cube"></i> Plan
+        </div>
+        <div class="tab" data-tab="preferences">
+            <i class="fas fa-cog"></i> Préférences
+        </div>
+    </div>
+
+    <!-- Contenu des onglets -->
+    <div class="tab-content">
+        <!-- Onglet Localisation -->
+        <div class="tab-pane active" id="location-tab">
+            <h2 class="section-title">Modifier la localisation</h2>
+            
+            <!-- Aperçu de l'adresse actuelle -->
+            <div class="location-preview">
+                <h4>Adresse actuelle</h4>
+                <p><strong>{{ subscription.address.title }}</strong></p>
+                <p>{{ subscription.address.street }}</p>
+                <p>{{ subscription.address.postal_code }} {{ subscription.address.city }}</p>
+                {% if subscription.address.latitude %}
+                <p>Coordonnées GPS : {{ subscription.address.latitude|floatformat:6 }}, {{ subscription.address.longitude|floatformat:6 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Interface de géolocalisation -->
+            <div class="location-section">
+                <div class="location-status" id="locationStatus" style="display: none;">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="locationStatusText">Statut de détection de position</span>
+                </div>
+                
+                <div class="address-search">
+                    <input type="text" id="addressSearch" 
+                           placeholder="Rechercher une nouvelle adresse..." 
+                           value="{{ subscription.address.street }}, {{ subscription.address.city }}">
+                    <button class="btn btn-primary" id="searchAddress">
+                        <i class="fas fa-search"></i> Rechercher
+                    </button>
+                </div>
+                
+                <div class="location-controls">
+                    <button class="btn btn-primary" id="getLocation">
+                        <i class="fas fa-map-marker-alt"></i> Utiliser ma position actuelle
+                    </button>
+                    <button class="btn btn-outline" id="manualLocation">
+                        <i class="fas fa-edit"></i> Saisir manuellement
+                    </button>
+                </div>
+                
+                <div class="map-container">
+                    <div class="gps-indicator inactive" id="gpsIndicator">
+                        <i class="fas fa-satellite"></i>
+                        <span>GPS Inactif</span>
+                    </div>
+                    <div id="map"></div>
+                </div>
+                
+                <form id="addressForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="address">
+                    <div class="address-form">
+                        <div class="form-group">
+                            <label for="addressTitle">Titre de l'adresse *</label>
+                            <input type="text" id="addressTitle" name="address_title" 
+                                   value="{{ subscription.address.title }}" 
+                                   placeholder="Ex: Maison, Bureau..." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="street">Rue *</label>
+                            <input type="text" id="street" name="street" 
+                                   value="{{ subscription.address.street }}" 
+                                   placeholder="Nom de la rue" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="city">Ville *</label>
+                            <input type="text" id="city" name="city" 
+                                   value="{{ subscription.address.city }}" 
+                                   placeholder="Ville" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="postalCode">Code postal *</label>
+                            <input type="text" id="postalCode" name="postal_code" 
+                                   value="{{ subscription.address.postal_code }}" 
+                                   placeholder="Code postal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="additionalInfo">Informations complémentaires</label>
+                            <input type="text" id="additionalInfo" name="additional_info"
+                                   placeholder="Appartement, étage, repères...">
+                        </div>
+                        <input type="hidden" id="latitude" name="latitude" value="{{ subscription.address.latitude }}">
+                        <input type="hidden" id="longitude" name="longitude" value="{{ subscription.address.longitude }}">
+                    </div>
+                </form>
+            </div>
+            <div class="step-validation validation-error" id="step3-validation">
+                <i class="fas fa-exclamation-triangle"></i>
+                Veuillez définir votre localisation pour continuer
+            </div>
+        </div>
+
+        <!-- Onglet Programme -->
+        <div class="tab-pane" id="schedule-tab">
+            <h2 class="section-title">Modifier le programme de collecte</h2>
+            
+            <div class="day-selection">
+                <p>Sélectionnez les jours où vous souhaitez la collecte</p>
+                <div class="days-grid">
+                    {% for day in days %}
+                    <div class="day-card {% if day in current_days %}selected{% endif %}" data-day="{{ day.name }}">
+                        <i class="fas fa-calendar-day"></i>
+                        {{ day.get_name_display }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="time-selection" style="margin-top: 30px;">
+                <h3 style="color: var(--rouge-poupre); margin-bottom: 15px;">Créneau horaire</h3>
+                <div class="form-group">
+                    <label for="timeSlot">Heure de collecte préférée</label>
+                    <select id="timeSlot" name="time_slot" class="form-control">
+                        {% for time in time_slots %}
+                        <option value="{{ time }}" {% if time == current_time_slot %}selected{% endif %}>
+                            {{ time }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="step-validation validation-error" id="step2-validation">
+                <i class="fas fa-exclamation-triangle"></i>
+                Veuillez sélectionner au moins un jour de collecte
+            </div>
+        </div>
+
+        <!-- Onglet Plan -->
+        <div class="tab-pane" id="plan-tab">
+            <h2 class="section-title">Changer de plan d'abonnement</h2>
+            
+            <div class="current-plan" style="background: var(--gris-clair); padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+                <h3 style="color: var(--rouge-poupre);">Plan actuel</h3>
+                <p><strong>{{ subscription.plan.name }}</strong> - {{ subscription.plan.price }} FCFA</p>
+                <p>{{ subscription.plan.description }}</p>
+                <p><small>Fréquence : {{ subscription.plan.get_frequency_display }}</small></p>
+            </div>
+
+            <div class="plans-grid">
+                {% for plan in available_plans %}
+                <div class="plan-card {% if plan.id == subscription.plan.id %}selected{% endif %}" data-plan-id="{{ plan.id }}">
+                    <h3>{{ plan.name }}</h3>
+                    <div class="plan-price">{{ plan.price }} FCFA</div>
+                    <p>{{ plan.description }}</p>
+                    <ul class="plan-features">
+                        <li>{{ plan.get_frequency_display }}</li>
+                        <li>Max {{ plan.max_collections_per_week }} collecte(s)/semaine</li>
+                        <li>Service prioritaire</li>
+                        <li>Support {{ plan.get_plan_type_display }}</li>
+                    </ul>
+                    {% if plan.id != subscription.plan.id %}
+                    <button class="btn btn-outline switch-plan" data-plan-id="{{ plan.id }}">
+                        Choisir ce plan
+                    </button>
+                    {% else %}
+                    <button class="btn btn-primary" disabled>
+                        Plan actuel
+                    </button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="step-validation validation-error" id="step1-validation">
+                <i class="fas fa-exclamation-triangle"></i>
+                Veuillez sélectionner un plan pour continuer
+            </div>
+        </div>
+
+        <!-- Onglet Préférences -->
+        <div class="tab-pane" id="preferences-tab">
+            <h2 class="section-title">Préférences et instructions</h2>
+            
+            <form id="preferencesForm">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="preferences">
+                
+                <div class="form-group">
+                    <label for="specialInstructions">Instructions spéciales pour le collecteur</label>
+                    <textarea id="specialInstructions" name="special_instructions" rows="4" 
+                              placeholder="Instructions particulières pour le collecteur (emplacement des poubelles, codes d'accès, etc.)"
+                              class="form-control">{{ subscription.special_instructions }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact_preference">Préférence de contact</label>
+                    <select id="contact_preference" name="contact_preference" class="form-control">
+                        <option value="email" {% if subscription.user.email %}selected{% endif %}>Email</option>
+                        <option value="sms">SMS</option>
+                        <option value="phone">Téléphone</option>
+                    </select>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="notifications" name="notifications" checked class="form-check-input">
+                    <label for="notifications" class="form-check-label">Recevoir les notifications de collecte</label>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="weather_alerts" name="weather_alerts" checked class="form-check-input">
+                    <label for="weather_alerts" class="form-check-label">Alertes météo pour les collectes</label>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Actions du formulaire -->
+    <div class="form-actions">
+        <a href="{% url 'subscriptions_dashboard' %}" class="btn btn-outline btn-large">
+            <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+        </a>
+        <div style="display: flex; gap: 15px;">
+            <button type="button" id="saveChanges" class="btn btn-primary btn-large">
+                <i class="fas fa-save"></i> Enregistrer les modifications
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Messages de statut -->
+<div class="loading" id="loading" style="display: none; text-align: center; padding: 40px;">
+    <i class="fas fa-spinner fa-spin fa-2x" style="color: var(--orange-cosmique);"></i>
+    <p style="margin-top: 15px; color: var(--gris-fonce);">Enregistrement des modifications...</p>
+</div>
+
+<div class="success-message" id="successMessage" style="display: none; background: #d4edda; color: #155724; padding: 20px; border-radius: 10px; text-align: center; margin-top: 20px;">
+    <i class="fas fa-check-circle fa-2x" style="color: #28a745;"></i>
+    <h3 style="color: #155724; margin: 15px 0;">Modifications enregistrées avec succès !</h3>
+    <a href="{% url 'subscriptions_dashboard' %}" class="btn btn-primary">Retour au tableau de bord</a>
+</div>
+
+<div class="error-message" id="errorMessage" style="display: none; background: #f8d7da; color: #721c24; padding: 20px; border-radius: 10px; text-align: center; margin-top: 20px;">
+    <i class="fas fa-exclamation-triangle fa-2x" style="color: #dc3545;"></i>
+    <h3 style="color: #721c24; margin: 15px 0;">Erreur lors de l'enregistrement</h3>
+    <p id="errorText"></p>
+    <button class="btn btn-outline" onclick="hideError()">Réessayer</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+
+<script>
+    // Variables globales
+    let currentTab = 'location';
+    let selectedPlan = '{{ subscription.plan.id }}';
+    let selectedDays = ['{% for day in current_days %}{{ day.name }}{% if not forloop.last %}, {% endif %}{% endfor %}'];
+    let userLocation = {
+        latitude: '{{ subscription.address.latitude|default:"3.8480" }}',
+        longitude: '{{ subscription.address.longitude|default:"11.5021" }}'
+    };
+    let map = null;
+    let marker = null;
+    let watchId = null;
+
+    // Initialisation de la carte
+    function initMap() {
+        map = L.map('map').setView([userLocation.latitude, userLocation.longitude], 15);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Marqueur à la position actuelle
+        const customIcon = L.divIcon({
+            html: '<i class="fas fa-map-marker-alt" style="color: #e74c3c; font-size: 30px;"></i>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            className: 'custom-marker'
+        });
+        
+        marker = L.marker([userLocation.latitude, userLocation.longitude], {icon: customIcon})
+            .addTo(map)
+            .bindPopup('Position actuelle')
+            .openPopup();
+    }
+
+    // Mise à jour de la position sur la carte
+    function updateMapPosition(lat, lng, zoom = 15) {
+        if (map) {
+            map.setView([lat, lng], zoom);
+            
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                const customIcon = L.divIcon({
+                    html: '<i class="fas fa-map-marker-alt" style="color: #e74c3c; font-size: 30px;"></i>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    className: 'custom-marker'
+                });
+                marker = L.marker([lat, lng], {icon: customIcon}).addTo(map);
+            }
+            
+            marker.bindPopup(`Position mise à jour<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
+            
+            // Mettre à jour les champs cachés
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+        }
+    }
+
+    // Géolocalisation automatique
+    function getCurrentLocation() {
+        updateLocationStatus('Détection de votre position en cours...', 'detecting');
+        updateGPSIndicator('active');
+        
+        if (navigator.geolocation) {
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 60000
+            };
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    
+                    userLocation = { 
+                        latitude: lat, 
+                        longitude: lng,
+                        accuracy: accuracy
+                    };
+                    
+                    updateMapPosition(lat, lng);
+                    updateAddressFromCoordinates(lat, lng);
+                    validateStep3();
+                    
+                    updateLocationStatus(
+                        `Position détectée avec une précision de ${Math.round(accuracy)} mètres`, 
+                        'success'
+                    );
+                    updateGPSIndicator('inactive');
+                },
+                function(error) {
+                    let errorMessage = 'Impossible de récupérer votre position. ';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Vous avez refusé l\'accès à votre position.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Les informations de localisation ne sont pas disponibles.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'La demande de localisation a expiré.';
+                            break;
+                        default:
+                            errorMessage += 'Une erreur inconnue s\'est produite.';
+                            break;
+                    }
+                    
+                    updateLocationStatus(errorMessage, 'error');
+                    updateGPSIndicator('inactive');
+                },
+                options
+            );
+        } else {
+            updateLocationStatus('La géolocalisation n\'est pas supportée par votre navigateur.', 'error');
+            updateGPSIndicator('inactive');
+        }
+    }
+
+    // Mise à jour de l'indicateur GPS
+    function updateGPSIndicator(status) {
+        const indicator = document.getElementById('gpsIndicator');
+        if (status === 'active') {
+            indicator.classList.remove('inactive');
+            indicator.classList.add('active', 'gps-pulse');
+            indicator.innerHTML = '<i class="fas fa-satellite"></i><span>GPS Actif</span>';
+        } else {
+            indicator.classList.remove('active', 'gps-pulse');
+            indicator.classList.add('inactive');
+            indicator.innerHTML = '<i class="fas fa-satellite"></i><span>GPS Inactif</span>';
+        }
+    }
+
+    // Mise à jour du statut de localisation
+    function updateLocationStatus(message, type) {
+        const statusElement = document.getElementById('locationStatus');
+        const statusText = document.getElementById('locationStatusText');
+        
+        statusText.textContent = message;
+        statusElement.className = 'location-status ' + type;
+        statusElement.style.display = 'flex';
+    }
+
+    // Recherche d'adresse
+    async function searchAddress() {
+        const query = document.getElementById('addressSearch').value;
+        if (!query) return;
+
+        updateLocationStatus('Recherche d\'adresse en cours...', 'detecting');
+
+        try {
+            // Utilisation de l'API Nominatim d'OpenStreetMap
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
+            );
+            const data = await response.json();
+            
+            if (data.length > 0) {
+                const result = data[0];
+                const lat = parseFloat(result.lat);
+                const lng = parseFloat(result.lon);
+                
+                userLocation = { latitude: lat, longitude: lng };
+                updateMapPosition(lat, lng, 16);
+                updateAddressFromSearchResult(result);
+                validateStep3();
+                
+                updateLocationStatus('Adresse trouvée avec succès', 'success');
+            } else {
+                updateLocationStatus('Aucune adresse trouvée. Veuillez essayer avec des termes plus précis.', 'error');
+            }
+        } catch (error) {
+            console.error('Erreur de recherche:', error);
+            updateLocationStatus('Erreur lors de la recherche d\'adresse. Veuillez réessayer.', 'error');
+        }
+    }
+
+    // Mise à jour de l'adresse depuis les résultats de recherche
+    function updateAddressFromSearchResult(result) {
+        if (result.address) {
+            const address = result.address;
+            
+            if (address.road) {
+                document.getElementById('street').value = address.road;
+            }
+            
+            if (address.city) {
+                document.getElementById('city').value = address.city;
+            } else if (address.town) {
+                document.getElementById('city').value = address.town;
+            }
+            
+            if (address.postcode) {
+                document.getElementById('postalCode').value = address.postcode;
+            }
+        }
+    }
+
+    // Mise à jour de l'adresse depuis les coordonnées
+    async function updateAddressFromCoordinates(lat, lng) {
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`
+            );
+            const data = await response.json();
+            
+            if (data.address) {
+                updateAddressFromSearchResult(data);
+            }
+        } catch (error) {
+            console.error('Erreur de reverse geocoding:', error);
+        }
+    }
+
+    // Gestion des onglets
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+            
+            // Mettre à jour les onglets actifs
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Afficher le contenu correspondant
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            currentTab = tabName;
+        });
+    });
+
+    // Gestion de la sélection des plans
+    document.querySelectorAll('.plan-card').forEach(card => {
+        card.addEventListener('click', function() {
+            if (!this.classList.contains('selected')) {
+                document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedPlan = this.dataset.planId;
+                validateStep1();
+            }
+        });
+    });
+
+    // Gestion de la sélection des jours
+    document.querySelectorAll('.day-card').forEach(card => {
+        card.addEventListener('click', function() {
+            this.classList.toggle('selected');
+            const day = this.dataset.day;
+            
+            if (this.classList.contains('selected')) {
+                if (!selectedDays.includes(day)) {
+                    selectedDays.push(day);
+                }
+            } else {
+                selectedDays = selectedDays.filter(d => d !== day);
+            }
+            
+            validateStep2();
+        });
+    });
+
+    // Validation des étapes
+    function validateStep1() {
+        const isValid = selectedPlan !== null;
+        document.getElementById('step1-validation').style.display = isValid ? 'none' : 'block';
+        return isValid;
+    }
+
+    function validateStep2() {
+        const isValid = selectedDays.length > 0;
+        document.getElementById('step2-validation').style.display = isValid ? 'none' : 'block';
+        return isValid;
+    }
+
+    function validateStep3() {
+        const isValid = userLocation !== null && 
+                       document.getElementById('street').value !== '' && 
+                       document.getElementById('city').value !== '' && 
+                       document.getElementById('postalCode').value !== '';
+        document.getElementById('step3-validation').style.display = isValid ? 'none' : 'block';
+        return isValid;
+    }
+
+    function validateCurrentStep() {
+        switch (currentTab) {
+            case 'plan': return validateStep1();
+            case 'schedule': return validateStep2();
+            case 'location': return validateStep3();
+            default: return true;
+        }
+    }
+
+    // Sauvegarde des modifications
+    document.getElementById('saveChanges').addEventListener('click', function() {
+        if (!validateCurrentStep()) {
+            showError('Veuillez compléter tous les champs obligatoires de l\'onglet actuel.');
+            return;
+        }
+
+        const loading = document.getElementById('loading');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        loading.style.display = 'block';
+        
+        const formData = new FormData();
+        formData.append('subscription_id', '{{ subscription.id }}');
+        
+        // Données de localisation
+        formData.append('address_title', document.getElementById('addressTitle').value);
+        formData.append('street', document.getElementById('street').value);
+        formData.append('city', document.getElementById('city').value);
+        formData.append('postal_code', document.getElementById('postalCode').value);
+        formData.append('latitude', document.getElementById('latitude').value);
+        formData.append('longitude', document.getElementById('longitude').value);
+        
+        // Données du programme
+        formData.append('selected_days', JSON.stringify(selectedDays));
+        formData.append('time_slot', document.getElementById('timeSlot').value);
+        
+        // Données du plan
+        formData.append('new_plan_id', selectedPlan);
+        
+        // Préférences
+        formData.append('special_instructions', document.getElementById('specialInstructions').value);
+        formData.append('contact_preference', document.getElementById('contact_preference').value);
+        
+        fetch("{% url 'update_subscription' subscription.id %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            
+            if (data.success) {
+                successMessage.style.display = 'block';
+            } else {
+                showError(data.error || 'Une erreur est survenue lors de l\'enregistrement.');
+            }
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            showError('Erreur réseau: ' + error.message);
+        });
+    });
+
+    // Fonctions utilitaires
+    function showError(message) {
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        errorText.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+
+    function hideError() {
+        document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    // Événements de géolocalisation
+    document.getElementById('getLocation').addEventListener('click', getCurrentLocation);
+    document.getElementById('searchAddress').addEventListener('click', searchAddress);
+    document.getElementById('addressSearch').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchAddress();
+        }
+    });
+    document.getElementById('manualLocation').addEventListener('click', function() {
+        updateLocationStatus('Mode de saisie manuelle activé', 'detecting');
+        userLocation = { latitude: 3.8480, longitude: 11.5021 };
+        validateStep3();
+    });
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        updateGPSIndicator('inactive');
+        
+        // Validation initiale
+        validateStep1();
+        validateStep2();
+        validateStep3();
+    });
+</script>
+{% endblock %}
