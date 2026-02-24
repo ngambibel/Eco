@@ -81,7 +81,6 @@ class SubscriptionAdmin(admin.ModelAdmin):
     list_filter = ('status', 'plan', 'start_date', 'created_at')
     search_fields = ('user__phone', 'plan__name', 'address__title')
     readonly_fields = ('id', 'created_at', 'updated_at')
-    inlines = [SubscriptionDayInline]
     ordering = ('-created_at',)
 
 # Admin pour SubscriptionDay
@@ -133,6 +132,14 @@ class CollectionScheduleAdmin(admin.ModelAdmin):
     ordering = ('-scheduled_date', '-scheduled_time')
     date_hierarchy = 'scheduled_date'
 
+# Admin pour les qr codes de paiement
+@admin.register(SubscriptionQRCode)
+class PaymentQRCodeAdmin(admin.ModelAdmin):
+    list_display = ('subscription', 'qr_code_image', 'created_at')
+    search_fields = ('subscription__user__username',)
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+
 # Enregistrement des modèles
 admin.site.register(CustomUser, CustomUserAdmin)
 
@@ -146,6 +153,7 @@ admin.site.register(Facture)
 admin.site.register(Abonnement)
 admin.site.register(RevenueRecord)
 admin.site.register(RevenueSummary)
+
 
 
 

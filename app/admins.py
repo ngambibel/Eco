@@ -29,6 +29,25 @@ class DashboardView(TemplateView):
     
     def get_weekly_collection_stats(self, selected_date=None):
         """Récupère les statistiques réelles des collectes avec filtre par date"""
+        
+        # recuperer tous les abonnement dont les dattes sont depassées par rapport a la date du jour
+        
+        abonnements_expires = Subscription.objects.filter(
+            end_date__lt=timezone.now().date(),
+            status='active'
+        )
+
+        # pour chaque abonnement expiré, creer une notification pour le client 
+        for abonnement in abonnements_expires:
+            # creer une notification pour le client
+            Notification.create_notification(
+                user=abonnement.user, title="Abonnement Expiré",
+                message=f"Votre abonnement pour le service {abonnement} a expiré le {abonnement.end_date.strftime('%d/%m/%Y')}. Veuillez renouveler votre abonnement pour continuer à bénéficier de nos services.",
+                notification_type='warning')
+            # mettre à jour le statut de l'abonnement
+            abonnement.status = 'inactive'
+            abonnement.save()
+
         if selected_date:
             # Convertir la date string en objet date
             try:

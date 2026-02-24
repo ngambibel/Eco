@@ -1,6 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
+from io import BytesIO
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 
@@ -9,6 +12,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 import uuid
+
+import qrcode
 
 # models pour la ville des utilisateurs
 class City(models.Model):
@@ -351,7 +356,7 @@ class Payment(models.Model):
     )
     
     
-    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='payments')   
+    subscription = models.CharField(max_length=100, blank=True, null=True)   
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_date = models.DateTimeField(default=timezone.now)
@@ -423,6 +428,78 @@ class CollectionSchedule(models.Model):
     def __str__(self):
         return f"Collecte {self.scheduled_date} - {self.subscription}"
     
+# signal pour creer un programme de collecte automatiquement après la création d'un abonnement
+
+
+# SIGNAL POUR SUPPRIMER LES PROGRAMMES DE COLLECTES LIÉS AUX ABONNEMENTS INACTIFS
+@receiver(post_save, sender=Subscription)
+def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs):
+    """
+    Signal pour supprimer automatiquement les programmes de collecte
+    lorsqu'un abonnement devient inactif
+    """
+    # Vérifier si le statut de l'abonnement n'est pas 'active'
+    if instance.status != 'active':
+        
+
+        CollectionSchedule.objects.filter(
+            subscription=instance,
+        ).delete()
+        
+        # Créer une notification pour informer l'utilisateur
+        if instance.user:
+            Notification.create_notification(
+                user=instance.user,
+                title="Abonnement désactivé",
+                message=f"Votre abonnement {instance.plan.name} a été désactivé. Les collectes programmées ont été annulées.",
+                notification_type='warning',
+                related_object=instance,
+                action_url=f'/subscriptions/{instance.id}/'
+            )
+    
+    if instance.status == 'active':
+       from .views import generate_collection_schedule
+
+       #generation automatique du qr code de paiement après réabonnement
+       qr_code, created = SubscriptionQRCode.objects.get_or_create(subscription=instance)
+       # Générer l'image QR code si elle n'existe pas
+       if not qr_code.qr_code_image:
+        # Générer le QR code
+            qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        
+            renewal_url = qr_code.get_renewal_url()
+            qr.add_data(renewal_url)
+            qr.make(fit=True)
+        
+        # Créer l'image
+            img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Sauvegarder l'image
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+        
+        # Sauvegarder dans le modèle
+            filename = f"subscription_{instance.id}_qr.png"
+            qr_code.qr_code_image.save(filename, buffer, save=True)
+
+
+
+       if CollectionSchedule.objects.filter(subscription=instance).count() == 0:
+            instance.assigner_jours_collecte_automatique()
+            generate_collection_schedule(instance)
+
+            
+
+
+
+
+
+
 
 
 
@@ -459,8 +536,7 @@ def creer_programme_collecte_automatique(subscription):
     return subscription.assigner_jours_collecte_automatique()
 
 # Signal pour assigner automatiquement les jours de collecte après la création d'un abonnement
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+
 
 @receiver(post_save, sender=Subscription)
 def assigner_jours_collecte(sender, instance, created, **kwargs):

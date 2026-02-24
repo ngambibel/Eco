@@ -1207,7 +1207,7 @@ def process_qr_renewal_payment(request, qr_code):
             'error': f"Une erreur technique est survenue: {str(e)}"
         })
 
-@csrf_exempt  # Ajoutez ce décorateur pour éviter les problèmes CSRF
+@csrf_exempt  
 @require_http_methods(["POST"])
 def check_qr_renewal_status(request):
     """Vérifier le statut d'un réabonnement QR code (AJAX)"""

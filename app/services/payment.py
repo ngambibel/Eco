@@ -83,9 +83,9 @@ class PaymentService:
                 "external_reference": reference,
             })
             # creer une entree de paiement dans la base de donnee
-            subscription= Subscription.objects.filter(user=user).first()    
+            subscription= Subscription.objects.filter(user=user).first() if Subscription.objects.filter(user=user).exists() else None
             payment_record = Payment.objects.create(
-                subcription=subscription,
+                subscription=subscription,
                 amount=amount,
                 status='pending',
                 payment_method=service_name,
@@ -202,24 +202,28 @@ class PaymentService:
         try:
             # La méthode correcte dans la SDK est get_transaction_status avec un dictionnaire
             response = self.client.get_transaction_status({"reference": reference})
-            
+        
             logger.info(f"Campay status check for {reference}: {response}")
-            payment_record= Payment.objects.filter(transaction_id=reference).first()
-            if payment_record:
-                payment_record.status = 'completed' if response.get('status') == 'SUCCESSFUL' else 'failed'
-                payment_record.save()
-
+        
+            # Correction: Vérifier d'abord si le payment_record existe
+            payment_record = Payment.objects.filter(transaction_id=reference).first()
             
-            return {
-                'success': True,
-                'status': response.get('status'),
-                'message': response.get('message', ''),
-                'data': response
+            if response.get('status') == 'SUCCESSFUL':
+            # Mettre à jour le statut
+                
+        
+            
+                return {
+            'success': True,
+            'status': response.get('status'),
+            'message': response.get('message', ''),
+            'data': response
             }
+
         except Exception as e:
             logger.error(f"Failed to check transaction status for {reference}: {str(e)}")
             return {
-                'success': False,
-                'status': 'error',
-                'message': str(e)
-            }
+            'success': False,
+            'status': 'error',
+            'message': str(e)
+        }
