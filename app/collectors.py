@@ -118,8 +118,11 @@ def collector_dashboard(request):
     ).order_by('scheduled_time')
     
     # calcul de la performence journaliere du conducteur
-    dif = len(total_collections)/len(completed_collections) 
-    performance_rating= 5*dif 
+    if len(total_collections) > 0:
+        dif = len(total_collections)/len(completed_collections) if len(completed_collections) > 0 else 0
+        performance_rating= 5*dif 
+    else:
+        performance_rating = 0
 
     # modifier la note de la performance
     performance.note=performance_rating 
@@ -238,6 +241,282 @@ def daily_schedule(request):
     }
     
     return render(request, 'collectors/daily_schedule.html', context)
+
+
+
+# api de calcul de distance entre le collecteur et le client pour la collecte efficasse
+import json
+import requests
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from geopy.distance import geodesic
+from math import radians, sin, cos, sqrt, atan2
+
+@login_required(login_url='login')
+@collector_required
+@require_GET
+def get_sorted_collections_by_distance(request):
+    """
+    API endpoint qui retourne les collectes triées par distance 
+    par rapport à la position actuelle du collecteur
+    """
+    # Récupérer la latitude et longitude de l'utilisateur depuis la requête
+    user_lat = request.GET.get('lat')
+    user_lon = request.GET.get('lon')
+    
+    # Récupérer la date (aujourd'hui par défaut)
+    date_str = request.GET.get('date')
+    if date_str:
+        try:
+            current_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            current_date = timezone.now().date()
+    else:
+        current_date = timezone.now().date()
+    
+    if not user_lat or not user_lon:
+        return JsonResponse({
+            'success': False,
+            'error': 'Position de l\'utilisateur non fournie'
+        }, status=400)
+    
+    try:
+        user_lat = float(user_lat)
+        user_lon = float(user_lon)
+        
+        # Récupérer le tricycle du collecteur
+        try:
+            tricycle = Tricycle.objects.get(conducteur=request.user)
+        except Tricycle.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Aucun tricycle assigné'
+            }, status=404)
+        
+        # Récupérer les programmes de collecte
+        programmes = ProgrammeTricycle.objects.filter(tricycle=tricycle)
+        zones = Zone.objects.filter(programmes_tricycle__in=programmes).distinct()
+        
+        # Récupérer les abonnements actifs
+        active_subscriptions = Subscription.objects.filter(
+            zone__in=zones,
+            status='active'
+        ).distinct()
+        
+        # Récupérer les collectes du jour
+        collections = CollectionSchedule.objects.filter(
+            subscription__in=active_subscriptions,
+            scheduled_date=current_date,
+            status__in=['scheduled', 'pending']
+        ).select_related(
+            'subscription__user',
+            'subscription__address',
+            'subscription__plan'
+        )
+        
+        # Préparer les données avec calcul des distances
+        collections_with_distance = []
+        
+        for collection in collections:
+            address = collection.subscription.address
+            
+            # Si l'adresse n'a pas de coordonnées, essayer de les géocoder
+            if not address.latitude or not address.longitude:
+                lat, lon = geocode_address(address)
+                if lat and lon:
+                    address.latitude = lat
+                    address.longitude = lon
+                    address.save()
+            
+            # Calculer la distance si les coordonnées sont disponibles
+            if address.latitude and address.longitude:
+                # Calculer la distance en kilomètres
+                distance = calculate_distance(
+                    user_lat, user_lon,
+                    float(address.latitude), float(address.longitude)
+                )
+                
+                # Optionnel: utiliser OSRM pour un calcul plus précis (temps de trajet)
+                route_info = get_route_info_osrm(
+                    user_lat, user_lon,
+                    float(address.latitude), float(address.longitude)
+                )
+                
+                collections_with_distance.append({
+                    'id': str(collection.id),
+                    'subscription_id': str(collection.subscription.id),
+                    'client_name': collection.subscription.user.get_full_name() or collection.subscription.user.username,
+                    'client_phone': str(collection.subscription.user.phone) if collection.subscription.user.phone else '',
+                    'address': {
+                        'street': address.street,
+                        'city': address.city,
+                        'postal_code': address.postal_code,
+                        'latitude': float(address.latitude),
+                        'longitude': float(address.longitude),
+                    },
+                    'plan_name': collection.subscription.plan.name,
+                    'scheduled_time': collection.scheduled_time.strftime('%H:%M'),
+                    'scheduled_date': collection.scheduled_date.strftime('%Y-%m-%d'),
+                    'status': collection.status,
+                    'status_display': collection.get_status_display(),
+                    'distance_km': round(distance, 2),
+                    'distance_text': format_distance(distance),
+                    'duration_text': route_info.get('duration_text', 'N/A'),
+                    'route_distance_text': route_info.get('distance_text', 'N/A'),
+                    'special_instructions': collection.subscription.special_instructions,
+                    'zone_name': collection.subscription.zone.nom if collection.subscription.zone else 'N/A',
+                })
+        
+        # Trier par distance (plus proche au plus éloigné)
+        collections_with_distance.sort(key=lambda x: x['distance_km'])
+        
+        # Ajouter le rang
+        for idx, item in enumerate(collections_with_distance, 1):
+            item['rank'] = idx
+        
+        # Statistiques
+        stats = {
+            'total': len(collections_with_distance),
+            'closest': collections_with_distance[0]['client_name'] if collections_with_distance else None,
+            'closest_distance': collections_with_distance[0]['distance_km'] if collections_with_distance else None,
+            'farthest': collections_with_distance[-1]['client_name'] if collections_with_distance else None,
+            'farthest_distance': collections_with_distance[-1]['distance_km'] if collections_with_distance else None,
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'collections': collections_with_distance,
+            'stats': stats,
+            'user_position': {
+                'lat': user_lat,
+                'lon': user_lon
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+def geocode_address(address):
+    """
+    Géocoder une adresse avec Nominatim (OpenStreetMap)
+    """
+    try:
+        # Construire l'adresse complète
+        full_address = f"{address.street}, {address.postal_code} {address.city}, {address.country}"
+        
+        # Appel à l'API Nominatim
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            'q': full_address,
+            'format': 'json',
+            'limit': 1
+        }
+        
+        # Important: ajouter un User-Agent pour respecter les conditions d'utilisation
+        headers = {
+            'User-Agent': 'WasteCollectionApp/1.0'
+        }
+        
+        response = requests.get(url, params=params, headers=headers)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                lat = float(data[0]['lat'])
+                lon = float(data[0]['lon'])
+                return lat, lon
+    except Exception as e:
+        print(f"Erreur de géocodage: {e}")
+    
+    return None, None
+
+def get_route_info_osrm(lat1, lon1, lat2, lon2):
+    """
+    Obtenir des informations de routage avec OSRM
+    """
+    try:
+        # Utiliser le serveur OSRM public
+        url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}"
+        params = {
+            'overview': 'false',
+            'alternatives': 'false',
+            'steps': 'false'
+        }
+        
+        response = requests.get(url, params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data['code'] == 'Ok' and data['routes']:
+                route = data['routes'][0]
+                duration = route['duration']  # en secondes
+                distance = route['distance']  # en mètres
+                
+                return {
+                    'duration': duration,
+                    'duration_text': format_duration(duration),
+                    'distance': distance,
+                    'distance_text': format_distance(distance / 1000)  # convertir en km
+                }
+    except Exception as e:
+        print(f"Erreur OSRM: {e}")
+    
+    return {
+        'duration': None,
+        'duration_text': 'N/A',
+        'distance': None,
+        'distance_text': 'N/A'
+    }
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculer la distance entre deux points (formule de Haversine)
+    """
+    R = 6371  # Rayon de la Terre en kilomètres
+    
+    lat1_rad = radians(lat1)
+    lat2_rad = radians(lat2)
+    delta_lat = radians(lat2 - lat1)
+    delta_lon = radians(lon2 - lon1)
+    
+    a = sin(delta_lat/2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(delta_lon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    
+    return R * c
+
+def format_distance(km):
+    """
+    Formater la distance de manière lisible
+    """
+    if km < 1:
+        return f"{int(km * 1000)} m"
+    elif km < 10:
+        return f"{km:.1f} km"
+    else:
+        return f"{int(km)} km"
+
+def format_duration(seconds):
+    """
+    Formater la durée de manière lisible
+    """
+    if seconds < 60:
+        return f"{int(seconds)} sec"
+    elif seconds < 3600:
+        minutes = int(seconds / 60)
+        return f"{minutes} min"
+    else:
+        hours = int(seconds / 3600)
+        minutes = int((seconds % 3600) / 60)
+        return f"{hours}h{minutes:02d}"
+
+
+
+
+
 
 @login_required(login_url='login')
 @collector_required
@@ -365,7 +644,7 @@ def complete_collection(request):
         'collection': collection,
     }
     
-    return render(request, 'collectors/complete_collection.html', context)
+    return render(request, 'collectors/daily_schedule.html', context)
 
 @login_required(login_url='login')
 @collector_required
@@ -376,9 +655,16 @@ def collection_details(request):
         CollectionSchedule, 
         id=collection_id, 
     )
+
+    # recuperer l'adresse du client
+    sub = collection.subscription
+    adress = sub.address
+
+
     
     context = {
         'collection': collection,
+        'address': adress,
     }
     
     return render(request, 'collectors/collection_details.html', context)

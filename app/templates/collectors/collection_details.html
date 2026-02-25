@@ -459,10 +459,11 @@
                         <i class="fas fa-phone me-2"></i>Appeler le client
                     </a>
 
-                    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#directionsModal">
-                        <i class="fas fa-directions me-2"></i>Itinéraire
-                    </button>
-
+                    
+                    <a href="{{ address.lien }}" target="_blank" class="btn btn-outline-info">
+                        <i class="fas fa-map-marked-alt me-2"></i>itinéraire vers le client
+                    </a>
+ 
                     {% if collection.status != 'completed' and collection.status != 'cancelled' %}
                     <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reportModal">
                         <i class="fas fa-flag me-2"></i>Signaler un problème

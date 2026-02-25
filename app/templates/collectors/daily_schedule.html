@@ -3,6 +3,147 @@
 
 {% block title %}Programme du jour - Collecteur{% endblock %}
 
+{% block extra_css %}
+<style>
+    .distance-badge {
+        background-color: #28a745;
+        color: white;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .distance-badge.far {
+        background-color: #dc3545;
+    }
+    
+    .distance-badge.medium {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .sort-controls {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .position-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #e7f3ff;
+        border-radius: 30px;
+        font-size: 0.9rem;
+    }
+    
+    .position-indicator .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #28a745;
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #007bff;
+        color: white;
+        font-size: 0.8rem;
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    
+    .route-info {
+        font-size: 0.8rem;
+        color: #6c757d;
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.25rem;
+    }
+    
+    .filter-panel {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .collection-item {
+        transition: background-color 0.2s;
+    }
+    
+    .collection-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .collection-item.highlight {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+
+    .badge-status-scheduled {
+        background-color: #ffc107;
+        color: #212529;
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .badge-status-completed {
+        background-color: #28a745;
+        color: white;
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .badge-status-in_progress {
+        background-color: #007bff;
+        color: white;
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .badge-status-pending {
+        background-color: #6c757d;
+        color: white;
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .stats-card {
+        border-left: 4px solid #007bff;
+        transition: transform 0.2s;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
     <h1 class="h2">Programme de collecte du jour</h1>
@@ -22,86 +163,201 @@
     </div>
 </div>
 
+<!-- Indicateur de position -->
+<div id="position-indicator" class="position-indicator mb-3" style="display: none;">
+    <span class="dot"></span>
+    <span>Position mise à jour <span id="position-time">à l'instant</span></span>
+    <small class="text-muted" id="position-accuracy"></small>
+</div>
+
+<!-- Panneau de contrôle du tri par distance -->
+<div class="sort-controls">
+    <div class="row align-items-center">
+        <div class="col-md-4">
+            <h6 class="mb-2"><i class="fas fa-sort-amount-down-alt me-2"></i>Tri par distance</h6>
+            <div class="d-flex align-items-center">
+                <span class="badge bg-primary me-2" id="total-collections">{{ collections|length }}</span>
+                <span class="text-muted">collectes triées par proximité</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="filter-panel">
+                <h6 class="mb-2"><i class="fas fa-filter me-2"></i>Filtres</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small">Distance max (km)</label>
+                        <select class="form-select form-select-sm" id="max-distance-filter">
+                            <option value="">Toutes</option>
+                            <option value="1">≤ 1 km</option>
+                            <option value="2">≤ 2 km</option>
+                            <option value="5">≤ 5 km</option>
+                            <option value="10">≤ 10 km</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Options</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="hide-completed">
+                            <label class="form-check-label small" for="hide-completed">
+                                Cacher terminées
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex gap-2 justify-content-end">
+                <button class="btn btn-sm btn-outline-primary" id="goto-nearest">
+                    <i class="fas fa-location-arrow me-1"></i>Plus proche
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">
+                    <i class="fas fa-sync-alt me-1"></i>Rafraîchir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistiques avancées -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card card-custom stats-card">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Total collectes</h6>
+                <h3 id="daily-total">{{ daily_stats.total }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom stats-card" style="border-left-color: #28a745;">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Plus proche</h6>
+                <div id="closest-collection">
+                    <span class="text-muted">En attente de géolocalisation...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom stats-card" style="border-left-color: #dc3545;">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Plus éloigné</h6>
+                <div id="farthest-collection">
+                    <span class="text-muted">En attente de géolocalisation...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom stats-card" style="border-left-color: #17a2b8;">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Estimation trajet</h6>
+                <div>
+                    <span id="total-route-distance">-</span>
+                    <small class="text-muted d-block" id="estimated-time">-</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-4">
     <div class="col-md-8">
         <div class="card card-custom">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-list-ol text-primary me-2"></i>
-                    Liste des collectes
+                    Liste des collectes triées par distance
                 </h5>
-                <span class="badge bg-primary">{{ collections|length }} collecte(s)</span>
+                <span class="badge bg-primary" id="collections-count">{{ collections|length }}</span>
             </div>
             <div class="card-body">
-                {% if collections %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="collections-table">
                         <thead>
                             <tr>
-                                <th>Heure</th>
+                                <th>Heure/Rang</th>
                                 <th>Client</th>
                                 <th>Adresse</th>
+                                <th>Distance</th>
                                 <th>Statut</th>
                                 <th>Actions</th>
-                                <th>details</th>
+                                <th>Détails</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for collection in collections %}
-                            <tr>
+                            <tr class="collection-item" data-id="{{ collection.id }}" data-distance="0">
                                 <td>
-                                    <strong>{{ collection.scheduled_time|time:"H:i" }}</strong>
+                                    <div class="d-flex align-items-center">
+                                        <span class="rank-badge">{{ forloop.counter }}</span>
+                                        <strong>{{ collection.scheduled_time|time:"H:i" }}</strong>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="fw-bold">{{ collection.subscription.user.get_full_name|default:collection.subscription.user.username }}</div>
-                                    <small class="text-muted">{{ collection.subscription.plan.name }}</small>
+                                    <small class="text-muted">
+                                        <i class="fas fa-phone-alt me-1"></i>{{ collection.subscription.user.phone|default:"-" }}
+                                    </small>
+                                    <div class="route-info">
+                                        <span><i class="fas fa-box me-1"></i>{{ collection.subscription.plan.name }}</span>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="text-truncate" style="max-width: 200px;">
+                                        <i class="fas fa-map-pin me-1 text-danger"></i>
                                         {{ collection.subscription.address.street }}
                                     </div>
                                     <small class="text-muted">{{ collection.subscription.address.city }}</small>
+                                    <div class="route-info">
+                                        <span><i class="fas fa-clock me-1"></i>Calcul en cours...</span>
+                                    </div>
                                 </td>
                                 <td>
-                                    <span class="badge badge-status-{{ collection.status }}" style="color: blue;">
+                                    <div class="distance-badge" title="Calcul de distance en cours...">
+                                        <i class="fas fa-route me-1"></i>
+                                        Calcul...
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-status-{{ collection.status }}">
                                         {{ collection.get_status_display }}
                                     </span>
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        
                                         {% if collection.status == 'pending' or collection.status == 'scheduled' %}
                                         <a href="" class="btn btn-sm btn-success">
-                                            <i class="fas fa-check me-1"></i> 
+                                            
                                         </a>
                                         {% else %}
-
                                         <button class="btn btn-sm btn-secondary" disabled>
-                                            <i class="fas fa-check me-1"></i>effectués  
+                                            <i class="fas fa-check me-1"></i>Effectuée
+                                        </button>
                                         {% endif %}
-
                                     </div>
                                 </td>
                                 <td>
-                                    <form action="{% url 'collection_details' %}" method="get">
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" value="{{collection.id}}" name="collection_id">
+                                    <form action="{% url 'collection_details' %}" method="get" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-success" value="{{ collection.id }}" name="collection_id">
                                             <i class="fas fa-eye me-1"></i>Détails
                                         </button>
                                     </form>
-                                    
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                    <h4 class="text-muted">Aucune collecte programmée</h4>
+                                    <p class="text-muted">Il n'y a pas de collecte prévue pour cette date.</p>
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                    <h4 class="text-muted">Aucune collecte programmée</h4>
-                    <p class="text-muted">Il n'y a pas de collecte prévue pour cette date.</p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -118,23 +374,32 @@
             <div class="card-body">
                 <div class="mb-3">
                     <strong>Total des collectes:</strong>
-                    <span class="float-end fw-bold">{{ daily_stats.total }}</span>
+                    <span class="float-end fw-bold" id="stat-total">{{ daily_stats.total }}</span>
                 </div>
                 <div class="mb-3">
                     <strong>Terminées:</strong>
-                    <span class="float-end text-success">{{ daily_stats.completed }}</span>
+                    <span class="float-end text-success" id="stat-completed">{{ daily_stats.completed }}</span>
                 </div>
                 <div class="mb-3">
                     <strong>En cours:</strong>
-                    <span class="float-end text-primary">{{ daily_stats.in_progress }}</span>
+                    <span class="float-end text-primary" id="stat-in-progress">{{ daily_stats.in_progress }}</span>
                 </div>
                 <div class="mb-3">
                     <strong>En attente:</strong>
-                    <span class="float-end text-warning">{{ daily_stats.pending }}</span>
+                    <span class="float-end text-warning" id="stat-pending">{{ daily_stats.pending }}</span>
                 </div>
                 <div class="mb-3">
                     <strong>Taux d'accomplissement:</strong>
                     <span class="float-end fw-bold text-primary">{{ daily_stats.completion_rate }}%</span>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <strong>Distance totale estimée:</strong>
+                    <span class="float-end fw-bold" id="stat-total-distance">-</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Temps total estimé:</strong>
+                    <span class="float-end fw-bold" id="stat-total-time">-</span>
                 </div>
             </div>
         </div>
@@ -156,7 +421,7 @@
                             <h6 class="mb-1">{{ zone.nom }}</h6>
                             <small class="text-muted">{{ zone.ville }}</small>
                         </div>
-                        <span class="badge bg-info">{{ zone.collection_count }}</span>
+                        <span class="badge bg-info">{{ zone.collection_count|default:"0" }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -196,4 +461,575 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CollectionDistanceSorter Class
+class CollectionDistanceSorter {
+    constructor(options = {}) {
+        this.apiUrl = options.apiUrl || '/api/collections/by-distance/';
+        this.updateInterval = options.updateInterval || 30000; // 30 secondes
+        this.watchPosition = options.watchPosition !== false;
+        this.watchId = null;
+        this.currentPosition = null;
+        this.collections = [];
+        this.filters = {
+            maxDistance: options.maxDistance || null,
+            hideCompleted: options.hideCompleted || false,
+        };
+        
+        // Callbacks
+        this.onUpdate = options.onUpdate || function() {};
+        this.onError = options.onError || function() {};
+        this.onPositionChange = options.onPositionChange || function() {};
+        
+        this.init();
+    }
+    
+    init() {
+        // Démarrer le suivi de position
+        this.startPositionTracking();
+        
+        // Charger les collectes initiales
+        this.loadCollections();
+        
+        // Mettre à jour périodiquement
+        if (this.updateInterval > 0) {
+            setInterval(() => this.loadCollections(), this.updateInterval);
+        }
+    }
+    
+    startPositionTracking() {
+        if (!navigator.geolocation) {
+            this.onError({
+                type: 'geolocation',
+                message: 'La géolocalisation n\'est pas supportée par votre navigateur'
+            });
+            return;
+        }
+        
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+        
+        const success = (position) => {
+            const newPosition = {
+                lat: position.coords.latitude,
+                lon: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                timestamp: position.timestamp
+            };
+            
+            // Vérifier si la position a significativement changé
+            if (this.hasPositionChanged(newPosition)) {
+                this.currentPosition = newPosition;
+                this.onPositionChange(newPosition);
+                this.loadCollections(); // Recharger avec la nouvelle position
+            }
+        };
+        
+        const error = (err) => {
+            let message = 'Erreur de géolocalisation';
+            switch(err.code) {
+                case err.PERMISSION_DENIED:
+                    message = 'Permission de géolocalisation refusée';
+                    break;
+                case err.POSITION_UNAVAILABLE:
+                    message = 'Position non disponible';
+                    break;
+                case err.TIMEOUT:
+                    message = 'Délai de géolocalisation dépassé';
+                    break;
+            }
+            
+            this.onError({
+                type: 'geolocation',
+                code: err.code,
+                message: message
+            });
+        };
+        
+        this.watchId = navigator.geolocation.watchPosition(success, error, options);
+    }
+    
+    hasPositionChanged(newPosition) {
+        if (!this.currentPosition) return true;
+        
+        // Considérer un changement significatif si plus de 50 mètres
+        const distance = this.calculateDistance(
+            this.currentPosition.lat, this.currentPosition.lon,
+            newPosition.lat, newPosition.lon
+        );
+        
+        return distance > 0.05; // 50 mètres
+    }
+    
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Rayon de la Terre en km
+        const dLat = this.toRad(lat2 - lat1);
+        const dLon = this.toRad(lon2 - lon1);
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+    
+    toRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+    
+    async loadCollections() {
+        if (!this.currentPosition) {
+            console.log('Position non disponible, chargement différé...');
+            return;
+        }
+        
+        // Construire l'URL avec les paramètres
+        const url = new URL(this.apiUrl, window.location.origin);
+        url.searchParams.append('lat', this.currentPosition.lat);
+        url.searchParams.append('lon', this.currentPosition.lon);
+        
+        // Ajouter la date si présente dans l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const date = urlParams.get('date');
+        if (date) {
+            url.searchParams.append('date', date);
+        }
+        
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.collections = data.collections;
+                this.applyFilters();
+                this.onUpdate({
+                    collections: this.filteredCollections || this.collections,
+                    stats: data.stats,
+                    userPosition: data.user_position,
+                    raw: data
+                });
+            } else {
+                this.onError({
+                    type: 'api',
+                    message: data.error || 'Erreur lors du chargement des collectes'
+                });
+            }
+        } catch (error) {
+            this.onError({
+                type: 'network',
+                message: error.message || 'Erreur réseau'
+            });
+        }
+    }
+    
+    setFilter(key, value) {
+        this.filters[key] = value;
+        this.applyFilters();
+    }
+    
+    applyFilters() {
+        let filtered = [...this.collections];
+        
+        // Filtre par distance maximale
+        if (this.filters.maxDistance) {
+            filtered = filtered.filter(c => c.distance_km <= this.filters.maxDistance);
+        }
+        
+        // Filtre pour cacher les collectes terminées
+        if (this.filters.hideCompleted) {
+            filtered = filtered.filter(c => c.status !== 'completed');
+        }
+        
+        this.filteredCollections = filtered;
+        
+        // Mettre à jour l'affichage via le callback
+        this.onUpdate({
+            collections: filtered,
+            allCollections: this.collections,
+            filters: this.filters
+        });
+    }
+    
+    stop() {
+        if (this.watchId) {
+            navigator.geolocation.clearWatch(this.watchId);
+        }
+    }
+    
+    getNearestCollection() {
+        if (!this.collections || this.collections.length === 0) return null;
+        return this.collections[0];
+    }
+    
+    getFarthestCollection() {
+        if (!this.collections || this.collections.length === 0) return null;
+        return this.collections[this.collections.length - 1];
+    }
+    
+    getCollectionsByZone(zoneName) {
+        return this.collections.filter(c => c.zone_name === zoneName);
+    }
+    
+    getTotalDistance() {
+        if (!this.collections || this.collections.length < 2) return 0;
+        
+        let totalDistance = 0;
+        let previous = this.collections[0];
+        
+        for (let i = 1; i < this.collections.length; i++) {
+            const current = this.collections[i];
+            totalDistance += this.calculateDistance(
+                previous.address.latitude, previous.address.longitude,
+                current.address.latitude, current.address.longitude
+            );
+            previous = current;
+        }
+        
+        return totalDistance;
+    }
+    
+    estimateTotalTime() {
+        if (!this.collections || this.collections.length === 0) return 0;
+        
+        // Estimation: 5 minutes par collecte + temps de trajet
+        const timePerCollection = 5 * 60; // 5 minutes en secondes
+        let totalTime = this.collections.length * timePerCollection;
+        
+        // Ajouter le temps de trajet entre les collectes (30 secondes par km en moyenne)
+        if (this.collections.length > 1) {
+            for (let i = 0; i < this.collections.length - 1; i++) {
+                const current = this.collections[i];
+                const next = this.collections[i + 1];
+                const travelTime = next.distance_km * 30 * 60; // en secondes
+                totalTime += travelTime;
+            }
+        }
+        
+        return totalTime;
+    }
+}
+
+// Initialisation quand le document est chargé
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser le trieur
+    window.sorter = new CollectionDistanceSorter({
+        apiUrl: '/api/collections/by-distance/',
+        updateInterval: 30000, // 30 secondes
+        maxDistance: null,
+        hideCompleted: false,
+        onUpdate: function(data) {
+            updateCollectionsTable(data.collections, data.stats);
+            updateStats(data.stats);
+        },
+        onError: function(error) {
+            showError(error.message);
+        },
+        onPositionChange: function(position) {
+            updatePositionIndicator(position);
+        }
+    });
+    
+    // Fonction pour mettre à jour le tableau des collectes
+    function updateCollectionsTable(collections, stats) {
+        const tbody = document.querySelector('#collections-table tbody');
+        const totalElement = document.getElementById('collections-count');
+        
+        if (!tbody) return;
+        
+        if (collections.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4">
+                        <i class="fas fa-map-marker-alt fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">Aucune collecte à afficher</p>
+                    </td>
+                </tr>
+            `;
+            if (totalElement) totalElement.textContent = '0';
+            return;
+        }
+        
+        // Générer le HTML pour chaque collecte
+        let html = '';
+        collections.forEach((collection, index) => {
+            // Déterminer la classe de distance
+            let distanceClass = '';
+            if (collection.distance_km < 2) distanceClass = '';
+            else if (collection.distance_km < 5) distanceClass = 'medium';
+            else distanceClass = 'far';
+            
+            // Générer le statut badge
+            let statusClass = '';
+            if (collection.status === 'completed') statusClass = 'success';
+            else if (collection.status === 'in_progress') statusClass = 'primary';
+            else if (collection.status === 'pending' || collection.status === 'scheduled') statusClass = 'warning';
+            else statusClass = 'secondary';
+            
+            html += `
+                <tr class="collection-item" data-id="${collection.id}" data-distance="${collection.distance_km}">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="rank-badge">${collection.rank}</span>
+                            <strong>${collection.scheduled_time}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fw-bold">${collection.client_name}</div>
+                        <small class="text-muted">
+                            <i class="fas fa-phone-alt me-1"></i>${collection.client_phone || '-'}
+                        </small>
+                        <div class="route-info">
+                            <span><i class="fas fa-box me-1"></i>${collection.plan_name}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 200px;">
+                            <i class="fas fa-map-pin me-1 text-danger"></i>
+                            ${collection.address.street}
+                        </div>
+                        <small class="text-muted">${collection.address.city}</small>
+                        <div class="route-info">
+                            <span><i class="fas fa-clock me-1"></i>${collection.duration_text}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="distance-badge ${distanceClass}" title="Distance à vol d'oiseau">
+                            <i class="fas fa-route me-1"></i>
+                            ${collection.distance_text}
+                        </div>
+                        ${collection.route_distance_text !== 'N/A' ? `
+                            <div class="route-info">
+                                <i class="fas fa-road me-1"></i>par route: ${collection.route_distance_text}
+                            </div>
+                        ` : ''}
+                    </td>
+                    <td>
+                        <span class="badge badge-status-${collection.status}">
+                            ${collection.status_display}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            ${collection.status === 'pending' || collection.status === 'scheduled' ? `
+                                <button class="btn btn-sm btn-success" >
+                                    <i class="fas fa-play me-1"></i> Démarrer
+                                </button>
+                            ` : `
+                                <button class="btn btn-sm btn-secondary" disabled>
+                                    <i class="fas fa-check me-1"></i>Effectuée
+                                </button>
+                            `}
+                        </div>
+                    </td>
+                    <td>
+                        <form action="{% url 'collection_details' %}" method="get" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" value="${collection.id}" name="collection_id">
+                                <i class="fas fa-eye me-1"></i>Détails
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        
+        // Mettre à jour les compteurs
+        if (totalElement) totalElement.textContent = collections.length;
+        document.getElementById('stat-total').textContent = collections.length;
+    }
+    
+    // Mettre à jour l'indicateur de position
+    function updatePositionIndicator(position) {
+        const indicator = document.getElementById('position-indicator');
+        indicator.style.display = 'flex';
+        
+        // Mettre à jour l'heure
+        const timeElement = document.getElementById('position-time');
+        if (timeElement) {
+            const seconds = Math.floor((Date.now() - position.timestamp) / 1000);
+            if (seconds < 60) {
+                timeElement.textContent = `il y a ${seconds} secondes`;
+            } else {
+                timeElement.textContent = `il y a ${Math.floor(seconds / 60)} minutes`;
+            }
+        }
+        
+        const accuracyElement = document.getElementById('position-accuracy');
+        if (accuracyElement) {
+            accuracyElement.textContent = `(précision: ±${position.accuracy.toFixed(0)}m)`;
+        }
+    }
+    
+    // Mettre à jour les statistiques
+    function updateStats(stats) {
+        // Mettre à jour les statistiques du jour
+        const totalElement = document.getElementById('daily-total');
+        const closestElement = document.getElementById('closest-collection');
+        const farthestElement = document.getElementById('farthest-collection');
+        const totalDistanceElement = document.getElementById('total-route-distance');
+        const totalTimeElement = document.getElementById('estimated-time');
+        const statTotalDistance = document.getElementById('stat-total-distance');
+        const statTotalTime = document.getElementById('stat-total-time');
+        
+        if (totalElement) totalElement.textContent = stats.total || 0;
+        
+        if (closestElement && stats.closest) {
+            closestElement.innerHTML = `
+                <strong>${stats.closest}</strong>
+                <br>
+                <small class="text-muted">à ${stats.closest_distance} km</small>
+            `;
+        }
+        
+        if (farthestElement && stats.farthest) {
+            farthestElement.innerHTML = `
+                <strong>${stats.farthest}</strong>
+                <br>
+                <small class="text-muted">à ${stats.farthest_distance} km</small>
+            `;
+        }
+        
+        // Calculer la distance totale estimée
+        if (window.sorter && window.sorter.collections && window.sorter.collections.length > 1) {
+            const totalDistance = window.sorter.getTotalDistance();
+            const totalTime = window.sorter.estimateTotalTime();
+            
+            if (totalDistanceElement) {
+                totalDistanceElement.textContent = formatDistance(totalDistance);
+            }
+            
+            if (statTotalDistance) {
+                statTotalDistance.textContent = formatDistance(totalDistance);
+            }
+            
+            if (totalTimeElement) {
+                const hours = Math.floor(totalTime / 3600);
+                const minutes = Math.floor((totalTime % 3600) / 60);
+                totalTimeElement.textContent = `${hours}h${minutes.toString().padStart(2, '0')}`;
+            }
+            
+            if (statTotalTime) {
+                const hours = Math.floor(totalTime / 3600);
+                const minutes = Math.floor((totalTime % 3600) / 60);
+                statTotalTime.textContent = `${hours}h${minutes.toString().padStart(2, '0')}`;
+            }
+        }
+    }
+    
+    // Gestionnaire de filtres
+    document.getElementById('max-distance-filter')?.addEventListener('change', function(e) {
+        const value = e.target.value ? parseFloat(e.target.value) : null;
+        window.sorter.setFilter('maxDistance', value);
+    });
+    
+    document.getElementById('hide-completed')?.addEventListener('change', function(e) {
+        window.sorter.setFilter('hideCompleted', e.target.checked);
+    });
+    
+    // Bouton pour centrer sur la collecte la plus proche
+    document.getElementById('goto-nearest')?.addEventListener('click', function() {
+        const nearest = window.sorter.getNearestCollection();
+        if (nearest) {
+            highlightCollection(nearest.id);
+            openDirections(nearest.address.latitude, nearest.address.longitude);
+        }
+    });
+    
+    // Fonction pour ouvrir les directions
+    window.openDirections = function(lat, lon) {
+        if (window.sorter && window.sorter.currentPosition) {
+            const url = `https://www.openstreetmap.org/directions?engine=graphhopper_foot&route=${window.sorter.currentPosition.lat},${window.sorter.currentPosition.lon};${lat},${lon}`;
+            window.open(url, '_blank');
+        }
+    };
+    
+    // Fonction pour démarrer une collecte
+    window.startCollection = function(collectionId) {
+        if (confirm('Démarrer cette collecte ?')) {
+            // Rediriger vers la page de détails avec action de démarrage
+            window.location.href = `/collectors/collection-details/?collection_id=${collectionId}&start=true`;
+        }
+    };
+    
+    // Fonction pour mettre en surbrillance une collecte
+    function highlightCollection(collectionId) {
+        document.querySelectorAll('.collection-item').forEach(el => {
+            el.classList.remove('highlight');
+            if (el.dataset.id === collectionId) {
+                el.classList.add('highlight');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
+    
+    // Fonction pour afficher les erreurs
+    function showError(message) {
+        // Créer une notification toast
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-danger border-0 position-fixed bottom-0 end-0 m-3';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Initialiser et afficher le toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Supprimer après fermeture
+        setTimeout(() => {
+            toast.remove();
+        }, 5000);
+    }
+    
+    // Fonction utilitaire pour formater la distance
+    function formatDistance(km) {
+        if (km < 1) {
+            return `${Math.round(km * 1000)} m`;
+        } else if (km < 10) {
+            return `${km.toFixed(1)} km`;
+        } else {
+            return `${Math.round(km)} km`;
+        }
+    }
+    
+    // Initialiser les statistiques avec les données du template
+    updateStats({
+        total: '{{ daily_stats.total|default:"0" }}',
+        completed: '{{ daily_stats.completed|default:"0" }}',
+        in_progress: '{{ daily_stats.in_progress|default:"0" }}',
+        pending: '{{ daily_stats.pending|default:"0" }}'
+    });
+});
+
+// Nettoyage lors de la déconnexion
+window.addEventListener('beforeunload', function() {
+    if (window.sorter) {
+        window.sorter.stop();
+    }
+});
+</script>
 {% endblock %}

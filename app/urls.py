@@ -151,6 +151,7 @@ urlpatterns = [
     path('daily-schedule/', collectors.daily_schedule, name='daily_schedule'),
     path('weekly-schedule/', collectors.weekly_schedule, name='weekly_schedule'),
     path('history/', collectors.collection_history, name='collection_history'),
+    path('api/collections/by-distance/', collectors.get_sorted_collections_by_distance, name='api_collections_by_distance'),
     
     # Gestion des collectes
    

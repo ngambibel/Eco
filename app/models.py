@@ -206,6 +206,7 @@ class Address(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    lien = models.URLField(blank=True, verbose_name="Lien Google Maps")
     
     class Meta:
         verbose_name = "Adresse"
