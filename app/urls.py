@@ -74,6 +74,9 @@ urlpatterns = [
     path('admins/dashboard/', admins.DashboardView.as_view(), name='admin_dashboard'),
     # Page principale pour le reabonnement canal    
     path('reabonnements-canal/', admins.gestion_reabonnements_canal, name='gestion_reabonnements_canal'),
+    # url pour exporter les numeros de tel des clients ayant une demande de reabonement
+     path('export-reabonnements-utilisateurs/', admins.export_reabonnements_utilisateurs_xls, name='export_reabonnements_utilisateurs'),
+     path('export-clients/', admins.export_clients_xls, name='export_clients'),
     
     # Actions sur les demandes
     path('demandes/creer/', admins.creer_demande_reabonnement, name='creer_demande_reabonnement'),
@@ -118,7 +121,9 @@ urlpatterns = [
     path('api/collectors/', collecte_admin.CollectorListAPIView.as_view(), name='api_collectors'),
 
     # urls de gestion des utilisateurs et des abonement 
-    
+    path('administrations/export-abonnements-expirant/', client_admin.export_abonnements_expirant, name='export_abonnements_expirant'),
+    path('api/abonnements-expirant-stats/', client_admin.get_abonnements_expirant_stats, name='abonnements_expirant_stats'),
+
     path('gestion-abonnements/', client_admin.gestion_abonnements, name='gestion_abonnements'),
     path('gestion-abonnements/ajouter-utilisateur/', client_admin.ajouter_utilisateur, name='ajouter_utilisateur'),
     path('gestion-abonnements/editer-utilisateur/', client_admin.editer_utilisateur, name='editer_utilisateur'),

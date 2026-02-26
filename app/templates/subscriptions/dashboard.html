@@ -2,23 +2,88 @@
 {% load static %}
 {% load facture_tags %}
 
-{% block title %}Mes Abonnements - EcoCity{% endblock %}
+{% block title %}Mes Abonnements Canal+ - EcoCity{% endblock %}
 
 {% block content %}
 <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-    <!-- En-tête -->
-    <div class="dashboard-header" style="text-align: center; margin-bottom: 40px;">
-        <h1 style="color: var(--orange-cosmique); margin-bottom: 10px;">Mes Abonnements</h1>
-        <p style="color: var(--gris-fonce); font-size: 1.1rem;">Gérez vos abonnements et demandes de réabonnement</p>
-        <center>
-            <img src="{% static 'images/canal.jpg' %}" alt="canal logo" style="height: 50px; vertical-align: middle; margin-left: 15px;">
-        </center>
+    <!-- En-tête avec logo Canal+ -->
+    <div class="dashboard-header" style="text-align: center; margin-bottom: 30px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px;">
+            <h1 style="color: var(--orange-cosmique); margin: 0;">Mes Abonnements</h1>
+            <img src="{% static 'images/canal.jpg' %}" alt="Canal+ Cameroun" style="height: 50px; width: auto;">
+        </div>
+        <p style="color: var(--gris-fonce); font-size: 1.1rem;">Gérez vos abonnements et effectuez vos réabonnements Canal+</p>
     </div>
-    
+
+    <!-- Section Service Client - NOUVEAU -->
+    <div style="background: linear-gradient(135deg, var(--orange-cosmique) 0%, #ff8c00 100%); border-radius: 15px; padding: 25px; margin-bottom: 30px; color: white; box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);">
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 280px;">
+                <h2 style="color: white; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-headset" style="font-size: 28px;"></i>
+                    Service Réabonnement Canal+ Express
+                </h2>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <p style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-clock"></i>
+                        <span><strong>Disponibilité :</strong> Du lundi au dimanche, de <strong>6h à 22h</strong></span>
+                    </p>
+                    <p style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-bolt"></i>
+                        <span><strong>Temps de réponse :</strong> Un agent vous répond sous <strong>5 minutes maximum</strong></span>
+                    </p>
+                    <p style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-check-circle"></i>
+                        <span><strong>Traitement immédiat :</strong> Réabonnement effectué pendant l'appel WhatsApp</span>
+                    </p>
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 250px; text-align: center;">
+                <!-- Bouton WhatsApp avec numéro intégré -->
+                <a href="https://wa.me/237691769673?text=Bonjour%20je%20souhaite%20effectuer%20mon%20r%C3%A9abonnement%20Canal%2B.%20Voici%20mes%20informations%20:%0A%0A%2AMon%20abonnement%20actuel%20:%2A%0A%2AMontant%20%C3%A0%20reabonner%20:%2A%0A%2ACode%20client%20Canal%2B%20(optionnel)%20:%2A" 
+                   target="_blank"
+                   style="display: inline-block; background: #25D366; color: white; text-decoration: none; padding: 18px 35px; border-radius: 50px; font-size: 1.3rem; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease; border: 2px solid white;"
+                   onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.3)';"
+                   onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+                    <i class="fab fa-whatsapp" style="font-size: 32px; margin-right: 12px; vertical-align: middle;"></i>
+                    Réabonnement WhatsApp
+                    <br>
+                    <span style="font-size: 0.9rem; display: block; margin-top: 5px;">Cliquez pour démarrer votre demande</span>
+                </a>
+                <p style="margin-top: 15px; font-size: 0.9rem; color: rgba(255,255,255,0.9);">
+                    <i class="fas fa-phone-alt"></i> Service direct : <strong>691 76 96 73</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message d'information pour les réabonnements en cours -->
+    {% if demandes_recentes %}
+        {% for demande in demandes_recentes %}
+            {% if demande.statut == 'EN_COURS' %}
+            <div style="background: #e3f2fd; border-left: 5px solid #2196F3; border-radius: 10px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <i class="fas fa-spinner fa-pulse" style="color: #2196F3; font-size: 24px;"></i>
+                <div style="flex: 1;">
+                    <strong style="color: #1976D2;">Demande en cours de traitement</strong>
+                    <p style="margin: 5px 0 0 0; color: #555;">
+                        Notre équipe traite actuellement votre demande de réabonnement. 
+                        {% if demande.abonnement.est_actif %}
+                        <span style="color: #4CAF50;"><i class="fas fa-check-circle"></i> Vous bénéficiez de la semaine offerte car vous aviez un abonnement actif.</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <span style="background: #2196F3; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem;">
+                    Réponse sous 5 min max
+                </span>
+            </div>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
     <!-- Bouton Nouvel Abonnement -->
     <div style="text-align: center; margin-bottom: 30px;">
-        <a href="{% url 'create_subscription' %}" class="cta-button" style="text-decoration: none;">
-            <i class="fas fa-plus-circle"></i> Nouvel Abonnement
+        <a href="{% url 'create_subscription' %}" class="cta-button" style="text-decoration: none; display: inline-block; background: var(--orange-cosmique); color: white; padding: 15px 30px; border-radius: 50px; font-weight: bold; transition: all 0.3s;">
+            <i class="fas fa-plus-circle"></i> Ajouter un nouvel abonnement Canal+
         </a>    
     </div>
 
@@ -26,136 +91,100 @@
     <div class="subscriptions-section" style="background: white; border-radius: 15px; padding: 30px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
         <h2 style="color: var(--rouge-poupre); margin-bottom: 25px; display: flex; align-items: center;">
             <i class="fas fa-list-alt" style="margin-right: 10px;"></i>
-            Mes Abonnements
+            Mes Abonnements Canal+
         </h2>
 
         {% if abonnements %}
-            <div class="subscriptions-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="subscriptions-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
                 {% for abonnement in abonnements %}
-                <div class="subscription-card" style="border: 2px solid var(--gris-clair); border-radius: 10px; padding: 20px; transition: all 0.3s ease;">
+                <div class="subscription-card" style="border: 2px solid var(--gris-clair); border-radius: 12px; padding: 20px; transition: all 0.3s ease; position: relative; overflow: hidden;">
+                    
+                    <!-- Badge Canal+ pour les abonnements concernés -->
+                    {% if abonnement.get_type_service_display == 'Canal+' %}
+                    <div style="position: absolute; top: 10px; right: -30px; background: var(--orange-cosmique); color: white; padding: 5px 30px; transform: rotate(45deg); font-size: 0.7rem; font-weight: bold;">
+                        CANAL+
+                    </div>
+                    {% endif %}
+
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
                         <div>
-                            <h3 style="color: var(--orange-cosmique); margin-bottom: 5px;">
+                            <h3 style="color: var(--orange-cosmique); margin-bottom: 5px; display: flex; align-items: center; gap: 10px;">
                                 {% if abonnement.get_type_service_display == 'Canal+' %}
-                                <img src="{% static 'images/canal.jpg' %}" alt="canal logo" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+                                <img src="{% static 'images/canal.jpg' %}" alt="canal logo" style="height: 30px; width: auto;">
                                 {% elif abonnement.get_type_service_display == 'Eneo' %}
-                                <img src="{% static 'images/eneo.png' %}" alt="eneo logo" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+                                <img src="{% static 'images/eneo.png' %}" alt="eneo logo" style="height: 30px; width: auto;">
                                 {% elif abonnement.get_type_service_display == 'Cam Water' %}
-                                <img src="{% static 'images/water.jpg' %}" alt="camwater logo" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+                                <img src="{% static 'images/water.jpg' %}" alt="camwater logo" style="height: 30px; width: auto;">
                                 {% endif %}
-
-                                {{ abonnement.get_type_service_display }}
-                                
+                                <span>{{ abonnement.get_type_service_display }}</span>
                             </h3>
-                            <p style="color: var(--gris-fonce); margin: 0;">
-                                ID: {{ abonnement.identifiant_abonne }}
+                            <p style="color: var(--gris-fonce); margin: 5px 0 0 0;">
+                                <i class="fas fa-id-card"></i> ID: <strong>{{ abonnement.identifiant_abonne }}</strong>
                             </p>
                         </div>
-                        <span class="status-badge" style="background: var(--jaune-dore); color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem;">
+                        <span class="status-badge" style="background: '{% if abonnement.est_actif %}'#4CAF50'{% else %}'#FF9800'{% endif %}'; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem;">
                             {% if abonnement.est_actif %}Actif{% else %}Inactif{% endif %}
                         </span>
                     </div>
 
                     <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                         
-                        {% if demandes_recentes %}
-                        {% for demande in demandes_recentes %}
-                            {% if not demande.abonnement == abonnement %}
-                                <a href="{% url 'create_renewal_request' abonnement.id %}" 
-                                    class="btn-primary" 
-                                    style="flex: 1; background: var(--orange-cosmique); color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; transition: background 0.3s; min-width: 120px;">
-                                <i class="fas fa-sync-alt"></i> Réabonnement
-                                </a>
-
-                                <form method="post" action="{% url 'delete_subscription' abonnement.id %}" 
-                                    style="flex: 0 0 auto; margin: 0;"
-                                    onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonnement ?');">
-                                    {% csrf_token %}
-                                        <button type="submit" class="btn-danger" 
-                                            style="background: var(--rouge-poupre); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background 0.3s;">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                </form>
-                            {% endif %}
-                            
-                            {% if demande.abonnement == abonnement %}
-                                <h3 style="color: var(--gris-fonce); margin-top: 15px;">
-                                    nous travaillons à votre reabonement... <br>
-                                    vous beneficierez de la semaine si vous aviez un abonnement actif précédemment
-                                </h3>
-                            {% endif %}
-                        {% endfor %}
+                        <!-- Bouton Réabonnement Canal+ avec WhatsApp -->
+                        {% if abonnement.get_type_service_display == 'Canal+' %}
+                        <a href="https://wa.me/237691769673?text=Bonjour%20je%20souhaite%20effectuer%20mon%20r%C3%A9abonnement%20Canal%2B.%0A%0A%2AMes%20informations%20:%2A%0A- Nom%20:%20{{ request.user.get_full_name|urlencode }}%0A- ID%20Abonne%20Canal%2B%20:%20{{ abonnement.identifiant_abonne|urlencode }}%0A- Statut%20actuel%20:%20{{ abonnement.est_actif|yesno:'Actif,Inactif'|urlencode }}%0A%0AMerci%20de%20traiter%20ma%20demande%20de%20r%C3%A9abonnement." 
+                           target="_blank"
+                           class="btn-primary" 
+                           style="flex: 2; background: #25D366; color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 180px;">
+                            <i class="fab fa-whatsapp" style="font-size: 20px;"></i> Réabonnement Canal+ Express
+                        </a>
                         {% else %}
-                           
-                            
-                            <!-- Bouton Télécharger Facture -->
-                            {% for facture in factures %}
-                                {% if facture.demande == abonnement %}
-                                <a href="{{ facture.fichier.url }}" 
-                                   target="_blank"
-                                   class="btn-success" 
-                                   style="flex: 1; background: var(--vert-success); color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; transition: background 0.3s; min-width: 50px;">
-                                    <i class="fas fa-file-invoice-dollar"></i> Facture
-                                </a>
-                                {% endif %}
-                            {% endfor %}
-
-                            
-
-                            <!-- Bouton Supprimer -->
-                            <form method="post" action="{% url 'delete_subscription' abonnement.id %}" 
-                                style="flex: 0 0 auto; margin: 0;"
-                                onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonnement ?');">
-                                {% csrf_token %}
-                                    <button type="submit" class="btn-danger" 
-                                        style="background: var(--rouge-poupre); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background 0.3s;">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                            </form>
-                        {% endif %}
-                        
-                        {% if factures %}
-                         <!-- Bouton Réabonnement -->
-                            <a href="{% url 'create_renewal_request' abonnement.id %}" 
-                                class="btn-primary" 
-                                style="flex: 1; background: var(--orange-cosmique); color: white; text-align: center; padding: 10px; border-radius: 5px; text-decoration: none; transition: background 0.3s; min-width: 120px;">
+                        <a href="{% url 'create_renewal_request' abonnement.id %}" 
+                           class="btn-primary" 
+                           style="flex: 2; background: var(--orange-cosmique); color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; transition: background 0.3s; min-width: 120px;">
                             <i class="fas fa-sync-alt"></i> Réabonnement
-                            </a>
+                        </a>
                         {% endif %}
+
+                        <!-- Bouton Supprimer -->
+                        <form method="post" action="{% url 'delete_subscription' abonnement.id %}" 
+                            style="flex: 0 0 auto; margin: 0;"
+                            onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet abonnement ?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-danger" 
+                                style="background: var(--rouge-poupre); color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: background 0.3s;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
                     </div>
 
                     <!-- Affichage des factures disponibles -->
                     {% with abonnement_factures=factures|filter_factures:abonnement %}
                         {% if abonnement_factures %}
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gris-clair);">
-                            <h4 style="color: var(--gris-fonce); margin-bottom: 10px; font-size: 0.9rem;">
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed var(--gris-clair);">
+                            <h4 style="color: var(--gris-fonce); margin-bottom: 12px; font-size: 0.95rem;">
                                 <i class="fas fa-file-invoice"></i> Factures disponibles:
                             </h4>
                             <div style="display: flex; flex-direction: column; gap: 8px;">
                                 {% for facture in abonnement_factures %}
-                                <div style="display: flex; justify-content: between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 5px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 8px;">
                                     <div>
-                                        
-                                        </span>
+                                        <span style="font-weight: 500;">{{ facture.periode|default:"Facture" }}</span>
                                         {% if facture.est_payee %}
-                                        <span style="background: var(--vert-success); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 8px;">
+                                        <span style="background: #4CAF50; color: white; padding: 3px 10px; border-radius: 15px; font-size: 0.7rem; margin-left: 8px;">
                                             Payée
                                         </span>
                                         {% else %}
-                                        <span style="background: var(--orange-cosmique); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 8px;">
+                                        <span style="background: #FF9800; color: white; padding: 3px 10px; border-radius: 15px; font-size: 0.7rem; margin-left: 8px;">
                                             En attente
                                         </span>
                                         {% endif %}
                                     </div>
-                                    <center>
-                                        <a href="{{ facture.fichier.url }}" 
-                                            target="_blank"
-                                            class="btn-download" 
-                                            style="background: var(--jaune-dore); color: white; border: none; padding: 5px 10px; border-radius: 3px; text-decoration: none; font-size: 0.8rem; cursor: pointer; transition: background 0.3s;">
-                                            <i class="fas fa-download"></i> Télécharger
-                                        </a>
-                                    </center>
-                                    
+                                    <a href="{{ facture.fichier.url }}" 
+                                       target="_blank"
+                                       class="btn-download" 
+                                       style="background: var(--jaune-dore); color: white; border: none; padding: 5px 12px; border-radius: 5px; text-decoration: none; font-size: 0.8rem; cursor: pointer; transition: background 0.3s;">
+                                        <i class="fas fa-download"></i> PDF
+                                    </a>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -166,10 +195,13 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div style="text-align: center; padding: 40px;">
-                <i class="fas fa-inbox" style="font-size: 50px; color: var(--gris-fonce); margin-bottom: 20px;"></i>
-                <h3 style="color: var(--gris-fonce); margin-bottom: 10px;">Aucun abonnement</h3>
-                <p style="color: var(--gris-fonce);">Commencez par créer votre premier abonnement</p>
+            <div style="text-align: center; padding: 50px;">
+                <i class="fas fa-tv" style="font-size: 60px; color: var(--orange-cosmique); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--gris-fonce); margin-bottom: 10px;">Aucun décodeur Canal+ pour le moment</h3>
+                <p style="color: var(--gris-fonce);">Commencez par créer votre abonnement Canal+ en enregistrant les informations de votre décodeur.</p>
+                <a href="{% url 'create_subscription' %}" style="display: inline-block; background: var(--orange-cosmique); color: white; text-decoration: none; padding: 12px 30px; border-radius: 50px; margin-top: 15px;">
+                    <i class="fas fa-plus-circle"></i> Créer mon abonnement
+                </a>
             </div>
         {% endif %}
     </div>
@@ -179,7 +211,7 @@
     <div class="requests-section" style="background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
         <h2 style="color: var(--rouge-poupre); margin-bottom: 25px; display: flex; align-items: center;">
             <i class="fas fa-history" style="margin-right: 10px;"></i>
-            Demandes Récentes
+            Historique des demandes
         </h2>
 
         <div class="requests-list">
@@ -188,9 +220,13 @@
                 <div>
                     <h4 style="color: var(--noir); margin-bottom: 5px;">
                         {{ demande.abonnement.get_type_service_display }}
+                        {% if demande.abonnement.get_type_service_display == 'Canal+' %}
+                        <img src="{% static 'images/canal.jpg' %}" alt="canal" style="height: 20px; margin-left: 8px;">
+                        {% endif %}
                     </h4>
                     <p style="color: var(--gris-fonce); margin: 0; font-size: 0.9rem;">
-                        {{ demande.montant }} FCFA • {{ demande.date_demande|date:"d/m/Y H:i" }}
+                        <i class="fas fa-money-bill"></i> {{ demande.montant }} FCFA • 
+                        <i class="fas fa-calendar"></i> {{ demande.date_demande|date:"d/m/Y H:i" }}
                     </p>
                 </div>
                 <span class="status-badge 
@@ -198,7 +234,7 @@
                     {% elif demande.statut == 'EN_COURS' %}status-warning
                     {% elif demande.statut == 'REJETEE' %}status-error
                     {% else %}status-info{% endif %}"
-                    style="padding: 5px 15px; border-radius: 15px; font-size: 0.8rem; font-weight: 500;">
+                    style="padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">
                     {{ demande.get_statut_display }}
                 </span>
             </div>
@@ -206,13 +242,35 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Section Rappel Service Client -->
+    <div style="margin-top: 30px; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <p style="color: var(--gris-fonce); margin: 0;">
+            <i class="fas fa-info-circle" style="color: var(--orange-cosmique);"></i>
+            Pour tout réabonnement Canal+, utilisez notre service WhatsApp 
+            <strong>691 76 96 73</strong> disponible de <strong>6h à 22h</strong> avec réponse sous <strong>5 min maximum</strong>.
+            {% if abonnements %}
+            <br><small>Votre code client facilite le traitement de votre demande.</small>
+            {% endif %}
+        </p>
+    </div>
 </div>
 
 <style>
+:root {
+    --orange-cosmique: #FF8C00;
+    --jaune-dore: #FFA500;
+    --rouge-poupre: #8B0000;
+    --vert-success: #4CAF50;
+    --gris-clair: #e0e0e0;
+    --gris-fonce: #666;
+    --noir: #333;
+}
+
 .subscription-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    border-color: var(--orange-cosmique);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    border-color: var(--orange-cosmique) !important;
 }
 
 .btn-primary:hover {
@@ -221,10 +279,6 @@
 
 .btn-danger:hover {
     background: #8B0000 !important;
-}
-
-.btn-success:hover {
-    background: #2E8B57 !important;
 }
 
 .btn-download:hover {
@@ -245,14 +299,7 @@
         padding: 15px !important;
     }
     
-    .subscription-card > div:last-child {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .subscription-card > div:last-child a,
-    .subscription-card > div:last-child form {
-        flex: 1 !important;
+    .btn-primary, .btn-danger {
         min-width: 100% !important;
     }
 }

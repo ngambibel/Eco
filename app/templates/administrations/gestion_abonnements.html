@@ -176,6 +176,34 @@
     .highlight-row:hover {
         background-color: #f8f9fa;
     }
+    
+    /* Styles pour les abonnements expirant */
+    .expiring-soon {
+        background-color: #fff9e6 !important;
+    }
+    
+    .expiring-critical {
+        background-color: #fff3cd !important;
+    }
+    
+    .expiration-badge {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        border-radius: 12px;
+        margin-left: 5px;
+        display: inline-block;
+    }
+    
+    .expiration-badge-warning {
+        background-color: #ffeeba;
+        color: #856404;
+    }
+    
+    .expiration-badge-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
 </style>
 {% endblock %}
 
@@ -231,6 +259,42 @@
                     </div>
                     <div class="icon">
                         <i class="fas fa-user-friends fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Export Abonnements Expirant (NOUVEAU) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-white">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Abonnements qui ont dépassé leur date d'expiration</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div id="expirationStats" class="d-flex align-items-center flex-wrap">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="statsLoader">
+                                    <span class="visually-hidden">Chargement...</span>
+                                </div>
+                                <span id="statsText">Chargement des statistiques...</span>
+                            </div>
+                            <div id="expirationDetails" class="mt-2 small text-muted" style="display: none;">
+                                <!-- Les détails par jour seront affichés ici -->
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <button type="button" class="btn btn-warning" id="exportAbonnementsBtn">
+                                <i class="fas fa-download me-2"></i>
+                                Exporter les client inactifs
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm ms-2" id="previewAbonnementsBtn" title="Aperçu">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -326,7 +390,10 @@
                                 </thead>
                                 <tbody>
                                     {% for subscription in subscriptions %}
-                                    <tr class="highlight-row subscription-row" data-status="{{ subscription.status }}">
+                                    <tr class="highlight-row subscription-row" 
+                                        data-status="{{ subscription.status }}"
+                                        data-end-date="{% if subscription.end_date %}{{ subscription.end_date|date:'Y-m-d' }}{% endif %}"
+                                        data-id="{{ subscription.id }}">
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="user-avatar me-3">
@@ -343,14 +410,14 @@
                                             <div class="text-muted small">{{ subscription.plan.get_frequency_display }}</div>
                                         </td>
                                         <td>{{ subscription.start_date|date:"d/m/Y" }}</td>
-                                        <td>
+                                        <td class="end-date-cell">
                                             {% if subscription.end_date %}
                                                 {{ subscription.end_date|date:"d/m/Y" }}
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="status-cell">
                                             {% if subscription.status == 'active' %}
                                                 <span class="status-badge status-active">Actif</span>
                                             {% elif subscription.status == 'inactive' %}
@@ -590,7 +657,57 @@
     </div>
 </div>
 
-<!-- Modals -->
+<!-- Modal d'aperçu des abonnements expirant (NOUVEAU) -->
+<div class="modal fade" id="previewAbonnementsModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title text-white" id="previewModalLabel">
+                    <i class="fas fa-eye me-2"></i>
+                    Aperçu des abonnements deja expirés 
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span id="previewStats"></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="previewTable">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Téléphone</th>
+                                <th>Plan</th>
+                                <th>Date fin</th>
+                                <th>Jours restants</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Chargement...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-warning" id="exportFromPreviewBtn">
+                    <i class="fas fa-download me-2"></i>
+                    Exporter en CSV
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals existants -->
 {% include 'administrations/modals/user_modals.html' %}
 {% include 'administrations/modals/subscription_modals.html' %}
 
@@ -599,12 +716,258 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-    // Filtrage et recherche
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchInput');
-        const filterOptions = document.querySelectorAll('.filter-option');
-        const subscriptionRows = document.querySelectorAll('.subscription-row');
-        
+// ==================== FONCTIONS POUR LES ABONNEMENTS EXPIRANT ====================
+
+// Charger les statistiques au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    chargerStatsExpirations();
+    
+    // Bouton d'export
+    document.getElementById('exportAbonnementsBtn').addEventListener('click', function() {
+        exporterAbonnementsExpirant();
+    });
+    
+    // Bouton d'aperçu
+    document.getElementById('previewAbonnementsBtn').addEventListener('click', function() {
+        previewAbonnementsExpirant();
+    });
+    
+    // Bouton d'export depuis l'aperçu
+    document.getElementById('exportFromPreviewBtn').addEventListener('click', function() {
+        exporterAbonnementsExpirant();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('previewAbonnementsModal'));
+        if (modal) {
+            modal.hide();
+        }
+    });
+    
+    // Surligner les abonnements expirant bientôt
+    setTimeout(highlightExpiringSubscriptions, 500);
+});
+
+// Fonction pour charger les statistiques
+function chargerStatsExpirations() {
+    const statsLoader = document.getElementById('statsLoader');
+    const statsText = document.getElementById('statsText');
+    const expirationDetails = document.getElementById('expirationDetails');
+    
+    // Vérifier que les éléments existent
+    if (!statsLoader || !statsText) return;
+    
+    fetch('/administrations/api/abonnements-expirant-stats/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            statsLoader.style.display = 'none';
+            
+            if (data.success) {
+                if (data.total > 0) {
+                    statsText.innerHTML = `
+                        <span class="badge bg-danger me-2">${data.total}</span>
+                        abonnement(s) expirent dans les 8 prochains jours
+                        <small class="text-muted ms-2">(jusqu'au ${data.date_limite})</small>
+                    `;
+                    
+                    // Afficher les détails par jour
+                    if (data.par_jour && data.par_jour.length > 0) {
+                        let detailsHtml = '<div class="mt-2">';
+                        data.par_jour.forEach(item => {
+                            detailsHtml += `
+                                <span class="badge bg-light text-dark me-2 mb-1">
+                                    ${item.jour_semaine} ${item.date}: ${item.count}
+                                </span>
+                            `;
+                        });
+                        detailsHtml += '</div>';
+                        expirationDetails.innerHTML = detailsHtml;
+                        expirationDetails.style.display = 'block';
+                    }
+                    
+                    // Changer la couleur du bouton
+                    const exportBtn = document.getElementById('exportAbonnementsBtn');
+                    exportBtn.classList.remove('btn-warning');
+                    exportBtn.classList.add('btn-danger');
+                } else {
+                    statsText.innerHTML = `
+                        <span class="badge bg-success me-2">0</span>
+                        Aucun abonnement n'expire dans les 8 prochains jours
+                    `;
+                    expirationDetails.style.display = 'none';
+                    
+                    // Remettre la couleur normale du bouton
+                    const exportBtn = document.getElementById('exportAbonnementsBtn');
+                    exportBtn.classList.remove('btn-danger');
+                    exportBtn.classList.add('btn-warning');
+                }
+            } else {
+                statsText.innerHTML = 'Erreur lors du chargement des statistiques';
+                console.error('Erreur serveur:', data.error);
+            }
+        })
+        .catch(error => {
+            statsLoader.style.display = 'none';
+            statsText.innerHTML = 'Erreur de connexion au serveur';
+            console.error('Erreur détaillée:', error);
+        });
+}
+
+// Fonction pour exporter les abonnements expirant
+function exporterAbonnementsExpirant() {
+    // Afficher un indicateur de chargement
+    const btn = document.getElementById('exportAbonnementsBtn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Export en cours...';
+    btn.disabled = true;
+    
+    // Rediriger vers l'URL d'export
+    window.location.href = '/administrations/export-abonnements-expirant/';
+    
+    // Restaurer le bouton après un court délai
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }, 2000);
+}
+
+// Fonction pour prévisualiser les abonnements expirant
+function previewAbonnementsExpirant() {
+    const modalElement = document.getElementById('previewAbonnementsModal');
+    if (!modalElement) return;
+    
+    const modal = new bootstrap.Modal(modalElement);
+    const previewBody = document.getElementById('previewTableBody');
+    const previewStats = document.getElementById('previewStats');
+    
+    // Afficher le modal avec indicateur de chargement
+    modal.show();
+    previewBody.innerHTML = `
+        <tr>
+            <td colspan="5" class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-2 text-muted">Chargement des données...</p>
+            </td>
+        </tr>
+    `;
+    
+    fetch('/administrations/export-abonnements-expirant/?format=json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                previewStats.innerHTML = `
+                    <strong>${data.stats.total}</strong> abonnement(s) trouvé(s) · 
+                    Période: ${data.stats.date_recherche} au ${data.stats.date_limite}
+                `;
+                
+                if (data.data.length > 0) {
+                    let html = '';
+                    data.data.forEach(item => {
+                        const badgeClass = item.jours_restants <= 3 ? 'bg-danger' : 'bg-warning';
+                        html += `
+                            <tr>
+                                <td>${item.nom}</td>
+                                <td>${item.telephone}</td>
+                                <td>${item.plan}</td>
+                                <td>${item.date_fin}</td>
+                                <td>
+                                    <span class="badge ${badgeClass}">
+                                        ${item.jours_restants} jour${item.jours_restants > 1 ? 's' : ''}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    previewBody.innerHTML = html;
+                } else {
+                    previewBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <p class="text-muted">Aucun abonnement expirant trouvé</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            } else {
+                previewBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                            <p class="text-danger">Erreur: ${data.error}</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            previewBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <p class="text-danger">Erreur de connexion: ${error.message}</p>
+                    </td>
+                </tr>
+            `;
+            console.error('Erreur détaillée:', error);
+        });
+}
+
+// Fonction pour surligner les abonnements expirant bientôt (indicateur visuel)
+function highlightExpiringSubscriptions() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const rows = document.querySelectorAll('.subscription-row');
+    
+    rows.forEach(row => {
+        const endDateStr = row.getAttribute('data-end-date');
+        if (endDateStr && endDateStr !== 'None' && endDateStr !== '') {
+            const endDate = new Date(endDateStr);
+            endDate.setHours(0, 0, 0, 0);
+            
+            const diffTime = endDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0 && diffDays <= 8) {
+                // Ajouter une classe pour le surlignage
+                if (diffDays <= 3) {
+                    row.classList.add('expiring-critical');
+                } else {
+                    row.classList.add('expiring-soon');
+                }
+                
+                // Ajouter une icône d'avertissement dans la colonne statut
+                const statusCell = row.querySelector('.status-cell');
+                if (statusCell && !statusCell.querySelector('.expiration-badge')) {
+                    const warningIcon = document.createElement('span');
+                    warningIcon.className = `expiration-badge ${diffDays <= 3 ? 'expiration-badge-danger' : 'expiration-badge-warning'}`;
+                    warningIcon.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>Expire dans ${diffDays}j`;
+                    statusCell.appendChild(warningIcon);
+                }
+            }
+        }
+    });
+}
+
+// ==================== FONCTIONS EXISTANTES ====================
+
+// Filtrage et recherche
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const filterOptions = document.querySelectorAll('.filter-option');
+    const subscriptionRows = document.querySelectorAll('.subscription-row');
+    
+    if (searchInput) {
         // Recherche en temps réel
         searchInput.addEventListener('input', function() {
             const searchTerm = this.value.toLowerCase();
@@ -618,110 +981,145 @@
                 }
             });
         });
-        
-        // Filtrage par statut
-        filterOptions.forEach(option => {
-            option.addEventListener('click', function(e) {
-                e.preventDefault();
-                const filter = this.getAttribute('data-filter');
-                
-                subscriptionRows.forEach(row => {
-                    if (filter === 'all' || row.getAttribute('data-status') === filter) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
+    }
+    
+    // Filtrage par statut
+    filterOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const filter = this.getAttribute('data-filter');
+            
+            subscriptionRows.forEach(row => {
+                if (filter === 'all' || row.getAttribute('data-status') === filter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
             });
         });
-        
-        // Génération de QR Code
-        const qrForm = document.getElementById('qrGenerationForm');
-        const qrResult = document.getElementById('qrResult');
-        const qrPlaceholder = document.getElementById('qrPlaceholder');
-        const qrCodeImage = document.getElementById('qrCodeImage');
-        const userInfo = document.getElementById('userInfo');
-        const downloadQrBtn = document.getElementById('downloadQrBtn');
-        
-        // Remplacer la fonction de génération de QR Code par celle qui récupère depuis la base
-qrForm.addEventListener('submit', function(e) {
-    e.preventDefault();
+    });
     
-    const subscriptionSelect = document.getElementById('subscriptionSelect');
-    const subscriptionId = subscriptionSelect.value;
-    
-    if (!subscriptionId) return;
-    
-    // Afficher un indicateur de chargement
-    qrCodeImage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div>';
-    qrPlaceholder.style.display = 'none';
-    qrResult.style.display = 'block';
-    
-    // Récupérer le QR Code existant depuis la base de données
-    fetch(`/administrations/gestion-abonnements/recuperer-qr/${subscriptionId}/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Afficher le QR Code existant
-                qrCodeImage.innerHTML = `<img src="${data.qr_code_url}" alt="QR Code" class="qr-code-image" style="max-width: 100%; height: auto;">`;
-                
-                // Afficher les informations utilisateur
-                userInfo.innerHTML = `
-                    <div class="user-details">
-                        <h6 class="mb-2">Informations de l'abonné</h6>
-                        <p class="mb-1"><strong>Nom:</strong> ${data.user_name}</p>
-                        <p class="mb-1"><strong>Téléphone:</strong> ${data.user_phone}</p>
-                        <p class="mb-0"><strong>Plan:</strong> ${data.plan_name}</p>
-                        <p class="mb-0"><strong>Date début:</strong> ${data.start_date}</p>
-                    </div>
-                `;
-                
-                // Configurer le bouton de téléchargement
-                downloadQrBtn.onclick = function() {
-                    const link = document.createElement('a');
-                    link.download = `QRCode_ECOCITY_${data.user_name.replace(/\s+/g, '_')}.png`;
-                    link.href = data.qr_code_url;
-                    link.click();
-                };
-                
-            } else {
-                // Si aucun QR Code n'existe, proposer d'en générer un
-                if (!data.exists) {
-                    qrCodeImage.innerHTML = `
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Aucun QR Code trouvé pour cet abonnement.
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-primary btn-sm" onclick="genererNouveauQR('${subscriptionId}')">
-                                    <i class="fas fa-qrcode me-1"></i>Générer un QR Code
-                                </button>
+    // Génération de QR Code
+    const qrForm = document.getElementById('qrGenerationForm');
+    if (qrForm) {
+        qrForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const subscriptionSelect = document.getElementById('subscriptionSelect');
+            const subscriptionId = subscriptionSelect.value;
+            
+            if (!subscriptionId) return;
+            
+            const qrResult = document.getElementById('qrResult');
+            const qrPlaceholder = document.getElementById('qrPlaceholder');
+            const qrCodeImage = document.getElementById('qrCodeImage');
+            const userInfo = document.getElementById('userInfo');
+            const downloadQrBtn = document.getElementById('downloadQrBtn');
+            
+            // Afficher un indicateur de chargement
+            qrCodeImage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div>';
+            qrPlaceholder.style.display = 'none';
+            qrResult.style.display = 'block';
+            
+            // Récupérer le QR Code existant depuis la base de données
+            fetch(`/administrations/gestion-abonnements/recuperer-qr/${subscriptionId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Afficher le QR Code existant
+                        qrCodeImage.innerHTML = `<img src="${data.qr_code_url}" alt="QR Code" class="qr-code-image" style="max-width: 100%; height: auto;">`;
+                        
+                        // Afficher les informations utilisateur
+                        userInfo.innerHTML = `
+                            <div class="user-details">
+                                <h6 class="mb-2">Informations de l'abonné</h6>
+                                <p class="mb-1"><strong>Nom:</strong> ${data.user_name}</p>
+                                <p class="mb-1"><strong>Téléphone:</strong> ${data.user_phone}</p>
+                                <p class="mb-0"><strong>Plan:</strong> ${data.plan_name}</p>
+                                <p class="mb-0"><strong>Date début:</strong> ${data.start_date}</p>
                             </div>
-                        </div>
-                    `;
-                } else {
+                        `;
+                        
+                        // Configurer le bouton de téléchargement
+                        downloadQrBtn.onclick = function() {
+                            const link = document.createElement('a');
+                            link.download = `QRCode_ECOCITY_${data.user_name.replace(/\s+/g, '_')}.png`;
+                            link.href = data.qr_code_url;
+                            link.click();
+                        };
+                        
+                    } else {
+                        // Si aucun QR Code n'existe, proposer d'en générer un
+                        if (!data.exists) {
+                            qrCodeImage.innerHTML = `
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Aucun QR Code trouvé pour cet abonnement.
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="genererNouveauQR('${subscriptionId}')">
+                                            <i class="fas fa-qrcode me-1"></i>Générer un QR Code
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            qrCodeImage.innerHTML = `
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Erreur lors du chargement du QR Code: ${data.error}
+                                </div>
+                            `;
+                        }
+                        userInfo.innerHTML = '';
+                    }
+                })
+                .catch(error => {
                     qrCodeImage.innerHTML = `
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Erreur lors du chargement du QR Code: ${data.error}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Erreur de connexion: ${error}
                         </div>
                     `;
-                }
-                userInfo.innerHTML = '';
-            }
-        })
-        .catch(error => {
-            qrCodeImage.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    Erreur de connexion: ${error}
-                </div>
-            `;
-            userInfo.innerHTML = '';
+                    userInfo.innerHTML = '';
+                });
         });
+    }
+    
+    // Édition d'utilisateur
+    document.querySelectorAll('.edit-user-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            const firstName = this.getAttribute('data-first-name');
+            const lastName = this.getAttribute('data-last-name');
+            const email = this.getAttribute('data-email');
+            const phone = this.getAttribute('data-phone');
+            const userType = this.getAttribute('data-user-type');
+            const city = this.getAttribute('data-city');
+            
+            // Remplir le modal avec les données
+            const editUserId = document.getElementById('editUserId');
+            const editFirstName = document.getElementById('editFirstName');
+            const editLastName = document.getElementById('editLastName');
+            const editEmail = document.getElementById('editEmail');
+            const editPhone = document.getElementById('editPhone');
+            const editUserType = document.getElementById('editUserType');
+            const editCity = document.getElementById('editCity');
+            
+            if (editUserId) editUserId.value = userId;
+            if (editFirstName) editFirstName.value = firstName;
+            if (editLastName) editLastName.value = lastName;
+            if (editEmail) editEmail.value = email;
+            if (editPhone) editPhone.value = phone;
+            if (editUserType) editUserType.value = userType;
+            if (city && editCity) editCity.value = city;
+        });
+    });
 });
 
 // Fonction pour générer un nouveau QR Code
 function genererNouveauQR(subscriptionId) {
+    const qrCodeImage = document.getElementById('qrCodeImage');
+    
     // Afficher un indicateur de chargement
     qrCodeImage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Génération...</span></div>';
     
@@ -756,53 +1154,35 @@ document.querySelectorAll('.generate-qr-btn').forEach(btn => {
         const subscriptionId = this.getAttribute('data-subscription-id');
         
         // Sélectionner l'abonnement dans le dropdown
-        document.getElementById('subscriptionSelect').value = subscriptionId;
+        const subscriptionSelect = document.getElementById('subscriptionSelect');
+        if (subscriptionSelect) {
+            subscriptionSelect.value = subscriptionId;
+        }
         
         // Basculer vers l'onglet QR
-        document.getElementById('qr-tab').click();
+        const qrTab = document.getElementById('qr-tab');
+        if (qrTab) {
+            qrTab.click();
+        }
         
         // Déclencher la récupération du QR existant
         setTimeout(() => {
-            qrForm.dispatchEvent(new Event('submit'));
+            const qrForm = document.getElementById('qrGenerationForm');
+            if (qrForm) {
+                qrForm.dispatchEvent(new Event('submit'));
+            }
         }, 300);
     });
 });
-        
-       
-        
-        // Édition d'utilisateur
-        document.querySelectorAll('.edit-user-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const userId = this.getAttribute('data-user-id');
-                const firstName = this.getAttribute('data-first-name');
-                const lastName = this.getAttribute('data-last-name');
-                const email = this.getAttribute('data-email');
-                const phone = this.getAttribute('data-phone');
-                const userType = this.getAttribute('data-user-type');
-                const city = this.getAttribute('data-city');
-                
-                // Remplir le modal avec les données
-                document.getElementById('editUserId').value = userId;
-                document.getElementById('editFirstName').value = firstName;
-                document.getElementById('editLastName').value = lastName;
-                document.getElementById('editEmail').value = email;
-                document.getElementById('editPhone').value = phone;
-                document.getElementById('editUserType').value = userType;
-                if (city) {
-                    document.getElementById('editCity').value = city;
-                }
-            });
-        });
-    });
-    
-    function viewUserDetails(userId) {
-        // Implémentez la vue détaillée de l'utilisateur
-        alert(`Voir les détails de l'utilisateur ID: ${userId}`);
-        // Vous pouvez rediriger vers une page de détail ou ouvrir un modal
-    }
-    
-    function confirmAction(message) {
-        return confirm(message || 'Êtes-vous sûr de vouloir effectuer cette action ?');
-    }
+
+function viewUserDetails(userId) {
+    // Implémentez la vue détaillée de l'utilisateur
+    alert(`Voir les détails de l'utilisateur ID: ${userId}`);
+    // Vous pouvez rediriger vers une page de détail ou ouvrir un modal
+}
+
+function confirmAction(message) {
+    return confirm(message || 'Êtes-vous sûr de vouloir effectuer cette action ?');
+}
 </script>
 {% endblock %}

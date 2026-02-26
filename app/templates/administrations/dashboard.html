@@ -5,6 +5,17 @@
 {% block page_title %}Tableau de Bord{% endblock %}
 
 {% block content %}
+<!-- Bouton d'export des clients -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-end">
+            <button class="btn btn-success" id="exportClientsBtn">
+                <i class="fas fa-file-excel me-2"></i>Exporter tous les clients (XLS)
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <!-- Statistiques Principales -->
     <div class="col-xl-3 col-md-6 mb-4">
@@ -452,6 +463,61 @@ document.addEventListener('DOMContentLoaded', function() {
         dateFiltre.addEventListener('change', function() {
             this.form.submit();
         });
+    }
+
+    // EXPORT DES CLIENTS
+    const exportClientsBtn = document.getElementById('exportClientsBtn');
+    if (exportClientsBtn) {
+        exportClientsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Afficher un indicateur de chargement
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Export en cours...';
+            this.disabled = true;
+            
+            // Effectuer la requête AJAX
+            fetch('/export-clients/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de l\'export');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Créer un lien de téléchargement
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'clients_ecocity.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    // Afficher une notification de succès
+                    showNotification('Export réussi', 'Le fichier Excel des clients a été téléchargé avec succès.', 'success');
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur', 'Une erreur est survenue lors de l\'export.', 'error');
+                })
+                .finally(() => {
+                    // Restaurer le bouton
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                });
+        });
+    }
+    
+    // Fonction utilitaire pour afficher les notifications
+    function showNotification(title, message, type = 'info') {
+        // Vérifier si Toastr est disponible, sinon utiliser alert
+        if (typeof toastr !== 'undefined') {
+            toastr[type](message, title);
+        } else {
+            alert(title + ': ' + message);
+        }
     }
 });
 </script>

@@ -9,7 +9,18 @@ import json
 import qrcode
 from io import BytesIO
 from django.core.files.base import ContentFile
-import base64
+
+from django.contrib.admin.views.decorators import staff_member_required
+import xlwt
+from datetime import timedelta
+
+from io import StringIO
+
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+from datetime import datetime
+from io import BytesIO
+
 
 from .models import (
     CustomUser, Subscription, SubscriptionPlan, City, Zone,
@@ -537,4 +548,152 @@ def gestion_collecte(request):
     # Implémentation de la gestion de collecte
     return render(request, 'administrations/gestion_collecte.html')
 
+
+# les vues pour recuperer les informations des client dont l'abonnement expire dans 8 jour
+
+
+
+
+
+@staff_member_required
+def export_abonnements_expirant(request):
+    """
+    Vue AJAX pour exporter les utilisateurs avec abonnements actifs
+    dont la date de fin est dans moins de 8 jours
+    """
+    try:
+        # Calculer la date limite (aujourd'hui + 8 jours)
+        date_limite = timezone.now().date() + timedelta(days=8)
+        aujourd_hui = timezone.now().date()
+        
+        print(f"Recherche des abonnements expirant entre {aujourd_hui} et {date_limite}")
+        
+        # Récupérer les abonnements inactifs dont la date de fin est inférieure ou égale à hier
+        hier = timezone.now().date() - timedelta(days=1)
+
+        abonnements = Subscription.objects.filter(
+            status='inactive',
+            end_date__lte=hier
+        ).select_related('user', 'plan', 'zone').order_by('end_date')
+        
+        
+        # Créer le fichier XLS
+        response = HttpResponse(content_type='application/ms-excel')
+        filename = f"abonnements_expirant_{hier.strftime('%Y%m%d')}.xls"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        # Créer le classeur Excel
+        wb = xlwt.Workbook(encoding='utf-8')
+        ws = wb.add_sheet('Abonnements')
+        
+        # Style pour les cellules
+        style_nom = xlwt.XFStyle()
+        style_nom.font.bold = False
+        
+        # Remplir les données (sans entête)
+        row_num = 0
+        for abonnement in abonnements:
+            user = abonnement.user
+            
+            # Colonne A : Nom complet
+            nom = user.username or f"{user.first_name} {user.last_name}"
+            ws.write(row_num, 0, nom, style_nom)
+            
+            # Colonne B : Téléphone
+            telephone = user.phone if user.phone else ''
+            ws.write(row_num, 1, telephone, style_nom)
+            
+            row_num += 1
+        
+        # Statistiques (pour la réponse JSON si demandé)
+        stats = {
+            'total': abonnements.count(),
+            'date_recherche': aujourd_hui.strftime('%d/%m/%Y'),
+            'date_limite': date_limite.strftime('%d/%m/%Y')
+        }
+        
+        # Si c'est une requête AJAX avec paramètre 'json', retourner les données en JSON
+        if request.GET.get('format') == 'json':
+            data = []
+            for abonnement in abonnements:
+                user = abonnement.user
+                jours_restants = (abonnement.end_date - aujourd_hui).days
+                data.append({
+                    'nom': user.get_full_name() or f"{user.first_name} {user.last_name}",
+                    'telephone': user.phone if user.phone else 'Non renseigné',
+                    'email': user.email or 'Non renseigné',
+                    'plan': abonnement.plan.name if abonnement.plan else 'Non défini',
+                    'date_debut': abonnement.start_date.strftime('%d/%m/%Y'),
+                    'date_fin': abonnement.end_date.strftime('%d/%m/%Y'),
+                    'jours_restants': jours_restants,
+                    'zone': abonnement.zone.nom if abonnement.zone else 'Non assigné'
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'data': data,
+                'stats': stats
+            })
+        
+        # Sauvegarder le classeur dans la réponse
+        wb.save(response)
+        return response
+        
+    except Exception as e:
+        print(f"Erreur lors de l'export : {str(e)}")
+        if request.GET.get('format') == 'json':
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+        else:
+            return HttpResponse(f"Erreur : {str(e)}", status=500)
+        
+
+@staff_member_required
+def get_abonnements_expirant_stats(request):
+    """
+    Vue AJAX pour récupérer les statistiques des abonnements expirant
+    """
+    try:
+        date_limite = timezone.now().date() + timedelta(days=8)
+        aujourd_hui = timezone.now().date()
+        
+        # Statistiques générales
+        total_expirant = Subscription.objects.filter(
+            status='active',
+            end_date__isnull=False,
+            end_date__gte=aujourd_hui,
+            end_date__lte=date_limite
+        ).count()
+        
+        # Statistiques par jour
+        jours_stats = []
+        for i in range(1, 9):
+            date = aujourd_hui + timedelta(days=i)
+            count = Subscription.objects.filter(
+                status='active',
+                end_date=date
+            ).count()
+            
+            if count > 0:
+                jours_stats.append({
+                    'date': date.strftime('%d/%m/%Y'),
+                    'count': count,
+                    'jour_semaine': date.strftime('%A')
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'total': total_expirant,
+            'date_limite': date_limite.strftime('%d/%m/%Y'),
+            'date_aujourd_hui': aujourd_hui.strftime('%d/%m/%Y'),
+            'par_jour': jours_stats
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 

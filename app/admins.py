@@ -19,6 +19,11 @@ from datetime import datetime, timedelta
 import os
 from django.conf import settings
 
+import openpyxl
+from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_GET
+
 
 
 def is_admin_user(user):
@@ -356,6 +361,60 @@ def details_demande_reabonnement(request, demande_id):
         'demande': demande,
         'facture_exists': facture_exists
     })
+ 
+
+
+# vue pour exporter les numero de tel des clients ayant une demande de reabonement 
+
+
+
+@staff_member_required
+@require_GET
+def export_reabonnements_utilisateurs_xls(request):
+    """
+    Exporte les noms et numéros de téléphone des utilisateurs ayant une demande de réabonnement
+    Format : Colonne A = Nom, Colonne B = Téléphone
+    """
+    # Récupérer toutes les demandes de réabonnement avec les utilisateurs associés
+    demandes = DemandeReabonnement.objects.select_related(
+        'abonnement__client'
+    ).filter(
+        abonnement__client__isnull=False
+    ).distinct()
+    
+    # Créer un dictionnaire pour éviter les doublons (un utilisateur peut avoir plusieurs demandes)
+    utilisateurs = {}
+    for demande in demandes:
+        client = demande.abonnement.client
+        if client.id not in utilisateurs:
+            nom_complet = client.get_full_name() or client.username
+            telephone = client.phone if client.phone else ''
+            utilisateurs[client.id] = {
+                'nom': nom_complet,
+                'telephone': telephone
+            }
+    
+    # Créer le classeur Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Reabonnements"
+    
+    # Remplir les données (sans en-tête comme demandé)
+    for idx, (user_id, data) in enumerate(utilisateurs.items(), start=1):
+        ws.cell(row=idx, column=1, value=data['nom'])
+        ws.cell(row=idx, column=2, value=str(data['telephone']))
+    
+    # Configurer la réponse HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="reabonnements_utilisateurs.xlsx"'
+    
+    # Sauvegarder le classeur dans la réponse
+    wb.save(response)
+    return response
+
+
 
 @login_required(login_url='login')
 @user_passes_test(is_admin_user)
@@ -666,3 +725,46 @@ def finances_dashboard(request):
     }
     
     return render(request, 'administrations/finances_dashboard.html', context)
+
+
+# vue pour exporter les clients en format xls
+import openpyxl
+from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_GET
+from .models import CustomUser
+
+@staff_member_required
+@require_GET
+def export_clients_xls(request):
+    """
+    Exporte les noms et numéros de téléphone de tous les utilisateurs clients
+    Format : Colonne A = Nom, Colonne B = Téléphone (sans en-tête)
+    """
+    # Récupérer tous les utilisateurs de type 'client'
+    clients = CustomUser.objects.filter(
+        user_type='client',
+        is_active=True
+    ).order_by('username')
+    
+    # Créer le classeur Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Clients"
+    
+    # Remplir les données (sans en-tête)
+    for idx, client in enumerate(clients, start=1):
+        nom_complet = client.get_full_name() or client.username
+        telephone = client.phone if client.phone else ''
+        ws.cell(row=idx, column=1, value=nom_complet)
+        ws.cell(row=idx, column=2, value=str(telephone))
+    
+    # Configurer la réponse HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="clients_ecocity.xlsx"'
+    
+    # Sauvegarder le classeur dans la réponse
+    wb.save(response)
+    return response

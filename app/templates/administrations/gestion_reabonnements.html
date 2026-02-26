@@ -104,9 +104,14 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <h2 class="h4 mb-0">Gestion des Demandes de Réabonnement</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nouvelleDemandeModal">
-                <i class="fas fa-plus me-2"></i>Nouvelle Demande
-            </button>
+            <div>
+                <button class="btn btn-success me-2" id="exportUtilisateursBtn">
+                    <i class="fas fa-file-excel me-2"></i>Exporter utilisateurs (XLS)
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nouvelleDemandeModal">
+                    <i class="fas fa-plus me-2"></i>Nouvelle Demande
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -751,6 +756,61 @@
         const echeance = new Date(today);
         echeance.setDate(today.getDate() + 30);
         document.getElementById('date_echeance').valueAsDate = echeance;
+
+        // EXPORT DES UTILISATEURS AVEC DEMANDES DE RÉABONNEMENT
+        const exportBtn = document.getElementById('exportUtilisateursBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Afficher un indicateur de chargement
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Export en cours...';
+                this.disabled = true;
+                
+                // Effectuer la requête AJAX
+                fetch('/export-reabonnements-utilisateurs/')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erreur lors de l\'export');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        // Créer un lien de téléchargement
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'reabonnements_utilisateurs.xlsx';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        // Afficher une notification de succès
+                        showNotification('Export réussi', 'Le fichier Excel a été téléchargé avec succès.', 'success');
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        showNotification('Erreur', 'Une erreur est survenue lors de l\'export.', 'error');
+                    })
+                    .finally(() => {
+                        // Restaurer le bouton
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    });
+            });
+        }
+        
+        // Fonction utilitaire pour afficher les notifications
+        function showNotification(title, message, type = 'info') {
+            // Vérifier si Toastr est disponible, sinon utiliser alert
+            if (typeof toastr !== 'undefined') {
+                toastr[type](message, title);
+            } else {
+                alert(title + ': ' + message);
+            }
+        }
     });
 </script>
 {% endblock %}
