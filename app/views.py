@@ -275,7 +275,7 @@ def process_subscription_payment(request):
         if not phone_number.isdigit() or len(phone_number) != 9:
             return JsonResponse({
                 'success': False,
-                'error': 'Numéro de téléphone invalide. Format: 6XXXXXXX ou 2XXXXXXX'
+                'error': 'Numéro de téléphone invalide. Format: 6XXXXXXX (9 chiffres)'
             })
         
         from .models import SubscriptionPlan, Zone
@@ -316,7 +316,7 @@ def process_subscription_payment(request):
         payment_service = PaymentService()
         payment_result = payment_service.process_subscription_payment_first(
             user=request.user,
-            amount= 10, #float(plan.price),  # Utiliser le prix réel du plan
+            amount= subscription.custom_price if subscription.custom_price else plan.price,  
             service_name=payment_method,
             phone_number=phone_number,
             subscription_data={
@@ -379,11 +379,20 @@ def generate_collection_schedule(subscription):
     # Récupérer les jours assignés
     subscription_days = SubscriptionDay.objects.filter(subscription=subscription, is_active=True)
     
-    # Générer le planning pour les 4 prochaines semaines
-    for i in range(4):  # 4 semaines
+    
+    
+    #compter le nombre de semaines à generer en fonction de la durée de l'abonnement
+    duration = subscription.end_date - subscription.start_date
+    weeks_count = max(1, duration.days // 7)
+    
+
+    for i in range(weeks_count):  # Générer les semaines selon la durée de l'abonnement
         for sub_day in subscription_days:
             scheduled_date = timezone.now().date() + timedelta(days=(i * 7 + get_day_offset(sub_day.day.name)))
+
+            # vérifier si une collecte est déjà programmée pour cette date et ce jour
             
+           
             CollectionSchedule.objects.create(
                 subscription=subscription,
                 scheduled_date=scheduled_date,
@@ -391,6 +400,8 @@ def generate_collection_schedule(subscription):
                 scheduled_time=sub_day.time_slot,
                 status='scheduled'
             )
+            
+        
 
 def get_day_offset(day_name):
     """Get day offset from current date"""
@@ -1162,7 +1173,7 @@ def process_qr_renewal_payment(request, qr_code):
         payment_service = PaymentService()
         payment_result = payment_service.process_subscription_payment(
             user=subscription.user,
-            amount= 10, #int(amount),
+            amount= int(amount),
             service_name=network,
             phone_number=phone_number,
             subscription_data=subscription_data,

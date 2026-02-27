@@ -66,7 +66,7 @@ class PaymentService:
     def process_subscription_payment(self, user, amount, service_name, phone_number, subscription_data, subscription):
         """Process payment for subscription using initCollect (non-bloquant)"""
         try:
-            self._validate_amount(amount)
+            
             
             # Format du numéro de téléphone
             if not phone_number.startswith('237'):
@@ -83,9 +83,9 @@ class PaymentService:
                 "external_reference": reference,
             })
             # creer une entree de paiement dans la base de donnee
-            subscription= Subscription.objects.filter(user=user).first() if Subscription.objects.filter(user=user).exists() else None
+            subscription= Subscription.objects.filter(user=user).first()    
             payment_record = Payment.objects.create(
-                subscription=subscription,
+                subcription=subscription,
                 amount=amount,
                 status='pending',
                 payment_method=service_name,
@@ -122,7 +122,7 @@ class PaymentService:
     def process_subscription_payment_first(self, user, amount, service_name, phone_number, subscription_data, subscription):
         """Process payment for subscription using Collect (bloquant)"""
         try:
-            self._validate_amount(amount)
+           
             
             # Format du numéro de téléphone
             if not phone_number.startswith('237'):
@@ -202,28 +202,24 @@ class PaymentService:
         try:
             # La méthode correcte dans la SDK est get_transaction_status avec un dictionnaire
             response = self.client.get_transaction_status({"reference": reference})
-        
+            
             logger.info(f"Campay status check for {reference}: {response}")
-        
-            # Correction: Vérifier d'abord si le payment_record existe
-            payment_record = Payment.objects.filter(transaction_id=reference).first()
-            
-            if response.get('status') == 'SUCCESSFUL':
-            # Mettre à jour le statut
-                
-        
-            
-                return {
-            'success': True,
-            'status': response.get('status'),
-            'message': response.get('message', ''),
-            'data': response
-            }
+            payment_record= Payment.objects.filter(transaction_id=reference).first()
+            if payment_record:
+                payment_record.status = 'completed' if response.get('status') == 'SUCCESSFUL' else 'failed'
+                payment_record.save()
 
+            
+            return {
+                'success': True,
+                'status': response.get('status'),
+                'message': response.get('message', ''),
+                'data': response
+            }
         except Exception as e:
             logger.error(f"Failed to check transaction status for {reference}: {str(e)}")
             return {
-            'success': False,
-            'status': 'error',
-            'message': str(e)
-        }
+                'success': False,
+                'status': 'error',
+                'message': str(e)
+            }

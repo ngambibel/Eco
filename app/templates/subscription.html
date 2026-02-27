@@ -272,6 +272,102 @@
         border-radius: 5px;
     }
 
+    /* Styles pour l'avertissement et le bouton WhatsApp */
+    .zone-warning-message {
+        background-color: #fff3cd;
+        border: 2px solid #ffc107;
+        color: #856404;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        text-align: center;
+        animation: pulse 2s infinite;
+    }
+
+    .zone-warning-message i {
+        font-size: 2rem;
+        color: #ffc107;
+        margin-bottom: 10px;
+    }
+
+    .zone-warning-message h4 {
+        color: #856404;
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+
+    .zone-warning-message p {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+
+    .whatsapp-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #25D366, #128C7E);
+        color: white;
+        padding: 15px 30px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.2rem;
+        margin: 15px 0;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+    }
+
+    .whatsapp-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+    }
+
+    .whatsapp-button i {
+        font-size: 1.5rem;
+        margin-right: 10px;
+    }
+
+    .whatsapp-button-small {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #25D366, #128C7E);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin: 5px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .whatsapp-button-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+    }
+
+    .whatsapp-button-small i {
+        margin-right: 5px;
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+        }
+    }
+
     /* Styles pour la géolocalisation */
     .location-controls {
         display: flex;
@@ -607,11 +703,29 @@
         .address-search {
             flex-direction: column;
         }
+        
+        .whatsapp-button {
+            width: 100%;
+            font-size: 1rem;
+            padding: 12px 20px;
+        }
     }
 
     @media (max-width: 480px) {
         .map-container {
             height: 250px;
+        }
+        
+        .zone-warning-message {
+            padding: 15px;
+        }
+        
+        .zone-warning-message h4 {
+            font-size: 1.1rem;
+        }
+        
+        .zone-warning-message p {
+            font-size: 1rem;
         }
     }
 </style>
@@ -673,7 +787,7 @@
             </div>
         </div>
 
-        <!-- Étape 2: Sélection de la zone -->
+        <!-- Étape 2: Sélection de la zone - MODIFIÉ AVEC MESSAGE D'AVERTISSEMENT ET BOUTON WHATSAPP -->
         <div class="step-content" id="step2-content">
             <div class="zone-selection">
                 <h2 class="section-title">Sélectionnez votre zone de collecte</h2>
@@ -685,15 +799,41 @@
                     <p><strong>2 collectes par semaine - Jours non consécutifs</strong></p>
                 </div>
                 
+                <!-- MESSAGE D'AVERTISSEMENT AJOUTÉ -->
+                <div class="zone-warning-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>⚠️ IMPORTANT : Sélectionnez votre zone résidentielle</h4>
+                    <p>Veuillez sélectionner UNIQUEMENT la zone où vous résidez. La sélection d'une zone incorrecte peut entraîner des problèmes de collecte.</p>
+                </div>
+                
                 <div class="zone-select-container">
                     <select class="zone-select" id="zoneSelect">
-                        <option value="">Sélectionnez votre zone...</option>
+                        <option value="">Sélectionnez votre zone résidentielle...</option>
                         {% for zone in zones %}
                         <option value="{{ zone.id }}" data-zone-name="{{ zone.nom }}">
                             {{ zone.nom }} - {{ zone.ville.city }}
                         </option>
                         {% endfor %}
                     </select>
+                </div>
+                
+                <!-- BOUTON WHATSAPP AJOUTÉ POUR ZONE NON LISTÉE -->
+                <div class="zone-warning-message" style="background-color: #e8f5e8; border-color: #25D366;">
+                    <i class="fab fa-whatsapp" style="color: #25D366; font-size: 2.5rem;"></i>
+                    <h4 style="color: #075e54;">Votre zone n'est pas dans la liste ?</h4>
+                    <p>Si votre zone de résidence n'apparaît pas dans la liste ci-dessus, veuillez contacter immédiatement notre service client pour vérifier la disponibilité dans votre secteur.</p>
+                    
+                    <!-- Bouton WhatsApp -->
+                    <a href="https://wa.me/237690365959?text=Bonjour%2C%20je%20souhaite%20des%20informations%20sur%20les%20zones%20de%20collecte%20disponibles.%20Ma%20zone%20de%20r%C3%A9sidence%20ne%20figure%20pas%20dans%20la%20liste." 
+                       class="whatsapp-button" 
+                       target="_blank"
+                       onclick="trackWhatsAppClick()">
+                        <i class="fab fa-whatsapp"></i>
+                        Contacter le service client via WhatsApp
+                    </a>
+                    <p style="font-size: 0.9rem; margin-top: 10px; color: #666;">
+                        <i class="fas fa-clock"></i> Disponible 7j/7 de 8h à 20h
+                    </p>
                 </div>
                 
                 <div class="zone-info" id="zoneInfo" style="display: none;">
@@ -703,10 +843,20 @@
                     <div class="zone-schedule">
                         <h5>Programme disponible dans cette zone:</h5>
                         <div id="zoneSchedule"></div>
+                        
+                        <!-- Petit bouton WhatsApp dans les infos de zone (optionnel) -->
+                        <div style="text-align: center; margin-top: 15px;">
+                            <a href="https://wa.me/237690365959?text=Bonjour%2C%20j%27ai%20une%20question%20concernant%20la%20zone%20de%20collecte%20s%C3%A9lectionn%C3%A9e." 
+                               class="whatsapp-button-small" 
+                               target="_blank">
+                                <i class="fab fa-whatsapp"></i>
+                                Question sur cette zone ?
+                            </a>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="step-validation" id="step2-validation">Veuillez sélectionner une zone pour continuer</div>
+                <div class="step-validation" id="step2-validation">Veuillez sélectionner votre zone résidentielle pour continuer</div>
             </div>
             
             <div class="navigation-buttons">
@@ -909,6 +1059,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- Font Awesome pour les icônes (si non inclus dans base.html) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
 <script>
     // Variables globales étendues
     let currentStep = 1;
@@ -927,6 +1080,13 @@
 
     // Variables pour le paiement
     let paymentInProgress = false;
+
+    // === FONCTION DE SUIVI WHATSAPP (AJOUTÉE) ===
+    function trackWhatsAppClick() {
+        console.log('Redirection vers WhatsApp service client');
+        // Vous pouvez ajouter ici un tracking analytique si nécessaire
+        // Par exemple : gtag('event', 'click', {'event_category': 'WhatsApp', 'event_label': 'Zone non listée'});
+    }
 
     // === FONCTIONS DE GÉOLOCALISATION ===
 

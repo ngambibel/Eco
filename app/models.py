@@ -1,8 +1,8 @@
 from datetime import date, timedelta
 from io import BytesIO
 from django.conf import settings
-from django.db import models
-from django.db.models.signals import post_save
+from django.db import models, transaction
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 # Create your models here.
@@ -192,6 +192,177 @@ class ProgrammeTricycle(models.Model):
     def peut_ajouter_client(self):
         return self.places_disponibles() > 0 and self.is_active
 
+
+# signal pour mettre à jour le programme de collecte lorsque le programme des tricycles est modifié
+# Signal pour mettre à jour les collectes quand le programme des tricycles change
+@receiver(post_save, sender=ProgrammeTricycle)
+@receiver(post_delete, sender=ProgrammeTricycle)
+def mettre_a_jour_collectes_zone(sender, instance, **kwargs):
+    """
+    Signal pour refaire le programme de collecte des ordures pour les abonnements
+    qui sont dans une zone à chaque fois que le programme des tricycles change dans cette zone.
+    """
+    from django.db import transaction
+    from .views import generate_collection_schedule
+    
+    zone = instance.zone
+    
+    # Récupérer tous les abonnements actifs dans cette zone
+    abonnements_zone = Subscription.objects.filter(
+        zone=zone,
+        status='active',
+         # S'assurer que l'adresse est bien dans cette zone
+    ).select_related('plan', 'user')
+    
+    if not abonnements_zone.exists():
+        return
+    
+    # verifier s'il ya un programe des tricycles qui à ete modifier il ya moint de 2 min pour eviter les mise à jour unitile du programme de collecte
+    if instance.created_at and timezone.now() - instance.created_at < timedelta(minutes=2):
+        
+
+
+
+        with transaction.atomic():
+            for subscription in abonnements_zone:
+            # Supprimer les anciens jours de collecte pour cet abonnement
+                anciens_jours = SubscriptionDay.objects.filter(
+                subscription=subscription
+                )
+            
+            # Mettre à jour les compteurs des programmes tricycles
+                for jour in anciens_jours:
+                    if jour.programme_tricycle:
+                        programme = jour.programme_tricycle
+                        programme.clients_actuels = max(0, programme.clients_actuels - 1)
+                        programme.save()
+            
+            
+            
+            
+            # Supprimer les anciens programmes de collecte
+                CollectionSchedule.objects.filter(
+                    subscription=subscription,
+                    status='scheduled'
+                ).delete()
+            
+            # Réassigner automatiquement les nouveaux jours de collecte
+                nouveaux_jours = subscription.assigner_jours_collecte_automatique()
+                print(f"Nouvelle assignation de jours pour l'abonnement {subscription.id}: {[str(jour.day) for jour in nouveaux_jours]}")
+            
+            # Générer le nouveau programme de collecte
+                a = generate_collection_schedule(subscription)
+            
+            
+
+            
+            # Créer une notification pour informer l'utilisateur
+            if nouveaux_jours:
+                jours_formates = [jour.day.get_name_display() for jour in nouveaux_jours]
+                message = (
+                    f"Le programme de collecte dans votre zone ({zone.nom}) a été modifié. "
+                    f"Vos nouveaux jours de collecte sont : {', '.join(jours_formates)}. "
+                    f"Veuillez consulter votre programme mis à jour."
+                )
+                
+                Notification.create_notification(
+                    user=subscription.user,
+                    title="Programme de collecte mis à jour",
+                    message=message,
+                    notification_type='info',
+                    related_object=subscription,
+                    action_url=f'/subscriptions/{subscription.id}/'
+                )
+            else:
+                # Si aucun jour n'est disponible, notifier l'utilisateur
+                Notification.create_notification(
+                    user=subscription.user,
+                    title="Attention : Programme de collecte",
+                    message=(
+                        f"Suite à la modification du programme dans votre zone ({zone.nom}), "
+                        f"aucun créneau n'est actuellement disponible pour votre abonnement. "
+                        f"Notre équipe vous contactera sous peu pour régulariser votre situation."
+                    ),
+                    notification_type='warning',
+                    related_object=subscription,
+                    action_url=f'/subscriptions/{subscription.id}/'
+                )
+
+
+# Signal supplémentaire pour gérer les cas où une zone est désactivée
+@receiver(post_save, sender=Zone)
+def gerer_changement_zone(sender, instance, created, **kwargs):
+    """
+    Gérer les changements de zone (désactivation, modification)
+    """
+    if not created and not instance.is_active:
+        # Si la zone est désactivée, mettre à jour les abonnements concernés
+        abonnements_zone = Subscription.objects.filter(
+            zone=instance,
+            status='active'
+        )
+        
+        with transaction.atomic():
+            for subscription in abonnements_zone:
+                # Mettre à jour le statut de l'abonnement
+                subscription.status = 'suspended'
+                subscription.save()
+                
+                # Supprimer les programmes de collecte
+                CollectionSchedule.objects.filter(
+                    subscription=subscription,
+                    status='scheduled'
+                ).delete()
+                
+                # Notifier l'utilisateur
+                Notification.create_notification(
+                    user=subscription.user,
+                    title="Zone de collecte désactivée",
+                    message=(
+                        f"La zone de collecte {instance.nom} a été temporairement désactivée. "
+                        f"Votre abonnement a été suspendu. Vous serez notifié dès sa réactivation."
+                    ),
+                    notification_type='warning',
+                    related_object=subscription,
+                    action_url=f'/subscriptions/{subscription.id}/'
+                )
+
+
+# Fonction utilitaire pour vérifier la cohérence des programmes
+def verifier_coherence_programmes(zone):
+    """
+    Vérifier que tous les abonnements dans une zone ont des jours de collecte valides
+    par rapport aux programmes tricycles actuels
+    """
+    from django.db.models import Count
+    
+    programmes = ProgrammeTricycle.objects.filter(
+        zone=zone,
+        is_active=True
+    ).values('jour_semaine').annotate(
+        places_total=models.Sum('capacite_max_clients'),
+        places_utilisees=models.Sum('clients_actuels')
+    )
+    
+    abonnements = Subscription.objects.filter(
+        zone=zone,
+        status='active'
+    ).annotate(
+        nb_jours=Count('collection_days')
+    )
+    
+    rapport = {
+        'zone': zone.nom,
+        'programmes': list(programmes),
+        'total_abonnements': abonnements.count(),
+        'abonnements_sans_jours': abonnements.filter(nb_jours=0).count(),
+        'date_verification': timezone.now()
+    }
+    
+    return rapport
+
+
+
 # Ajout du champ zone à l'adresse
 class Address(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -259,7 +430,7 @@ class Subscription(models.Model):
         if not self.address or not self.address.zone:
             return None
         
-        zone = self.address.zone
+        zone = self.zone
         programmes_disponibles = ProgrammeTricycle.objects.filter(
             zone=zone,
             is_active=True

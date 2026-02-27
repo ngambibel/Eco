@@ -573,7 +573,6 @@ def export_abonnements_expirant(request):
 
         abonnements = Subscription.objects.filter(
             status='inactive',
-            end_date__lte=hier
         ).select_related('user', 'plan', 'zone').order_by('end_date')
         
         
