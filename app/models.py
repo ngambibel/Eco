@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+import datetime
 from io import BytesIO
 from django.conf import settings
 from django.db import models, transaction
@@ -613,9 +614,7 @@ def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs)
     if instance.status != 'active':
         
 
-        CollectionSchedule.objects.filter(
-            subscription=instance,
-        ).delete()
+        
         
         # Créer une notification pour informer l'utilisateur
         if instance.user:
@@ -663,12 +662,12 @@ def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs)
        if CollectionSchedule.objects.filter(subscription=instance).count() == 0:
             instance.assigner_jours_collecte_automatique()
             generate_collection_schedule(instance)
-
-            
-
-
-
-
+    
+       else:
+            # Si des programmes de collecte existent déjà, les supprimer et les recréer
+            CollectionSchedule.objects.filter(subscription=instance).delete()
+            instance.assigner_jours_collecte_automatique()
+            generate_collection_schedule(instance)
 
 
 
