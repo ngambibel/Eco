@@ -427,8 +427,7 @@ class Subscription(models.Model):
         """
         from django.db import transaction
         
-        if not self.address or not self.address.zone:
-            return None
+        
         
         zone = self.zone
         programmes_disponibles = ProgrammeTricycle.objects.filter(
