@@ -282,6 +282,10 @@ def process_subscription_payment(request):
         plan = get_object_or_404(SubscriptionPlan, id=plan_id, is_active=True)
         zone = get_object_or_404(Zone, id=zone_id, is_active=True)
 
+        # creer un lien google maps à partir de la latitude et longitude
+        
+        google_maps_link = f"https://www.google.com/maps?q={address_data.get('latitude')}%2C{address_data.get('longitude')}&z=17&hl=fr"
+
         address = Address.objects.create(
         user=request.user,
         title=address_data.get('title', 'Adresse principale'),
@@ -292,7 +296,9 @@ def process_subscription_payment(request):
         zone=zone,
         latitude=address_data.get('latitude'),
         longitude=address_data.get('longitude'),
-        is_primary=True
+        is_primary=True,
+        lien= google_maps_link
+    
     )
 
         # Création de l'abonnement

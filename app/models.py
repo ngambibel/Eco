@@ -528,7 +528,7 @@ class Payment(models.Model):
     )
     
     
-    subscription = models.CharField(max_length=100, blank=True, null=True)   
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='payments')   
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_date = models.DateTimeField(default=timezone.now)
@@ -629,6 +629,22 @@ def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs)
     
     if instance.status == 'active':
        from .views import generate_collection_schedule
+
+        # verifier s'il ya un payement reussis pour cette abonnement qui date de moin de 2 min pour eviter les creation de programme de collecte sans payement reussis
+       if not Payment.objects.filter(subscription=instance, status='completed', payment_date__gte=timezone.now() - timedelta(minutes=5)).exists():
+           
+           # compter le nomre de mois entre le jour de debut de l'abonnement et le jour de fin de l'abonnement ou le jour actuel si le jour de fin est null
+           
+           nombre_de_mois = (instance.end_date.year - instance.start_date.year) * 12 + (instance.end_date.month - instance.start_date.month)
+           print(f"Nombre de mois depuis le début de l'abonnement: {nombre_de_mois}")
+           
+           Payment.objects.create(
+            subscription=instance,
+            amount=instance.custom_price*nombre_de_mois if instance.custom_price else instance.plan.price*nombre_de_mois,
+            status='completed',
+            payment_date=timezone.now(),
+            due_date=timezone.now(),
+       )
 
        #generation automatique du qr code de paiement après réabonnement
        qr_code, created = SubscriptionQRCode.objects.get_or_create(subscription=instance)
@@ -837,26 +853,7 @@ def notify_collection_status_change(sender, instance, created, **kwargs):
                 action_url=f'/collections/{instance.id}/'
             )
 
-@receiver(post_save, sender=Payment)
-def notify_payment_status(sender, instance, created, **kwargs):
-    if instance.status == 'completed':
-        Notification.create_notification(
-            user=instance.subscription.user,
-            title="Paiement confirmé",
-            message=f"Votre paiement de {instance.amount}€ a été confirmé",
-            notification_type='payment',
-            related_object=instance,
-            action_url=f'/payments/{instance.id}/'
-        )
-    elif instance.status == 'failed':
-        Notification.create_notification(
-            user=instance.subscription.user,
-            title="Échec du paiement",
-            message=f"Votre paiement de {instance.amount}FCFA a échoué. Veuillez réessayer.",
-            notification_type='error',
-            related_object=instance,
-            action_url=f'/payments/{instance.id}/'
-        )
+
 
 @receiver(post_save, sender=Subscription)
 def notify_subscription_status(sender, instance, created, **kwargs):
@@ -1137,8 +1134,8 @@ def create_revenue_from_payment(sender, instance, created, **kwargs):
                 'subscription': instance.subscription,
                 'revenue_type': 'subscription',
                 'amount': instance.amount,
-                'tax_amount': instance.amount*0.1 ,  # À adapter selon votre logique fiscale
-                'net_amount': instance.amount - (instance.amount*0.1),
+                'tax_amount': int(instance.amount)*(0.1),  # À adapter selon votre logique fiscale
+                'net_amount': int(instance.amount )- int(int(instance.amount)*(0.1)),
                 'payment_method': 'mobile_money',  # À adapter
                 'status': 'completed',
                 'transaction_date': instance.payment_date,

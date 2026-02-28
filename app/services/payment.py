@@ -132,7 +132,7 @@ class PaymentService:
             
             # Utiliser initCollect au lieu de collect pour un comportement non-bloquant
             response = self.client.collect({
-                "amount": str(float(amount)),
+                "amount":10, #str(float(amount)),
                 "currency": "XAF",
                 "from": phone_number,
                 "description": f"Abonnement EcoCity - {subscription_data.get('plan_name', 'Service')}",
@@ -141,6 +141,7 @@ class PaymentService:
                 # creer une entree de paiement dans la base de donnee
             
             subscription= Subscription.objects.filter(user__id=user.id).first()
+            subscription = f"Abonnement de {subscription.plan.name} pour {subscription.zone} de l'utilisateur {user.username}"
             payment_record = Payment.objects.create(
                 subscription= subscription,
                 amount=amount,
