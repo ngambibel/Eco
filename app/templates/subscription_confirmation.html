@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Confirmation de demande - EcoCity{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirmation-container {
+        max-width: 600px;
+        margin: 50px auto;
+        text-align: center;
+        padding: 40px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .success-icon {
+        font-size: 5rem;
+        color: #25D366;
+        margin-bottom: 20px;
+    }
+    
+    .confirmation-title {
+        color: var(--rouge-poupre);
+        font-size: 2rem;
+        margin-bottom: 20px;
+    }
+    
+    .confirmation-message {
+        color: #666;
+        font-size: 1.1rem;
+        margin-bottom: 30px;
+        line-height: 1.6;
+    }
+    
+    .info-box {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 30px 0;
+        text-align: left;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        margin: 15px 0;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+    }
+    
+    .info-item i {
+        width: 30px;
+        color: var(--orange-cosmique);
+        font-size: 1.2rem;
+    }
+    
+    .whatsapp-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #25D366, #128C7E);
+        color: white;
+        padding: 15px 40px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.2rem;
+        margin: 20px 0;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+    
+    .whatsapp-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+    }
+    
+    .dashboard-button {
+        display: inline-block;
+        padding: 12px 30px;
+        background: var(--orange-cosmique);
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        margin-top: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .confirmation-container {
+            margin: 20px;
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirmation-container">
+    <div class="success-icon">
+        <i class="fas fa-check-circle"></i>
+    </div>
+    
+    <h1 class="confirmation-title">Demande envoyée !</h1>
+    
+    <p class="confirmation-message">
+        Votre demande d'abonnement a bien été enregistrée. Un conseiller vous contactera dans les plus brefs délais pour discuter des modalités de paiement.
+    </p>
+    
+    <div class="info-box">
+        <h3 style="margin-bottom: 15px;">Récapitulatif de votre demande</h3>
+        
+        <div class="info-item">
+            <i class="fas fa-box"></i>
+            <span><strong>Plan :</strong> {{ subscription.plan.name }}</span>
+        </div>
+        
+        <div class="info-item">
+            <i class="fas fa-map-marker-alt"></i>
+            <span><strong>Zone :</strong> {{ subscription.zone.nom }}</span>
+        </div>
+        
+        <div class="info-item">
+            <i class="fas fa-home"></i>
+            <span><strong>Adresse :</strong> {{ subscription.address.street }}, {{ subscription.address.city }}</span>
+        </div>
+        
+        <div class="info-item">
+            <i class="fas fa-tag"></i>
+            <span><strong>Montant :</strong> {{ subscription.plan.price }} FCFA</span>
+        </div>
+        
+        <div class="info-item">
+            <i class="fas fa-clock"></i>
+            <span><strong>Statut :</strong> En attente de validation</span>
+        </div>
+    </div>
+    
+    <a href="https://wa.me/237{{ whatsapp_number }}?text={{ whatsapp_message|urlencode }}" 
+       class="whatsapp-button" 
+       target="_blank">
+        <i class="fab fa-whatsapp"></i>
+        Contacter le service client maintenant
+    </a>
+    
+    <p style="color: #999; margin: 20px 0;">
+        <i class="fas fa-phone-alt"></i> Ou appelez-nous au <strong>+237 690 36 59 59</strong>
+    </p>
+    
+    <a href="{% url 'dashboard' %}" class="dashboard-button">
+        <i class="fas fa-tachometer-alt"></i> Aller au tableau de bord
+    </a>
+</div>
+{% endblock %}

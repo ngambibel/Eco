@@ -180,7 +180,7 @@ def subscription_page(request):
     }
     return render(request, 'subscription.html', context)
 
-@csrf_exempt
+
 @require_http_methods(["POST"])
 @login_required(login_url='login')
 def create_subscription(request):
@@ -190,7 +190,6 @@ def create_subscription(request):
         # Récupération des données du formulaire
         plan_id = data.get('plan_id')
         zone_id = data.get('zone_id')
-        selected_days = data.get('selected_days', [])
         address_data = data.get('address', {})
         special_instructions = data.get('special_instructions', '')
         
@@ -201,6 +200,11 @@ def create_subscription(request):
         plan = get_object_or_404(SubscriptionPlan, id=plan_id, is_active=True)
         zone = get_object_or_404(Zone, id=zone_id, is_active=True)
         
+        # Création du lien Google Maps
+        google_maps_link = None
+        if address_data.get('latitude') and address_data.get('longitude'):
+            google_maps_link = f"https://www.google.com/maps?q={address_data.get('latitude')}%2C{address_data.get('longitude')}&z=17&hl=fr"
+        
         # Création de l'adresse
         address = Address.objects.create(
             user=request.user,
@@ -210,41 +214,58 @@ def create_subscription(request):
             postal_code=address_data.get('postal_code', ''),
             country=address_data.get('country', 'Cameroun'),
             zone=zone,
+            latitude=address_data.get('latitude'),
+            longitude=address_data.get('longitude'),
+            lien=google_maps_link,
             is_primary=True
         )
 
-        
-
-        
-        # Création de l'abonnement
+        # Création de l'abonnement avec statut INACTIF
         subscription = Subscription.objects.create(
             user=request.user,
             address=address,
+            zone=zone,
             plan=plan,
+            status='inactive',  # Statut inactif en attendant le paiement
             special_instructions=special_instructions,
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=30)  # Abonnement d'un mois
         )
-        
-        
-            
-    
 
-        # Assignation automatique des jours de collecte
+        # Assignation automatique des jours de collecte (réservation des places)
         assigned_days = subscription.assigner_jours_collecte_automatique()
-        generate_collection_schedule(subscription)
-
         
+        # Créer une notification pour l'équipe commerciale
+        Notification.create_notification(
+            user=request.user,
+            title="Nouvelle demande d'abonnement",
+            message=f"Un client a fait une demande d'abonnement. Plan: {plan.name}, Zone: {zone.nom}. À contacter pour finaliser le paiement.",
+            notification_type='info',
+            related_object=subscription,
+            action_url=f'/admin/subscriptions/subscription/{subscription.id}/change/'
+        )
         
         return JsonResponse({
             'success': True,
             'subscription_id': str(subscription.id),
-            'assigned_days': [str(day.day) for day in assigned_days],
-            'message': 'Abonnement créé avec succès'
+            'status': 'inactive',
+            'message': 'Demande d\'abonnement créée avec succès. Un conseiller vous contactera sous 24h.'
         })
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@login_required(login_url='login')
+def subscription_confirmation(request, subscription_id):
+    subscription = get_object_or_404(Subscription, id=subscription_id, user=request.user)
+    
+    context = {
+        'subscription': subscription,
+        'whatsapp_number': '690365959',
+        'whatsapp_message': 'Je souhaite finaliser mon abonnement et j\'aimerais avoir les modalités de paiement :'
+    }
+    return render(request, 'subscription_confirmation.html', context)
     
 
 @csrf_exempt

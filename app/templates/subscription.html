@@ -272,7 +272,154 @@
         border-radius: 5px;
     }
 
-    /* Styles pour l'avertissement et le bouton WhatsApp */
+    /* Styles pour le popup WhatsApp */
+    .whatsapp-popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .whatsapp-popup {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        position: relative;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .popup-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+        transition: color 0.3s ease;
+    }
+
+    .popup-close:hover {
+        color: #333;
+    }
+
+    .popup-icon {
+        font-size: 5rem;
+        color: #25D366;
+        margin-bottom: 20px;
+        animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-20px);
+        }
+        60% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .popup-title {
+        color: var(--rouge-poupre);
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+
+    .popup-message {
+        color: #666;
+        font-size: 1.1rem;
+        margin-bottom: 25px;
+        line-height: 1.6;
+    }
+
+    .popup-highlight {
+        background: #f0f9f0;
+        border-left: 4px solid #25D366;
+        padding: 15px;
+        margin: 20px 0;
+        text-align: left;
+        border-radius: 10px;
+    }
+
+    .popup-highlight p {
+        margin: 5px 0;
+        color: #333;
+    }
+
+    .popup-highlight i {
+        color: #25D366;
+        margin-right: 10px;
+        width: 20px;
+    }
+
+    .whatsapp-popup-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #25D366, #128C7E);
+        color: white;
+        padding: 18px 35px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.3rem;
+        margin: 20px 0 10px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        width: 100%;
+    }
+
+    .whatsapp-popup-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+    }
+
+    .whatsapp-popup-button i {
+        font-size: 1.6rem;
+        margin-right: 12px;
+    }
+
+    .popup-footer {
+        margin-top: 20px;
+        color: #999;
+        font-size: 0.9rem;
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+    }
+
+    .popup-footer i {
+        color: #ff6b6b;
+    }
+
     .zone-warning-message {
         background-color: #fff3cd;
         border: 2px solid #ffc107;
@@ -446,14 +593,14 @@
         border: 1px solid #dc3545;
     }
 
-    @keyframes pulse {
+    .gps-pulse {
+        animation: pulse-gps 2s infinite;
+    }
+
+    @keyframes pulse-gps {
         0% { opacity: 1; }
         50% { opacity: 0.6; }
         100% { opacity: 1; }
-    }
-
-    .gps-pulse {
-        animation: pulse 2s infinite;
     }
 
     .address-search {
@@ -609,71 +756,61 @@
         display: none;
     }
 
-    /* Styles pour la section paiement */
-    .payment-section {
+    /* Styles pour la section de confirmation sans paiement */
+    .confirmation-section {
         margin: 30px 0;
         padding: 25px;
         background: #f8f9fa;
         border-radius: 10px;
         border: 1px solid #e9ecef;
+        text-align: center;
     }
 
-    .payment-form {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
+    .confirmation-icon {
+        font-size: 4rem;
+        color: var(--orange-cosmique);
         margin-bottom: 20px;
     }
 
-    @media (max-width: 768px) {
-        .payment-form {
-            grid-template-columns: 1fr;
-        }
+    .confirmation-title {
+        color: var(--rouge-poupre);
+        font-size: 1.5rem;
+        margin-bottom: 15px;
     }
 
-    .payment-info .alert {
-        padding: 15px;
-        border-radius: 8px;
-        margin: 15px 0;
-        background: #d1ecf1;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
+    .confirmation-message {
+        color: #666;
+        font-size: 1.1rem;
+        margin-bottom: 25px;
+        line-height: 1.6;
     }
 
-    .payment-loading {
-        text-align: center;
-        padding: 20px;
-        background: #f8f9fa;
+    .info-box {
+        background: #e7f3ff;
+        border: 1px solid #b3d9ff;
         border-radius: 10px;
-        margin: 15px 0;
-        display: none;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: left;
     }
 
-    .payment-loading .spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid var(--orange-cosmique);
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 2s linear infinite;
-        margin: 0 auto 15px;
+    .info-box p {
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    .info-box i {
+        color: var(--orange-cosmique);
+        width: 24px;
+        font-size: 1.2rem;
     }
 
     .total-amount {
         font-size: 1.3rem;
         color: var(--orange-cosmique);
         font-weight: bold;
-    }
-
-    .form-text {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-top: 5px;
     }
 
     @keyframes fadeIn {
@@ -727,6 +864,14 @@
         .zone-warning-message p {
             font-size: 1rem;
         }
+        
+        .whatsapp-popup {
+            padding: 20px;
+        }
+        
+        .popup-title {
+            font-size: 1.5rem;
+        }
     }
 </style>
 {% endblock %}
@@ -753,7 +898,7 @@
         </div>
         <div class="step" data-step="4">
             <div class="step-number">4</div>
-            <span>Paiement & Confirmation</span>
+            <span>Confirmation</span>
         </div>
     </div>
 
@@ -764,9 +909,9 @@
                 <h2 class="section-title">Choisissez votre plan</h2>
                 <div class="plans-grid">
                     {% for plan in plans %}
-                    <div class="plan-card" data-plan-id="{{ plan.id }}">
+                    <div class="plan-card" data-plan-id="{{ plan.id }}" data-plan-name="{{ plan.name }}" data-plan-price="{{ plan.price }}">
                         <h3>{{ plan.name }}</h3>
-                        <div class="plan-price">{{ plan.price }} FCFA</div>
+                        <div class="plan-price">{{ plan.name }}</div>
                         <p>{{ plan.description }}</p>
                         <ul class="plan-features">
                             <li>{{ plan.get_frequency_display }}</li>
@@ -787,7 +932,7 @@
             </div>
         </div>
 
-        <!-- Étape 2: Sélection de la zone - MODIFIÉ AVEC MESSAGE D'AVERTISSEMENT ET BOUTON WHATSAPP -->
+        <!-- Étape 2: Sélection de la zone -->
         <div class="step-content" id="step2-content">
             <div class="zone-selection">
                 <h2 class="section-title">Sélectionnez votre zone de collecte</h2>
@@ -799,7 +944,7 @@
                     <p><strong>2 collectes par semaine - Jours non consécutifs</strong></p>
                 </div>
                 
-                <!-- MESSAGE D'AVERTISSEMENT AJOUTÉ -->
+                <!-- MESSAGE D'AVERTISSEMENT -->
                 <div class="zone-warning-message">
                     <i class="fas fa-exclamation-triangle"></i>
                     <h4>⚠️ IMPORTANT : Sélectionnez votre zone résidentielle</h4>
@@ -817,17 +962,16 @@
                     </select>
                 </div>
                 
-                <!-- BOUTON WHATSAPP AJOUTÉ POUR ZONE NON LISTÉE -->
+                <!-- BOUTON WHATSAPP POUR ZONE NON LISTÉE -->
                 <div class="zone-warning-message" style="background-color: #e8f5e8; border-color: #25D366;">
                     <i class="fab fa-whatsapp" style="color: #25D366; font-size: 2.5rem;"></i>
                     <h4 style="color: #075e54;">Votre zone n'est pas dans la liste ?</h4>
                     <p>Si votre zone de résidence n'apparaît pas dans la liste ci-dessus, veuillez contacter immédiatement notre service client pour vérifier la disponibilité dans votre secteur.</p>
                     
-                    <!-- Bouton WhatsApp -->
                     <a href="https://wa.me/237690365959?text=Bonjour%2C%20je%20souhaite%20avoir%20des%20informations%20sur%20les%20zones%20de%20collecte%20disponibles.%20Ma%20zone%20de%20r%C3%A9sidence%20ne%20figure%20pas%20dans%20la%20liste." 
                        class="whatsapp-button" 
                        target="_blank"
-                       onclick="trackWhatsAppClick()">
+                       onclick="trackWhatsAppClick('zone_non_listee')">
                         <i class="fab fa-whatsapp"></i>
                         Contacter le service client via WhatsApp
                     </a>
@@ -844,11 +988,11 @@
                         <h5>Programme disponible dans cette zone:</h5>
                         <div id="zoneSchedule"></div>
                         
-                        <!-- Petit bouton WhatsApp dans les infos de zone (optionnel) -->
                         <div style="text-align: center; margin-top: 15px;">
                             <a href="https://wa.me/237690365959?text=Bonjour%2C%20j%27ai%20une%20question%20concernant%20la%20zone%20de%20collecte%20s%C3%A9lectionn%C3%A9e." 
                                class="whatsapp-button-small" 
-                               target="_blank">
+                               target="_blank"
+                               onclick="trackWhatsAppClick('question_zone')">
                                 <i class="fab fa-whatsapp"></i>
                                 Question sur cette zone ?
                             </a>
@@ -961,10 +1105,10 @@
             </div>
         </div>
 
-        <!-- Étape 4: Paiement & Confirmation -->
+        <!-- Étape 4: Confirmation sans paiement -->
         <div class="step-content" id="step4-content">
             <div class="summary-section">
-                <h2 class="section-title">Récapitulatif & Paiement</h2>
+                <h2 class="section-title">Récapitulatif de votre demande</h2>
                 
                 <!-- Récapitulatif -->
                 <div id="summaryContent">
@@ -977,33 +1121,32 @@
                     <div id="generatedSchedule"></div>
                 </div>
                 
-                <!-- Formulaire de paiement -->
-                <div class="payment-section" id="paymentSection" style="display: none;">
-                    <h4 class="section-title">🔒 Paiement Sécurisé</h4>
+                <!-- Section de confirmation sans paiement -->
+                <div class="confirmation-section" id="confirmationSection">
+                    <div class="confirmation-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 class="confirmation-title">Demande enregistrée avec succès !</h3>
+                    <p class="confirmation-message">
+                        Votre demande d'abonnement a été enregistrée. 
+                        veillez contacter notre service client pour finaliser votre abonnement et discuter des modalités de paiement. 
+                        si vous ne contacter pas le service client dans les 24h, votre demande sera automatiquement annulée. 
+                    </p>
                     
-                    <div class="payment-form">
-                        <div class="form-group">
-                            <label for="phoneNumber">Numéro de téléphone *</label>
-                            <input type="tel" id="phoneNumber" placeholder="Ex: 655123456" required>
-                            <small class="form-text">Format: 6XXXXXXX (MTN) ou 2XXXXXXX (Orange)</small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentMethod">Opérateur mobile *</label>
-                            <select id="paymentMethod" required>
-                                <option value="">Choisissez votre opérateur</option>
-                                <option value="mtn">MTN Mobile Money</option>
-                                <option value="orange">Orange Money</option>
-                            </select>
-                        </div>
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Statut :</strong> En attente de validation</p>
+                        <p><i class="fas fa-clock"></i> <strong>Délai de réponse :</strong> 1h de temps</p>
+                        <p><i class="fas fa-phone-alt"></i> <strong>Contact prioritaire :</strong> +237 690 36 59 59</p>
                     </div>
                     
-                    <div class="payment-info">
-                        <div class="alert">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>Processus sécurisé:</strong> Vous recevrez une demande de confirmation sur votre téléphone pour valider le paiement.
-                        </div>
-                    </div>
+                    <button class="whatsapp-popup-button" id="openWhatsAppPopup">
+                        <i class="fab fa-whatsapp"></i>
+                        Contacter le service client
+                    </button>
+                    
+                    <p style="color: #666; font-size: 0.9rem; margin-top: 15px;">
+                        <i class="fas fa-lock"></i> Aucun paiement n'est requis pour le moment
+                    </p>
                 </div>
                 
                 <div class="form-group">
@@ -1011,17 +1154,7 @@
                     <textarea id="specialInstructions" rows="3" placeholder="Instructions particulières pour le collecteur..."></textarea>
                 </div>
                 
-                <div class="submit-section">
-                    <button class="btn-submit" id="processPayment" disabled>
-                        <i class="fas fa-lock"></i> Payer et Souscrire
-                    </button>
-                    
-                    <div class="payment-loading" id="paymentLoading">
-                        <div class="spinner"></div>
-                        <p>Traitement du paiement en cours...</p>
-                        <small>Veuillez confirmer le paiement sur votre téléphone</small>
-                    </div>
-                </div>
+                
             </div>
             
             <div class="navigation-buttons">
@@ -1033,21 +1166,59 @@
         </div>
     </div>
 
+    <!-- POPUP WHATSAPP -->
+    <div class="whatsapp-popup-overlay" id="whatsappPopup">
+        <div class="whatsapp-popup">
+            <button class="popup-close" onclick="closeWhatsAppPopup()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="popup-icon">
+                <i class="fab fa-whatsapp"></i>
+            </div>
+            
+            <h2 class="popup-title">Contacter le service client</h2>
+            
+            <p class="popup-message">
+                Un conseiller vous contactera dans les 1h suivant votre demande. Pour un traitement plus rapide, vous devez nous contacter directement via WhatsApp.
+            </p>
+            
+            <div class="popup-highlight">
+                <p><i class="fas fa-check-circle"></i> Discutez directement avec un conseiller</p>
+                <p><i class="fas fa-check-circle"></i> Négociez vos modalités de paiement</p>
+                <p><i class="fas fa-check-circle"></i> Finalisez votre abonnement en quelques minutes</p>
+            </div>
+            
+            <a href="https://wa.me/237690365959?text=Bonjour%2C%20je%20souhaite%20finaliser%20mon%20abonnement%20et%20j%27aimerais%20avoir%20les%20modalit%C3%A9s%20de%20paiement%20%3A" 
+               class="whatsapp-popup-button" 
+               target="_blank"
+               id="whatsappFinalLink"
+               onclick="trackWhatsAppFinal()">
+                <i class="fab fa-whatsapp"></i>
+                Ouvrir WhatsApp
+            </a>
+            
+            <p class="popup-footer">
+                <i class="fas fa-heart"></i> Disponible 7j/7 de 8h à 20h
+            </p>
+        </div>
+    </div>
+
     <div class="loading" id="loading">
         <i class="fas fa-spinner fa-spin fa-2x"></i>
-        <p>Création de votre abonnement...</p>
+        <p>Création de votre demande d'abonnement...</p>
     </div>
 
     <div class="success-message" id="successMessage">
         <i class="fas fa-check-circle fa-2x"></i>
-        <h3>Abonnement créé avec succès !</h3>
-        <p>Votre programme de collecte a été généré automatiquement.</p>
+        <h3>Demande envoyée avec succès !</h3>
+        <p>Votre demande d'abonnement a été enregistrée. Un conseiller vous contactera sous 1h.</p>
         <a href="{% url 'dashboard' %}" class="btn btn-primary">Voir mon dashboard</a>
     </div>
 
     <div class="error-message" id="errorMessage">
         <i class="fas fa-exclamation-triangle fa-2x"></i>
-        <h3>Erreur lors de la souscription</h3>
+        <h3>Erreur lors de l'envoi</h3>
         <p id="errorText"></p>
         <button class="btn btn-outline" onclick="hideError()">Réessayer</button>
     </div>
@@ -1063,9 +1234,11 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <script>
-    // Variables globales étendues
+    // Variables globales
     let currentStep = 1;
     let selectedPlan = null;
+    let selectedPlanName = null;
+    let selectedPlanPrice = null;
     let selectedZone = null;
     let zoneData = {};
     let generatedSchedule = [];
@@ -1078,14 +1251,31 @@
     let watchId = null;
     let userLocation = null;
 
-    // Variables pour le paiement
-    let paymentInProgress = false;
+    // Variable pour suivre si l'abonnement a déjà été créé
+    let subscriptionCreated = false;
 
-    // === FONCTION DE SUIVI WHATSAPP (AJOUTÉE) ===
-    function trackWhatsAppClick() {
-        console.log('Redirection vers WhatsApp service client');
-        // Vous pouvez ajouter ici un tracking analytique si nécessaire
-        // Par exemple : gtag('event', 'click', {'event_category': 'WhatsApp', 'event_label': 'Zone non listée'});
+    // === FONCTIONS DE SUIVI WHATSAPP ===
+    function trackWhatsAppClick(source) {
+        console.log('WhatsApp click from:', source);
+        // Vous pouvez ajouter un tracking analytique ici
+    }
+
+    function trackWhatsAppFinal() {
+        console.log('Final WhatsApp contact from popup');
+        setTimeout(() => {
+            closeWhatsAppPopup();
+        }, 1000);
+    }
+
+    // === FONCTIONS DU POPUP WHATSAPP ===
+    function openWhatsAppPopup() {
+        document.getElementById('whatsappPopup').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeWhatsAppPopup() {
+        document.getElementById('whatsappPopup').style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
 
     // === FONCTIONS DE GÉOLOCALISATION ===
@@ -1145,7 +1335,10 @@
         document.getElementById('accuracy').value = accuracy || '';
 
         userLocation = { latitude: lat, longitude: lng, accuracy: accuracy };
+        
+        // Valider l'étape 3 et vérifier si on peut créer l'abonnement
         validateStep3();
+        checkAndCreateSubscription();
     }
 
     // Géolocalisation automatique
@@ -1310,6 +1503,7 @@
         }
 
         validateStep3();
+        checkAndCreateSubscription();
     }
 
     function fillWithDefaultAddress(lat, lng) {
@@ -1324,6 +1518,7 @@
             `Coordonnées: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         
         validateStep3();
+        checkAndCreateSubscription();
     }
 
     // === FONCTIONS UTILITAIRES GÉOLOCALISATION ===
@@ -1348,128 +1543,118 @@
         }
     }
 
-    // === FONCTIONS DE PAIEMENT ===
+    // === FONCTION DE CRÉATION AUTOMATIQUE D'ABONNEMENT ===
+    function checkAndCreateSubscription() {
+        // Vérifier si toutes les conditions sont remplies et si l'abonnement n'a pas déjà été créé
+        if (subscriptionCreated) {
+            return;
+        }
 
-    // Fonction de traitement du paiement
-    async function processSubscriptionPayment() {
-        if (paymentInProgress) return;
-        
-        const phoneNumber = document.getElementById('phoneNumber').value;
-        const paymentMethod = document.getElementById('paymentMethod').value;
-        
-        if (!phoneNumber || !paymentMethod) {
-            showPaymentError('Veuillez remplir tous les champs de paiement');
-            return;
+        const isStep3Valid = validateStep3();
+        const hasPlan = selectedPlan !== null;
+        const hasZone = selectedZone !== null;
+
+        if (isStep3Valid && hasPlan && hasZone && !subscriptionCreated) {
+            // Petite temporisation pour éviter les créations multiples
+            setTimeout(() => {
+                if (!subscriptionCreated) {
+                    createSubscriptionWithoutPayment();
+                }
+            }, 1000);
         }
-        
-        // Validation du numéro de téléphone
-        if (!/^[62]\d{8}$/.test(phoneNumber)) {
-            showPaymentError('Numéro de téléphone invalide. Format: 6XXXXXXX ou 2XXXXXXX');
-            return;
-        }
-        
-        paymentInProgress = true;
-        showPaymentLoading(true);
-        
-        const subscriptionData = {
-            plan_id: selectedPlan,
-            zone_id: selectedZone,
-            phone_number: phoneNumber,
-            payment_method: paymentMethod,
-            selected_days: generatedSchedule.map(day => day.jour),
-            address: {
-                title: document.getElementById('addressTitle').value || 'Adresse principale',
-                street: document.getElementById('street').value,
-                city: document.getElementById('city').value,
-                postal_code: document.getElementById('postalCode').value,
-                additional_info: document.getElementById('additionalInfo').value,
-                country: 'Cameroun',
-                latitude: userLocation ? userLocation.latitude : null,
-                longitude: userLocation ? userLocation.longitude : null,
-                accuracy: userLocation ? userLocation.accuracy : null
+    }
+
+    async function createSubscriptionWithoutPayment() {
+    if (subscriptionCreated) {
+        return;
+    }
+
+    showLoading(true);
+    
+    const subscriptionData = {
+        plan_id: selectedPlan,
+        zone_id: selectedZone,
+        address: {
+            title: document.getElementById('addressTitle').value || 'Adresse principale',
+            street: document.getElementById('street').value,
+            city: document.getElementById('city').value,
+            postal_code: document.getElementById('postalCode').value,
+            additional_info: document.getElementById('additionalInfo').value,
+            country: 'Cameroun',
+            latitude: userLocation ? userLocation.latitude : null,
+            longitude: userLocation ? userLocation.longitude : null,
+            accuracy: userLocation ? userLocation.accuracy : null
+        },
+        special_instructions: document.getElementById('specialInstructions').value || ''
+    };
+    
+    console.log('Données envoyées:', subscriptionData);
+    
+    try {
+        // Utilisez le chemin correct - soit /souscription/creer/ soit /reabonnements/creer/
+        const response = await fetch('{% url "create_subscription_ajax" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
             },
-            special_instructions: document.getElementById('specialInstructions').value
-        };
+            body: JSON.stringify(subscriptionData)
+        });
         
-        try {
-            const response = await fetch('{% url "process_subscription_payment" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify(subscriptionData)
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showPaymentSuccess(data.message);
-                // Redirection après succès
-                setTimeout(() => {
-                    window.location.href = '{% url "dashboard" %}';
-                }, 3000);
-            } else {
-                showPaymentError(data.error || 'Erreur lors du paiement');
-            }
-        } catch (error) {
-            console.error('Payment error:', error);
-            showPaymentError('Erreur réseau: ' + error.message);
-        } finally {
-            paymentInProgress = false;
-            showPaymentLoading(false);
+        // Vérifier si la réponse est une redirection
+        if (response.redirected) {
+            console.error('Redirection détectée vers:', response.url);
+            throw new Error('La requête a été redirigée. Vérifiez que l\'URL est correcte et que l\'utilisateur est connecté.');
         }
-    }
-
-    // Affichage du chargement du paiement
-    function showPaymentLoading(show) {
-        const paymentBtn = document.getElementById('processPayment');
-        const paymentLoading = document.getElementById('paymentLoading');
         
-        if (show) {
-            paymentBtn.style.display = 'none';
-            paymentLoading.style.display = 'block';
-            paymentBtn.disabled = true;
+        // Vérifier si la réponse est OK
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('Réponse non-JSON reçue:', text.substring(0, 200));
+            throw new Error(`Erreur serveur: ${response.status} - ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Réponse reçue:', data);
+        
+        if (data.success) {
+            subscriptionCreated = true;
+            showLoading(false);
+            
+            // Mettre à jour l'affichage
+            showSubscriptionCreatedMessage();
+            updateSummary();
+            generateAutomaticSchedule();
+            
+            // Passer à l'étape 4
+            setTimeout(() => {
+                goToStep(4);
+            }, 1500);
+            
         } else {
-            paymentBtn.style.display = 'block';
-            paymentLoading.style.display = 'none';
-            paymentBtn.disabled = false;
+            showLoading(false);
+            showErrorMessage(data.error || 'Erreur lors de la création de la demande');
         }
+    } catch (error) {
+        showLoading(false);
+        showErrorMessage('Erreur: ' + error.message);
+        console.error('Détails de l\'erreur:', error);
+    }
+}
+
+    function showSubscriptionCreatedMessage() {
+        // Afficher un message temporaire
+        const statusElement = document.getElementById('locationStatus');
+        statusElement.className = 'location-status success';
+        document.getElementById('locationStatusText').innerHTML = 
+            '<i class="fas fa-check-circle"></i> Demande d\'abonnement créée avec succès ! Redirection...';
+        statusElement.style.display = 'flex';
     }
 
-    // Affichage des messages de succès/erreur
-    function showPaymentSuccess(message) {
-        const successMessage = document.getElementById('successMessage');
-        const successText = successMessage.querySelector('p');
-        
-        successText.textContent = message;
-        successMessage.style.display = 'block';
-        document.querySelector('.subscription-content').style.display = 'none';
-    }
+    // === FONCTIONS DE NAVIGATION ===
 
-    function showPaymentError(message) {
-        const errorMessage = document.getElementById('errorMessage');
-        const errorText = document.getElementById('errorText');
-        
-        errorText.textContent = message;
-        errorMessage.style.display = 'block';
-    }
-
-    // Validation du formulaire de paiement
-    function validatePaymentForm() {
-        const phoneNumber = document.getElementById('phoneNumber').value;
-        const paymentMethod = document.getElementById('paymentMethod').value;
-        const paymentBtn = document.getElementById('processPayment');
-        
-        const isValid = phoneNumber && paymentMethod && /^[62]\d{8}$/.test(phoneNumber);
-        paymentBtn.disabled = !isValid;
-    }
-
-    // === FONCTIONS EXISTANTES (conservées) ===
-
-    // Navigation entre les étapes
     function goToStep(step) {
-        if (!validateCurrentStep()) {
+        if (!validateCurrentStep() && step > currentStep) {
             return;
         }
 
@@ -1501,7 +1686,6 @@
         // Initialiser la carte quand on arrive à l'étape 3
         if (step === 3 && !map) {
             initMap();
-            // Détection automatique au chargement de l'étape 3
             setTimeout(() => {
                 getCurrentLocation();
             }, 1000);
@@ -1510,10 +1694,15 @@
         if (step === 4) {
             updateSummary();
             generateAutomaticSchedule();
+            
+            // Si l'abonnement a déjà été créé, afficher le bouton WhatsApp
+            if (subscriptionCreated) {
+                document.getElementById('confirmationSection').style.display = 'block';
+            }
         }
     }
 
-    // Validation des étapes (modifiée pour l'étape 3)
+    // Validation des étapes
     function validateCurrentStep() {
         switch (currentStep) {
             case 1:
@@ -1530,12 +1719,14 @@
     function validateStep1() {
         const isValid = selectedPlan !== null;
         document.getElementById('step1-validation').style.display = isValid ? 'none' : 'block';
+        document.getElementById('nextToStep2').disabled = !isValid;
         return isValid;
     }
 
     function validateStep2() {
         const isValid = selectedZone !== null;
         document.getElementById('step2-validation').style.display = isValid ? 'none' : 'block';
+        document.getElementById('nextToStep3').disabled = !isValid;
         return isValid;
     }
 
@@ -1560,6 +1751,8 @@
             document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
             this.classList.add('selected');
             selectedPlan = this.dataset.planId;
+            selectedPlanName = this.dataset.planName;
+            selectedPlanPrice = this.dataset.planPrice;
             validateStep1();
         });
     });
@@ -1576,6 +1769,11 @@
         }
         
         validateStep2();
+        
+        // Vérifier si on peut créer l'abonnement (si on est à l'étape 3)
+        if (currentStep === 3) {
+            checkAndCreateSubscription();
+        }
     });
 
     // Charger les informations de la zone
@@ -1678,27 +1876,22 @@
         }
     }
 
-    // Mise à jour du récapitulatif avec les informations de paiement
+    // Mise à jour du récapitulatif
     function updateSummary() {
         const summaryContent = document.getElementById('summaryContent');
-        const paymentSection = document.getElementById('paymentSection');
+        const confirmationSection = document.getElementById('confirmationSection');
         
         if (!selectedPlan || !selectedZone) {
             summaryContent.innerHTML = '<p>Sélectionnez un plan et une zone pour voir le récapitulatif</p>';
-            paymentSection.style.display = 'none';
             return;
         }
-        
-        const planCard = document.querySelector(`.plan-card[data-plan-id="${selectedPlan}"]`);
-        const planName = planCard.querySelector('h3').textContent;
-        const planPrice = planCard.querySelector('.plan-price').textContent;
         
         const zoneName = document.querySelector(`#zoneSelect option[value="${selectedZone}"]`).textContent;
         
         let summaryHTML = `
             <div class="summary-item">
                 <span>Plan:</span>
-                <span>${planName}</span>
+                <span>${selectedPlanName} - ${selectedPlanPrice} FCFA</span>
             </div>
             <div class="summary-item">
                 <span>Zone de collecte:</span>
@@ -1717,22 +1910,56 @@
                 <span>${userLocation ? userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6) : 'Non définies'}</span>
             </div>
             <div class="summary-item summary-total">
-                <span>Total à payer:</span>
-                <span class="total-amount">${planPrice}</span>
+                <span>Total à payer :</span>
+                <span class="total-amount">${selectedPlanPrice} FCFA</span>
             </div>
         `;
         
         summaryContent.innerHTML = summaryHTML;
-        paymentSection.style.display = 'block';
         
-        // Activer le bouton de paiement si toutes les conditions sont remplies
-        const canProceed = selectedPlan && selectedZone && 
-                          document.getElementById('street').value && 
-                          document.getElementById('city').value && 
-                          document.getElementById('postalCode').value &&
-                          userLocation;
+        // Si l'abonnement a été créé, afficher la section de confirmation
+        if (subscriptionCreated) {
+            confirmationSection.style.display = 'block';
+        }
+    }
+
+    // Affichage du chargement
+    function showLoading(show) {
+        const loadingEl = document.getElementById('loading');
+        const contentEl = document.querySelector('.subscription-content');
+        const buttons = document.querySelectorAll('.btn, .btn-submit');
         
-        document.getElementById('processPayment').disabled = !canProceed;
+        if (show) {
+            loadingEl.style.display = 'block';
+            contentEl.style.display = 'none';
+            buttons.forEach(btn => btn.disabled = true);
+        } else {
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'grid';
+            buttons.forEach(btn => btn.disabled = false);
+        }
+    }
+
+    function showSuccessMessage(message) {
+        const successMessage = document.getElementById('successMessage');
+        const successText = successMessage.querySelector('p');
+        
+        successText.textContent = message;
+        successMessage.style.display = 'block';
+        document.querySelector('.subscription-content').style.display = 'none';
+    }
+
+    function showErrorMessage(message) {
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        
+        errorText.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+
+    function hideError() {
+        document.getElementById('errorMessage').style.display = 'none';
+        document.querySelector('.subscription-content').style.display = 'grid';
     }
 
     // === GESTIONNAIRES D'ÉVÉNEMENTS GÉOLOCALISATION ===
@@ -1766,26 +1993,31 @@
         }
     });
 
-    // === GESTIONNAIRES D'ÉVÉNEMENTS PAIEMENT ===
+    // === GESTIONNAIRES D'ÉVÉNEMENTS PRINCIPAUX ===
 
-    document.getElementById('processPayment').addEventListener('click', processSubscriptionPayment);
-
-    // Validation en temps réel des champs de paiement
-    document.getElementById('phoneNumber').addEventListener('input', function() {
-        validatePaymentForm();
+    document.getElementById('openWhatsAppPopup').addEventListener('click', function(e) {
+        e.preventDefault();
+        openWhatsAppPopup();
     });
 
-    document.getElementById('paymentMethod').addEventListener('change', function() {
-        validatePaymentForm();
+    // Supprimer l'ancien gestionnaire du bouton createSubscription car il n'existe plus
+    // Le bouton a été retiré du HTML
+
+    // Fermer le popup en cliquant en dehors
+    document.getElementById('whatsappPopup').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeWhatsAppPopup();
+        }
     });
 
-    // Validation en temps réel des champs d'adresse
-    document.getElementById('street').addEventListener('input', validateStep3);
-    document.getElementById('city').addEventListener('input', validateStep3);
-    document.getElementById('postalCode').addEventListener('input', validateStep3);
-    document.getElementById('addressTitle').addEventListener('input', validateStep3);
+    // Fermer le popup avec la touche Echap
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('whatsappPopup').style.display === 'flex') {
+            closeWhatsAppPopup();
+        }
+    });
 
-    // === ÉVÉNEMENTS EXISTANTS ===
+    // === ÉVÉNEMENTS DE NAVIGATION ===
 
     document.querySelectorAll('.step').forEach(step => {
         step.addEventListener('click', function() {
@@ -1796,20 +2028,51 @@
         });
     });
 
-    document.getElementById('nextToStep2').addEventListener('click', () => goToStep(2));
-    document.getElementById('nextToStep3').addEventListener('click', () => goToStep(3));
-    document.getElementById('nextToStep4').addEventListener('click', () => goToStep(4));
+    document.getElementById('nextToStep2').addEventListener('click', () => {
+        if (validateStep1()) {
+            goToStep(2);
+        }
+    });
+    
+    document.getElementById('nextToStep3').addEventListener('click', () => {
+        if (validateStep2()) {
+            goToStep(3);
+        }
+    });
+    
+    document.getElementById('nextToStep4').addEventListener('click', () => {
+        if (validateStep3()) {
+            goToStep(4);
+        }
+    });
+    
     document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
     document.getElementById('backToStep2').addEventListener('click', () => goToStep(2));
     document.getElementById('backToStep3').addEventListener('click', () => goToStep(3));
 
-    function hideError() {
-        document.getElementById('errorMessage').style.display = 'none';
-    }
+    // Validation en temps réel des champs d'adresse
+    document.getElementById('street').addEventListener('input', function() {
+        validateStep3();
+        checkAndCreateSubscription();
+    });
+    
+    document.getElementById('city').addEventListener('input', function() {
+        validateStep3();
+        checkAndCreateSubscription();
+    });
+    
+    document.getElementById('postalCode').addEventListener('input', function() {
+        validateStep3();
+        checkAndCreateSubscription();
+    });
+    
+    document.getElementById('addressTitle').addEventListener('input', function() {
+        validateStep3();
+        checkAndCreateSubscription();
+    });
 
     // Initialisation
     document.addEventListener('DOMContentLoaded', function() {
-        // La carte sera initialisée quand on arrivera à l'étape 3
         validateStep3();
     });
 </script>

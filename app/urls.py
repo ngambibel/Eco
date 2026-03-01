@@ -14,10 +14,12 @@ urlpatterns = [
     path('', views.accueil , name='dashboard'),
 
     path('abonnement/', views.subscription_page, name='subscription_page'),
-    path('api/create-subscription/', views.create_subscription, name='create_subscription'),
+    
     path('api/schedule/<uuid:subscription_id>/', views.get_subscription_schedule, name='get_schedule'),
     path('subscription/payment/', views.process_subscription_payment, name='process_subscription_payment'),
     path('subscription/payment/verify/', views.verify_payment_status, name='verify_payment_status'),
+    path('souscriptions/creer/', views.create_subscription, name='create_subscription_ajax'),
+    path('souscription/confirmation/<uuid:subscription_id>/', views.subscription_confirmation, name='subscription_confirmation'),
 
     # Tableau de bord des abonnements
     path('mes-abonnements/', views.subscriptions_dashboard, name='subscriptions_dashboard'),
