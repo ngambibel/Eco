@@ -1295,3 +1295,21 @@ class Performence(models.Model):
 
     def __str__(self):
         return self.Tricycle.conducteur
+
+
+
+# signale pour supprimer mes notifications après 3 jours
+@receiver(post_save, sender=Notification)
+def delete_old_notifications(sender, instance, **kwargs):
+    Notification.objects.filter(
+        created_at__lt=timezone.now() - timezone.timedelta(days=3)
+    ).delete()
+
+
+# signal pour supprimer les payements reussi apres 3 jours
+@receiver(post_save, sender=Payment)
+def delete_old_payments(sender, instance, **kwargs):
+    Payment.objects.filter(
+        created_at__lt=timezone.now() - timezone.timedelta(days=3),
+        status='completed'
+    ).delete()
