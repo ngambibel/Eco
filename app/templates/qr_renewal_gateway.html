@@ -12,6 +12,8 @@
             --gris-clair: #F8F9FA;
             --gris-fonce: #6C757D;
             --noir: #212529;
+            --vert-success: #28a745;
+            --orange-warning: #fd7e14;
         }
         
         * {
@@ -84,6 +86,29 @@
             font-weight: 600;
         }
         
+        .bonus-info {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .bonus-eligible {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .bonus-not-eligible {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+        
+        .bonus-info i {
+            margin-right: 8px;
+        }
+        
         .form-group {
             margin-bottom: 20px;
         }
@@ -107,6 +132,101 @@
         .form-control:focus {
             outline: none;
             border-color: var(--orange-cosmique);
+        }
+        
+        .month-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .month-option {
+            position: relative;
+        }
+        
+        .month-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .month-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 5px;
+            background: var(--gris-clair);
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .month-option input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, var(--orange-cosmique), var(--rouge-poupre));
+            border-color: var(--orange-cosmique);
+            color: var(--blanc);
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255,107,53,0.3);
+        }
+        
+        .month-option .month-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+        
+        .month-option .month-text {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .month-option .bonus-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--vert-success);
+            color: white;
+            border-radius: 20px;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        
+        .month-option .bonus-badge i {
+            margin-right: 3px;
+            font-size: 0.6rem;
+        }
+        
+        .price-calculator {
+            background: var(--gris-clair);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #dee2e6;
+        }
+        
+        .price-row.total {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--orange-cosmique);
+        }
+        
+        .price-row.bonus {
+            color: var(--vert-success);
         }
         
         .payment-amount {
@@ -150,8 +270,13 @@
             color: var(--blanc);
         }
         
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: var(--rouge-poupre);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .alert {
@@ -183,6 +308,19 @@
         .logo img {
             height: 50px;
         }
+        
+        .info-note {
+            font-size: 0.85rem;
+            color: var(--gris-fonce);
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .info-note i {
+            color: var(--orange-cosmique);
+        }
     </style>
 </head>
 <body>
@@ -196,34 +334,132 @@
         </div>
         
         <div class="content">
-            {% if error %}
-            <div class="alert alert-error" style="display: block;">
-                {{ error }}
+            
+            
+            <div class="subscription-info">
+                {% if subscription.end_date %}
+                <div class="info-item">
+                    <span class="info-label">Fin abonnement actuel:</span>
+                    <span class="info-value">{{ subscription.end_date|date:"d/m/Y" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Statut:</span>
+                    <span class="info-value">
+                        {% if subscription.status == 'active' %}
+                            <span style="color: var(--vert-success);">Actif</span>
+                        {% elif subscription.status == 'inactive' %}
+                            <span style="color: var(--gris-fonce);">Inactif</span>
+                        {% elif subscription.status == 'suspended' %}
+                            <span style="color: var(--rouge-poupre);">Suspendu</span>
+                        {% else %}
+                            {{ subscription.status }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Bonus Eligibility Info -->
+            {% if bonus_info %}
+            <div class="bonus-info {% if bonus_info.is_eligible %}bonus-eligible{% else %}bonus-not-eligible{% endif %}">
+                <i class="fas {% if bonus_info.is_eligible %}fa-gift{% else %}fa-info-circle{% endif %}"></i>
+                <strong>
+                    {% if bonus_info.is_eligible %}
+                        🎁vous etes élligible au Bonus spécial réabonnement ! <br>
+                        Continuer de vous réabonner avant la date de fin d'abonnement pour gagner des semaines de collectes gratuites. <br>
+                        EcoCity vous remercie pour votre confiance 
+
+                        <br>
+                        <br>
+
+                        Si vous souhaitez vous reabonner pour 1 mois vous devez vous reabonner les deux prochaine 
+                        fois avant la date de fin pour gagner ce bonus de fidelité de 1 semaine gratuite pour chaque reabonnement de 3 mois. <br>
+                         Vous pouvez aussi choisir de vous reabonner pour 3 mois dès maintenant pour bénéficier de ce bonus .
+                    {% else %}
+                        ℹ️ desolé vous n'etes pas élligible au bonus de reabonement par QR code 
+                         car votre votre abonnement à deja expiré. <br>
+                          Réactiver votre abonnement la prochaines fois avant la date de fin pour beneficier de ce bonus 
+                          de fidelité.
+                    {% endif %}
+                </strong>
+                <p style="margin-top: 5px; margin-bottom: 0;">
+                    {% if bonus_info.is_eligible %}
+                        Si vous choisissez 3 mois, vous bénéficierez d'<strong>1 semaine gratuite</strong> supplémentaire !
+                        Votre abonnement actuel étant encore actif (jusqu'au {{ subscription.end_date|date:"d/m/Y" }}), 
+                        le bonus s'appliquera à la fin de la période en cours.
+                    {% else %}
+                        {% if bonus_info.reason == "expired" %}
+                            Votre abonnement est déjà expiré. Le bonus d'1 semaine pour 3 mois ne s'applique pas.
+                        {% elif bonus_info.reason == "suspended" %}
+                            Votre abonnement est suspendu. Le bonus d'1 semaine pour 3 mois ne s'applique pas.
+                        {% elif bonus_info.reason == "no_active_subscription" %}
+                            Vous n'avez pas d'abonnement actif. Le bonus d'1 semaine pour 3 mois ne s'applique pas.
+                        {% endif %}
+                    {% endif %}
+                </p>
             </div>
             {% endif %}
             
-            <div class="subscription-info">
-                <div class="info-item">
-                    <span class="info-label">Abonnement:</span>
-                    <span class="info-value">{{ plan.name }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Type:</span>
-                    <span class="info-value">{{ plan.get_plan_type_display }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Adresse:</span>
-                    <span class="info-value">{{ address.street }}, {{ address.city }}</span>
-                </div>
-            </div>
-            
-            <form method="POST">
+            <form method="POST" id="renewalForm">
                 {% csrf_token %}
                 
-                <div class="payment-amount">
-                    <div class="amount-label">Montant à payer</div>
-                    <div class="amount-value">{{ amount }} FCFA</div>
+                <!-- Month Selection -->
+                <div class="form-group">
+                    <label class="form-label">Durée de réabonnement</label>
+                    <div class="month-selector">
+                        {% for month in month_options %}
+                        <div class="month-option">
+                            <input type="radio" name="months" id="months_{{ month.value }}" 
+                                   value="{{ month.value }}" data-price="{{ month.price }}"
+                                   {% if month.value == 1 %}checked{% endif %}
+                                   {% if month.bonus %}data-bonus="true"{% endif %}>
+                            <label for="months_{{ month.value }}">
+                                <span class="month-number">{{ month.value }}</span>
+                                <span class="month-text">mois</span>
+                                {% if month.bonus %}
+                                <span class="bonus-badge">
+                                    <i class="fas fa-gift"></i> +1 sem
+                                </span>
+                                {% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="info-note">
+                        <i class="fas fa-info-circle"></i>
+                        Le prix est calculé automatiquement selon la durée choisie
+                    </div>
                 </div>
+                
+                <!-- Price Calculator -->
+                <div class="price-calculator" id="priceCalculator">
+                    <div class="price-row">
+                        <span>Prix mensuel</span>
+                        <span>{{ plan.price }} FCFA</span>
+                    </div>
+                    <div class="price-row" id="subtotalRow">
+                        <span>Sous-total (<span id="monthCount">1</span> mois)</span>
+                        <span id="subtotalAmount">{{ plan.price }} FCFA</span>
+                    </div>
+                    <div class="price-row bonus" id="bonusRow" style="display: none;">
+                        <span>
+                            <i class="fas fa-gift"></i> Bonus 1 semaine
+                        </span>
+                        <span>Gratuit</span>
+                    </div>
+                    <div class="price-row total">
+                        <span>Total à payer</span>
+                        <span id="totalAmount">{{ plan.price }} FCFA</span>
+                    </div>
+                </div>
+                
+                <div class="payment-amount" id="paymentAmount">
+                    <div class="amount-label">Montant à payer</div>
+                    <div class="amount-value" id="displayAmount">{{ plan.price }} FCFA</div>
+                </div>
+                
+                <!-- Hidden field to store selected months for form submission -->
+                <input type="hidden" name="selected_months" id="selectedMonths" value="1">
                 
                 <div class="form-group">
                     <label class="form-label" for="phoneNumber">Numéro de téléphone</label>
@@ -243,9 +479,32 @@
                     </select>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
                     <i class="fas fa-credit-card"></i> Payer et s'abonner
                 </button>
+                <br>
+
+                {% if error %}
+            <div class="alert alert-error" style="display: block;">
+                {{ error }}
+            </div>
+            {% endif %}
+            <br>
+
+                <h3>
+                    si vous avez des difficultés à effectuer votre paiement par mobile money, ne vous inquiétez pas ! <br>
+                    composez *126*1# pour MTN et #150*50# si vous êtes un client Orange pour effectuer votre paiement par mobile money et finaliser votre réabonnement. <br>
+                    En cas de problème de paiement, veuillez contacter notre support client via whatsapp en cliquant sur le lien suivant :
+                    <br>
+                    <center>
+                        <a href="https://wa.me/237690365959" target="_blank" style="color: var(--vert-success); text-decoration: underline;">
+                        <i class="fab fa-whatsapp"></i> +237 699 99 99 99
+                    </a>
+                    </center><br>
+                    un de nos agents se fera un plaisir de vous assister dans les 15 min  pour finaliser votre réabonnement et vous faire <br>
+                    bénéficier de nos services de collecte d'ordures ménagères.
+                    
+                </h3>
             </form>
         </div>
         
@@ -257,5 +516,76 @@
 
     <!-- Font Awesome pour les icônes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const monthRadios = document.querySelectorAll('input[name="months"]');
+            const monthCountSpan = document.getElementById('monthCount');
+            const subtotalAmountSpan = document.getElementById('subtotalAmount');
+            const totalAmountSpan = document.getElementById('totalAmount');
+            const displayAmountSpan = document.getElementById('displayAmount');
+            const selectedMonthsInput = document.getElementById('selectedMonths');
+            const bonusRow = document.getElementById('bonusRow');
+            const pricePerMonth = '{{ plan.price }}';
+            const isBonusEligible = '{% if bonus_info.is_eligible %}true{% else %}false{% endif %}';
+            
+            function updatePrice() {
+                const selectedRadio = document.querySelector('input[name="months"]:checked');
+                if (!selectedRadio) return;
+                
+                const months = parseInt(selectedRadio.value);
+                const hasBonus = isBonusEligible && months === 3 && selectedRadio.dataset.bonus === 'true';
+                
+                // Update month count display
+                monthCountSpan.textContent = months;
+                
+                // Calculate subtotal
+                const subtotal = months * pricePerMonth;
+                subtotalAmountSpan.textContent = subtotal.toLocaleString() + ' FCFA';
+                
+                // Show/hide bonus row
+                if (hasBonus) {
+                    bonusRow.style.display = 'flex';
+                } else {
+                    bonusRow.style.display = 'none';
+                }
+                
+                // Total is same as subtotal (bonus is free)
+                const total = subtotal;
+                totalAmountSpan.textContent = total.toLocaleString() + ' FCFA';
+                displayAmountSpan.textContent = total.toLocaleString() + ' FCFA';
+                
+                // Update hidden field
+                selectedMonthsInput.value = months;
+            }
+            
+            // Add event listeners to radio buttons
+            monthRadios.forEach(radio => {
+                radio.addEventListener('change', updatePrice);
+            });
+            
+            // Initial update
+            updatePrice();
+            
+            // Form validation
+            const form = document.getElementById('renewalForm');
+            form.addEventListener('submit', function(e) {
+                const phoneNumber = document.getElementById('phoneNumber').value;
+                const network = document.getElementById('network').value;
+                
+                if (!phoneNumber.match(/^6[0-9]{8}$/)) {
+                    e.preventDefault();
+                    alert('Veuillez entrer un numéro de téléphone valide au format 6XXXXXXXX');
+                    return;
+                }
+                
+                if (!network) {
+                    e.preventDefault();
+                    alert('Veuillez sélectionner votre opérateur mobile');
+                    return;
+                }
+            });
+        });
+    </script>
 </body>
 </html>

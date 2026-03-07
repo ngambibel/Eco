@@ -400,7 +400,7 @@
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Prix:</span>
-                    <span class="detail-value" id="price-{{ subscription.id }}">{{ subscription.custom_price|default:subscription.plan.price }} FCFA</span>
+                    <span class="detail-value" id="price-{{ subscription.id }}">{{ subscription.custom_price|default:subscription.custom_price }} FCFA</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Adresse:</span>

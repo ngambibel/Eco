@@ -48,7 +48,7 @@ class AddressAdmin(admin.ModelAdmin):
 # Admin pour SubscriptionPlan
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
-    list_display = ('name', 'plan_type', 'frequency', 'price', 'max_collections_per_week', 'is_active')
+    list_display = ('name', 'price','frequency', 'plan_type', 'max_collections_per_week', 'is_active')
     list_filter = ('plan_type', 'frequency', 'is_active', 'created_at')
     search_fields = ('name', 'description')
     readonly_fields = ('created_at',)
@@ -153,6 +153,7 @@ admin.site.register(Facture)
 admin.site.register(Abonnement)
 admin.site.register(RevenueRecord)
 admin.site.register(RevenueSummary)
+admin.site.register(Bonus)
 
 
 

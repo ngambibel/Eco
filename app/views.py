@@ -1119,35 +1119,90 @@ def download_qr_code(request, subscription_id):
         messages.error(request, "QR code non disponible")
         return redirect('subscriptions_dashboard')
 
+def check_bonus_eligibility(subscription):
+    """
+    Vérifie si l'abonnement est éligible au bonus d'1 semaine pour 3 mois
+    Retourne un dictionnaire avec les informations d'éligibilité
+    """
+    if not subscription or not subscription.end_date:
+        return {
+            'is_eligible': False,
+            'reason': 'no_active_subscription'
+        }
+    
+    # Vérifier si l'abonnement est actif
+    if subscription.status != 'active':
+        return {
+            'is_eligible': False,
+            'reason': subscription.status  # 'inactive' ou 'suspended'
+        }
+    
+    # Vérifier si la date de fin n'est pas dépassée
+    if subscription.end_date < timezone.now().date():
+        return {
+            'is_eligible': False,
+            'reason': 'expired'
+        }
+    
+    # Si toutes les conditions sont remplies
+    return {
+        'is_eligible': True,
+        'reason': 'eligible',
+        'current_end_date': subscription.end_date,
+        'days_remaining': (subscription.end_date - timezone.now().date()).days
+    }
+
 def qr_renewal_gateway(request, token):
     """Passerelle de réabonnement via QR code - accessible sans authentification"""
     qr_code = get_object_or_404(SubscriptionQRCode, token=token, is_active=True)
     subscription = qr_code.subscription
     
-    # Vérifier si l'abonnement peut être renouvelé
-    if subscription.status != 'inactive':
-        return render(request, 'qr_renewal_info.html', {
-            'qr_code': qr_code,
-            'subscription': subscription,
-            'error': "Cet abonnement ne peut pas être renouvelé (déjà actif ou suspendu)."
-        })
+    # Préparer les options de mois avec leurs prix
+    month_options = []
+    base_price = subscription.custom_price or subscription.plan.price
+    
+    for months in [1, 3, 6, 12]:
+        option = {
+            'value': months,
+            'price': months * base_price,
+            'bonus': False
+        }
+        # Ajouter le bonus uniquement pour 3 mois si éligible
+        if months == 3:
+            option['bonus'] = True
+        month_options.append(option)
+    
+    # Vérifier l'éligibilité au bonus
+    bonus_info = check_bonus_eligibility(subscription)
     
     if request.method == 'POST':
-        return process_qr_renewal_payment(request, qr_code)
+        # Récupérer le nombre de mois sélectionnés
+        selected_months = request.POST.get('selected_months', 1)
+        try:
+            selected_months = int(selected_months)
+        except ValueError:
+            selected_months = 1
+        
+        # Stocker dans la session pour l'utiliser dans le traitement du paiement
+        request.session['renewal_months'] = selected_months
+        request.session['renewal_bonus_eligible'] = bonus_info['is_eligible'] and selected_months == 3
+        
+        return process_qr_renewal_payment(request, qr_code, selected_months, bonus_info)
     
     # Afficher le formulaire de réabonnement
     context = {
         'qr_code': qr_code,
         'subscription': subscription,
         'plan': subscription.plan,
-        'amount': subscription.custom_price or subscription.plan.price,
+        'amount': base_price,  # Prix mensuel
         'address': subscription.address,
+        'month_options': month_options,
+        'bonus_info': bonus_info,
     }
     return render(request, 'qr_renewal_gateway.html', context)
 
-
-def process_qr_renewal_payment(request, qr_code):
-    """Traiter le paiement pour le réabonnement QR code"""
+def process_qr_renewal_payment(request, qr_code, selected_months, bonus_info):
+    """Traiter le paiement pour le réabonnement QR code avec gestion des mois et du bonus"""
     try:
         subscription = qr_code.subscription
         phone_number = request.POST.get('phone_number', '').strip()
@@ -1177,34 +1232,93 @@ def process_qr_renewal_payment(request, qr_code):
             })
         
         # Vérifier que l'abonnement peut être renouvelé
-        if subscription.status != 'inactive':
+        if subscription.status not in ['inactive', 'active']:  # Permettre le réabonnement même si actif
             return render(request, 'qr_renewal_gateway.html', {
                 'qr_code': qr_code,
                 'subscription': subscription,
-                'error': "Cet abonnement ne peut pas être renouvelé (déjà actif ou suspendu)."
+                'error': "Cet abonnement ne peut pas être renouvelé (état: {}).".format(subscription.get_status_display())
             })
         
-        # Préparer les données de paiement
-        amount = subscription.custom_price or subscription.plan.price
+        # Calculer le montant total
+        base_price = subscription.custom_price or subscription.plan.price
+        total_amount = selected_months * base_price
+
+        
+        
+        # Vérifier si le bonus s'applique
+        apply_bonus = bonus_info['is_eligible'] and selected_months == 3
+
+        # modifier la date de debut et de fin en fonction du bonus
+        if apply_bonus:
+            total_amount = 3 * base_price  # Le prix reste le même pour 3 mois, le bonus est ajouté en jours
+            subscription.start_date = timezone.now().date()
+            # verrifier si la date de fin de l'abonnement actuel est dépassée ou pas
+            if subscription.end_date > timezone.now().date():
+                subscription.end_date = subscription.start_date + timedelta(days=30 * 3)    + timedelta(days=7)  # Ajouter 7 jours de bonus
+            else:
+                subscription.end_date = subscription.start_date + timedelta(days=30 * 3)
+            subscription.save()
+        else:
+            if selected_months == 1 :
+                bonus = Bonus.objects.filter(subscription=subscription).first()
+                if not bonus and subscription.end_date > timezone.now().date(): 
+                    Bonus.objects.create(
+                        subscription = subscription,
+                        number = 1
+                    )
+                    subscription.start_date = timezone.now().date()
+                    subscription.end_date = subscription.start_date + timedelta(days=30 * selected_months)
+                    subscription.save()
+                else :
+                    if bonus.number == 3 and subscription.end_date > timezone.now().date():
+                        subscription.end_date = subscription.start_date + timedelta(days=30 * 3)    + timedelta(days=7)  # Ajouter 7 jours de bonus
+                        bonus.number = 1
+                        bonus.save()
+                    else :
+                        if subscription.end_date > timezone.now().date():
+                            bonus.number = bonus.number + 1
+                            subscription.start_date = timezone.now().date()
+                            subscription.end_date = subscription.start_date + timedelta(days=30 * selected_months)
+                            subscription.save()
+                            bonus.save()
+            
+            else :
+                subscription.start_date = timezone.now().date()
+                subscription.end_date = subscription.start_date + timedelta(days=30 * selected_months)
+                subscription.save()
+
+
+
+
+        
+        
+        # Préparer les données de paiement avec les informations de durée et bonus
         subscription_data = {
             'plan_name': subscription.plan.name,
             'plan_type': subscription.plan.get_plan_type_display(),
             'renewal': True,
             'subscription_id': str(subscription.id),
-            'qr_token': qr_code.token
+            'qr_token': qr_code.token,
+            'months': selected_months,
+            'bonus_applied': apply_bonus,
+            'bonus_days': 7 if apply_bonus else 0,
+            'base_price': float(base_price),
+            'total_amount': float(total_amount)
         }
         
-        logger.info(f"Processing QR renewal payment: subscription={subscription.id}, phone={phone_number}, amount={amount}")
+        logger.info(f"Processing QR renewal payment: subscription={subscription.id}, "
+                   f"phone={phone_number}, months={selected_months}, amount={total_amount}, "
+                   f"bonus={apply_bonus}")
         
         # Initier le paiement
         payment_service = PaymentService()
-        payment_result = payment_service.process_subscription_payment(
+        payment_result = payment_service.process_subscription_payment_first(
             user=subscription.user,
-            amount= int(amount),
+            amount=int(total_amount),
             service_name=network,
             phone_number=phone_number,
             subscription_data=subscription_data,
-            subscription= subscription
+            subscription=subscription
         )
         
         logger.info(f"Payment result: {payment_result}")
@@ -1216,7 +1330,9 @@ def process_qr_renewal_payment(request, qr_code):
                 'subscription_id': str(subscription.id),
                 'qr_token': qr_code.token,
                 'phone_number': phone_number,
-                'amount': float(amount)
+                'amount': float(total_amount),
+                'months': selected_months,
+                'bonus_applied': apply_bonus
             }
             request.session.modified = True
             
@@ -1224,8 +1340,10 @@ def process_qr_renewal_payment(request, qr_code):
                 'qr_code': qr_code,
                 'subscription': subscription,
                 'transaction_id': payment_result.get('transaction_id'),
-                'amount': amount,
-                'phone_number': phone_number
+                'amount': total_amount,
+                'phone_number': phone_number,
+                'months': selected_months,
+                'bonus_applied': apply_bonus
             })
         else:
             error_message = payment_result.get('message', 'Erreur inconnue lors du paiement')
@@ -1281,42 +1399,37 @@ def check_qr_renewal_status(request):
             # Paiement réussi, renouveler l'abonnement
             subscription = qr_code.subscription
             
-            # Vérifier une dernière fois que l'abonnement peut être renouvelé
-            if subscription.status != 'inactive':
+            # Récupérer les informations de la session
+            transaction_info = request.session.get('qr_renewal_transaction', {})
+            months = transaction_info.get('months', 1)
+            bonus_applied = transaction_info.get('bonus_applied', False)
+            
+            # Vérifier que l'abonnement peut être renouvelé
+            if subscription.status not in ['inactive', 'active']:
                 logger.warning(f"Subscription {subscription.id} cannot be renewed, status: {subscription.status}")
                 return JsonResponse({
                     'success': False,
                     'message': "L'abonnement ne peut pas être renouvelé dans son état actuel."
                 })
             
-            # Calculer les nouvelles dates
-            current_date = timezone.now().date()
-            end_date = calculate_end_date(current_date, subscription.plan.plan_type)
-            
-            # Mettre à jour l'abonnement
-            subscription.start_date = current_date
-            subscription.end_date = end_date
             subscription.status = 'active'
             subscription.save()
             
-            # Générer le nouveau programme de collecte
-            try:
-                schedules_created = generate_collection_schedule(subscription)
-                schedule_message = f"{schedules_created} collectes programmées."
-            except Exception as e:
-                logger.error(f"Error generating collection schedule: {str(e)}")
-                schedule_message = "Programme de collecte généré avec quelques avertissements."
+            # Message bonus
+            bonus_message = ""
+            if bonus_applied:
+                bonus_message = " Vous avez bénéficié d'1 semaine gratuite !"
             
             # Nettoyer la session
             if 'qr_renewal_transaction' in request.session:
                 del request.session['qr_renewal_transaction']
                 request.session.modified = True
             
-            logger.info(f"Subscription {subscription.id} renewed successfully via QR code")
+            
             
             return JsonResponse({
                 'success': True,
-                'message': f"✅ Paiement confirmé ! Votre abonnement {subscription.plan.name} a été renouvelé avec succès. {schedule_message}",
+                'message': f"✅ Paiement confirmé ! Votre abonnement {subscription.plan.name} a été renouvelé pour {months} mois{bonus_message}",
                 'redirect_url': f"/subscription/qr-renew/success/{qr_token}/"
             })
         

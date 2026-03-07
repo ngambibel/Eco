@@ -57,15 +57,18 @@ class SubscriptionPlan(models.Model):
     )
     
     FREQUENCY_CHOICES = (
-        ('quotidien', 'Quotidien'),
-        ('hebdomadaire', 'Hebdomadaire'),
-        ('mensuel', 'Mensuel'),
+        ('1000', '2000'),
+        ('3000', '1500'),
+        ('2500', '3000'),
+        ('3500', '5000'),
+        ('4000', '4500'),
+        ('10000', '15000'),
     )
     
     name = models.CharField(max_length=100, verbose_name="Nom du plan")
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPE_CHOICES)
-    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix")
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     description = models.TextField(blank=True)
     max_collections_per_week = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
@@ -1313,3 +1316,14 @@ def delete_old_payments(sender, instance, **kwargs):
         created_at__lt=timezone.now() - timezone.timedelta(days=3),
         status='completed'
     ).delete()
+
+
+# model pour compter le nombre de mois de reabonnement avant la date d'echeance pour chaque abonnement 
+class Bonus (models.Model):
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
+    number = models.IntegerField()
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.subscription.user.username
+    
