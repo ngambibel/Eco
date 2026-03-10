@@ -203,7 +203,25 @@
         background-color: #f8d7da;
         color: #721c24;
     }
-
+    
+    /* Style pour le bouton PDF */
+    .btn-pdf {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-pdf:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        color: white;
+    }
+    
+    .pdf-card {
+        border-left: 4px solid #dc3545;
+        background: linear-gradient(to right, #fff9f9, white);
+    }
 </style>
 {% endblock %}
 
@@ -259,6 +277,51 @@
                     </div>
                     <div class="icon">
                         <i class="fas fa-user-friends fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOUVEAU: Carte d'export PDF des QR Codes -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card pdf-card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    <strong>Export PDF des QR Codes</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-qrcode fa-2x text-danger me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Générer un fichier PDF de tous les QR codes</h6>
+                                    <p class="text-muted mb-0 small">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Format A4 - 6 QR codes par page - Classés par ordre alphabétique - Logo en haut, nom et téléphone en bas
+                                    </p>
+                                    <p class="text-muted mt-1 mb-0 small">
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                        <strong>{{ active_subscriptions }}</strong> abonnements actifs avec QR codes disponibles
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <a href="{% url 'exportertousqrcodespdf' %}" 
+                               class="btn btn-pdf btn-lg" 
+                               target="_blank"
+                               title="Générer le PDF de tous les QR codes">
+                                <i class="fas fa-file-pdf me-2"></i>
+                                Exporter tous les QR Codes (PDF)
+                            </a>
+                            <small class="d-block text-muted mt-2">
+                                <i class="fas fa-clock me-1"></i>
+                                Génération instantanée
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -337,6 +400,16 @@
                                         <li><a class="dropdown-item sort-option" data-sort="name-desc" href="#">Nom (Z-A)</a></li>
                                     </ul>
                                 </div>
+                                
+                                <!-- MODIFICATION: Bouton PDF QR Codes ajouté ici -->
+                                <a href="{% url 'exportertousqrcodespdf' %}" 
+                                   class="btn btn-danger" 
+                                   target="_blank"
+                                   title="Exporter tous les QR codes en PDF (6 par page, format A4)">
+                                    <i class="fas fa-file-pdf me-2"></i>
+                                    PDF QR Codes
+                                </a>
+                                
                                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
                                     <i class="fas fa-plus me-2"></i>Nouvel Utilisateur
                                 </button>
@@ -455,6 +528,11 @@
                                                 <button class="btn btn-sm btn-outline-danger" 
                                                         onclick="return confirmAction('Êtes-vous sûr de vouloir supprimer cet abonnement ?')">
                                                     <i class="fas fa-trash"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary location-btn">
+                                                        <a href="{{ subscription.address.lien }}" target="_blank" rel="noopener noreferrer">
+                                                            <i class="fas fa-map-marker-alt"></i>
+                                                        </a>
                                                 </button>
                                             </div>
                                         </td>
@@ -623,7 +701,33 @@
                                         </form>
                                     </div>
                                 </div>
+                                
+                                <!-- NOUVEAU: Carte d'export PDF dans l'onglet QR -->
+                                <div class="card mt-4 border-danger">
+                                    <div class="card-header bg-danger text-white">
+                                        <i class="fas fa-file-pdf me-2"></i>
+                                        Export PDF des QR Codes
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <i class="fas fa-info-circle text-danger me-2 fa-2x"></i>
+                                            <div>
+                                                <h6 class="mb-1">Tous les QR codes en un seul PDF</h6>
+                                                <p class="text-muted small mb-0">
+                                                    Format A4 - 6 QR codes par page - Classement alphabétique
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <a href="{% url 'exportertousqrcodespdf' %}" 
+                                           class="btn btn-danger w-100" 
+                                           target="_blank">
+                                            <i class="fas fa-file-pdf me-2"></i>
+                                            Générer le PDF complet
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
+                            
                             <div class="col-md-6">
                                 <div id="qrResult" class="text-center" style="display: none;">
                                     <div class="qr-code-container">

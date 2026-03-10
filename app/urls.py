@@ -124,7 +124,16 @@ urlpatterns = [
 
     # urls de gestion des utilisateurs et des abonement 
     path('administrations/export-abonnements-expirant/', client_admin.export_abonnements_expirant, name='export_abonnements_expirant'),
-    path('api/abonnements-expirant-stats/', client_admin.get_abonnements_expirant_stats, name='abonnements_expirant_stats'),
+    path('administrations/api/abonnements-expirant-stats/', client_admin.get_abonnements_expirant_stats, name='abonnements_expirant_stats'),
+    path('administrations/export-clients-inactifs-orange/', 
+     client_admin.export_clients_inactifs_orange, 
+     name='export_clients_inactifs_orange'),
+path('administrations/export-clients-inactifs-mtn/', 
+     client_admin.export_clients_inactifs_mtn, 
+     name='export_clients_inactifs_mtn'),
+path('administrations/export-clients-inactifs-separe/', 
+     client_admin.export_clients_inactifs_separe, 
+     name='export_clients_inactifs_separe'),
 
     path('gestion-abonnements/', client_admin.gestion_abonnements, name='gestion_abonnements'),
     path('gestion-abonnements/ajouter-utilisateur/', client_admin.ajouter_utilisateur, name='ajouter_utilisateur'),
@@ -134,6 +143,15 @@ urlpatterns = [
     path('gestion-abonnements/supprimer-abonnement/<uuid:subscription_id>/', client_admin.supprimer_abonnement, name='supprimer_abonnement'),
     path('gestion-abonnements/generer-qr/<uuid:subscription_id>/', client_admin.generer_qr_code, name='generer_qr_code'),
     path('gestion-abonnements/telecharger-qr/<uuid:subscription_id>/', client_admin.telecharger_qr_code, name='telecharger_qr_code'),
+     path('administrations/export-tous-qrcodes-pdf/', 
+         client_admin.exporter_tous_qrcodes_pdf, 
+         name='exportertousqrcodespdf'),
+    
+    
+    path('administrations/export-qrcodes-pdf/zone/<uuid:zone_id>/', 
+         client_admin.exporter_qrcodes_pdf_par_zone, 
+         name='exporter_qrcodes_pdf_par_zone'),
+   
     
     # Gestion de la collecte
     path('gestion-collecte/', client_admin.gestion_collecte, name='gestion_collecte'),
@@ -179,9 +197,9 @@ urlpatterns = [
     path('api/collection/<uuid:collection_id>/start/', collectors.api_start_collection, name='api_start_collection'),
     path('api/collection/<uuid:collection_id>/complete/', collectors.api_complete_collection, name='api_complete_collection'),
 
-
-  
+    
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

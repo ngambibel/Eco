@@ -5,13 +5,95 @@
 {% block page_title %}Tableau de Bord{% endblock %}
 
 {% block content %}
-<!-- Bouton d'export des clients -->
+<!-- Boutons d'export des clients -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="d-flex justify-content-end">
+        <div class="d-flex justify-content-end gap-2">
+            <!-- Bouton d'export existant -->
             <button class="btn btn-success" id="exportClientsBtn">
                 <i class="fas fa-file-excel me-2"></i>Exporter tous les clients (XLS)
             </button>
+            
+            <!-- Bouton existant pour les abonnements expirant -->
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exportExpiringModal">
+                <i class="fas fa-file-excel me-2"></i>Exporter abonnements expirant
+            </button>
+            
+            <!-- NOUVEAU BOUTON : Export clients avec abonnements inactifs -->
+            <button class="btn btn-danger" id="exportInactiveClientsBtn">
+                <i class="fas fa-phone-alt me-2"></i>Exporter inactifs (Orange/MTN)
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour l'export des abonnements expirant -->
+<div class="modal fade" id="exportExpiringModal" tabindex="-1" aria-labelledby="exportExpiringModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            
+            <form id="exportExpiringForm" method="get" action="{% url 'export_abonnements_expirant' %}">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Cet export générera un fichier Excel contenant les noms et numéros de téléphone des clients 
+                        dont l'abonnement expire dans un nombre de jours paramétrable.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="daysInput" class="form-label fw-bold">
+                            <i class="fas fa-calendar-alt me-2"></i>Nombre de jours avant expiration :
+                        </label>
+                        <div class="input-group">
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="daysInput" 
+                                   name="days" 
+                                   min="1" 
+                                   max="365" 
+                                   value="7" 
+                                   required
+                                   placeholder="Ex: 7">
+                            <span class="input-group-text">jours</span>
+                        </div>
+                        <div class="form-text">
+                            Entrez le nombre de jours (1-365). Les clients dont l'abonnement expire dans ce délai seront exportés.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-info-circle me-2"></i>Jours sélectionnables :
+                        </label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary p-2">7 jours</span>
+                            <span class="badge bg-primary p-2">6 jours</span>
+                            <span class="badge bg-primary p-2">5 jours</span>
+                            <span class="badge bg-primary p-2">4 jours</span>
+                            <span class="badge bg-primary p-2">3 jours</span>
+                            <span class="badge bg-primary p-2">2 jours</span>
+                            <span class="badge bg-primary p-2">1 jour</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeAll" name="include_all" value="1">
+                            <label class="form-check-label" for="includeAll">
+                                Inclure tous les clients (ignore le nombre de jours)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-warning" id="submitExport">
+                        <i class="fas fa-download me-2"></i>Générer l'export
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -283,6 +365,9 @@
 <script id="weekly-collections-data" type="application/json">
 {{ weekly_collections_json|safe }}
 </script>
+
+<!-- Ajout de SweetAlert2 pour les notifications -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
 
 {% block extra_js %}
@@ -465,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // EXPORT DES CLIENTS
+    // EXPORT DES CLIENTS (bouton existant)
     const exportClientsBtn = document.getElementById('exportClientsBtn');
     if (exportClientsBtn) {
         exportClientsBtn.addEventListener('click', function(e) {
@@ -510,14 +595,254 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Gestion du formulaire d'export des abonnements expirant
+    const exportExpiringForm = document.getElementById('exportExpiringForm');
+    const daysInput = document.getElementById('daysInput');
+    const includeAllCheckbox = document.getElementById('includeAll');
+    
+    if (exportExpiringForm) {
+        exportExpiringForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Désactiver le bouton de soumission
+            const submitBtn = document.getElementById('submitExport');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Génération en cours...';
+            submitBtn.disabled = true;
+            
+            // Récupérer les valeurs
+            let days = daysInput.value;
+            const includeAll = includeAllCheckbox.checked;
+            
+            // Construire l'URL
+            let url = this.action;
+            let params = [];
+            
+            if (includeAll) {
+                params.push('include_all=1');
+            } else if (days) {
+                // Valider le nombre de jours
+                days = parseInt(days);
+                if (days < 1) days = 1;
+                if (days > 365) days = 365;
+                params.push('days=' + days);
+            } else {
+                showNotification('Erreur', 'Veuillez saisir un nombre de jours valide.', 'error');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                return;
+            }
+            
+            if (params.length > 0) {
+                url += '?' + params.join('&');
+            }
+            
+            // Effectuer la requête pour télécharger le fichier
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de l\'export');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Créer un lien de téléchargement
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    
+                    // Générer un nom de fichier avec la date
+                    const today = new Date();
+                    const dateStr = today.toISOString().split('T')[0];
+                    let filename = `abonnements_expirant_${dateStr}.xls`;
+                    
+                    if (includeAll) {
+                        filename = `tous_abonnements_${dateStr}.xls`;
+                    } else {
+                        filename = `abonnements_expirant_${days}_jours_${dateStr}.xls`;
+                    }
+                    
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
+                    
+                    // Fermer le modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('exportExpiringModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    // Afficher une notification de succès
+                    showNotification('Export réussi', 'Le fichier Excel a été téléchargé avec succès.', 'success');
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur', 'Une erreur est survenue lors de l\'export.', 'error');
+                })
+                .finally(() => {
+                    // Restaurer le bouton
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+        });
+    }
+    
+    // Validation de l'input days
+    if (daysInput) {
+        daysInput.addEventListener('input', function() {
+            let value = parseInt(this.value);
+            if (value < 1) this.value = 1;
+            if (value > 365) this.value = 365;
+        });
+    }
+    
+    // Gestion du checkbox includeAll
+    if (includeAllCheckbox && daysInput) {
+        includeAllCheckbox.addEventListener('change', function() {
+            daysInput.disabled = this.checked;
+            if (this.checked) {
+                daysInput.value = '';
+                daysInput.placeholder = 'Ignoré';
+            } else {
+                daysInput.placeholder = 'Ex: 7';
+                daysInput.value = 7;
+            }
+        });
+    }
+    
+    // NOUVEAU BOUTON : Export des clients inactifs séparés par opérateur
+    const exportInactiveBtn = document.getElementById('exportInactiveClientsBtn');
+    if (exportInactiveBtn) {
+        exportInactiveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Afficher une boîte de dialogue pour choisir le format
+            Swal.fire({
+                title: 'Choisissez le format d\'export',
+                html: `
+                    <div class="text-start">
+                        <p>Sélectionnez l'option souhaitée :</p>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="exportOption" id="optionZip" value="zip" checked>
+                            <label class="form-check-label" for="optionZip">
+                                <strong>Deux fichiers séparés (ZIP)</strong><br>
+                                <small class="text-muted">Télécharger un fichier ZIP contenant deux fichiers Excel : Orange et MTN</small>
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="exportOption" id="optionOrange" value="orange">
+                            <label class="form-check-label" for="optionOrange">
+                                <strong>Orange Cameroun uniquement</strong><br>
+                                <small class="text-muted">Télécharger un seul fichier avec les clients Orange</small>
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="exportOption" id="optionMtn" value="mtn">
+                            <label class="form-check-label" for="optionMtn">
+                                <strong>MTN Cameroun uniquement</strong><br>
+                                <small class="text-muted">Télécharger un seul fichier avec les clients MTN</small>
+                            </label>
+                        </div>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Exporter',
+                cancelButtonText: 'Annuler',
+                preConfirm: () => {
+                    const selected = document.querySelector('input[name="exportOption"]:checked');
+                    return selected ? selected.value : 'zip';
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const option = result.value;
+                    
+                    // Afficher l'indicateur de chargement
+                    const originalText = exportInactiveBtn.innerHTML;
+                    exportInactiveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Export en cours...';
+                    exportInactiveBtn.disabled = true;
+                    
+                    // Déterminer l'URL en fonction de l'option choisie
+                    let url = '';
+                    if (option === 'zip') {
+                        url = "{% url 'export_clients_inactifs_separe' %}";
+                    } else if (option === 'orange') {
+                        url = "{% url 'export_clients_inactifs_orange' %}";
+                    } else if (option === 'mtn') {
+                        url = "{% url 'export_clients_inactifs_mtn' %}";
+                    }
+                    
+                    // Effectuer la requête
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Erreur lors de l\'export');
+                            }
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            // Créer un lien de téléchargement
+                            const downloadUrl = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = downloadUrl;
+                            
+                            // Définir le nom du fichier
+                            const today = new Date();
+                            const dateStr = today.toISOString().split('T')[0];
+                            
+                            if (option === 'zip') {
+                                a.download = `clients_inactifs_operateurs_${dateStr}.zip`;
+                            } else if (option === 'orange') {
+                                a.download = `clients_inactifs_orange_${dateStr}.xlsx`;
+                            } else if (option === 'mtn') {
+                                a.download = `clients_inactifs_mtn_${dateStr}.xlsx`;
+                            }
+                            
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(downloadUrl);
+                            document.body.removeChild(a);
+                            
+                            // Notification de succès
+                            let message = '';
+                            if (option === 'zip') {
+                                message = 'Les deux fichiers ont été téléchargés avec succès.';
+                            } else if (option === 'orange') {
+                                message = 'Le fichier Orange Cameroun a été téléchargé avec succès.';
+                            } else if (option === 'mtn') {
+                                message = 'Le fichier MTN Cameroun a été téléchargé avec succès.';
+                            }
+                            
+                            showNotification('Export réussi', message, 'success');
+                        })
+                        .catch(error => {
+                            console.error('Erreur:', error);
+                            showNotification('Erreur', 'Une erreur est survenue lors de l\'export.', 'error');
+                        })
+                        .finally(() => {
+                            // Restaurer le bouton
+                            exportInactiveBtn.innerHTML = originalText;
+                            exportInactiveBtn.disabled = false;
+                        });
+                }
+            });
+        });
+    }
+    
     // Fonction utilitaire pour afficher les notifications
     function showNotification(title, message, type = 'info') {
-        // Vérifier si Toastr est disponible, sinon utiliser alert
-        if (typeof toastr !== 'undefined') {
-            toastr[type](message, title);
-        } else {
-            alert(title + ': ' + message);
-        }
+        // Utiliser SweetAlert2 pour les notifications
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: type,
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+        });
     }
 });
 </script>
@@ -535,6 +860,9 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+.modal-header.bg-warning {
+    background-color: #ffc107 !important;
 }
 </style>
 {% endblock %}

@@ -52,6 +52,8 @@ class DashboardView(TemplateView):
             # mettre à jour le statut de l'abonnement
             abonnement.status = 'inactive'
             abonnement.save()
+            collections = CollectionSchedule.objects.filter(subscription=abonnement)
+            collections.delete()
 
         if selected_date:
             # Convertir la date string en objet date

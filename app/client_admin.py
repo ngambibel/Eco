@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -6,9 +7,11 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum
 import json
+import openpyxl
 import qrcode
 from io import BytesIO
 from django.core.files.base import ContentFile
+import re
 
 from django.contrib.admin.views.decorators import staff_member_required
 import xlwt
@@ -20,6 +23,22 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from datetime import datetime
 from io import BytesIO
+import os
+from io import BytesIO
+from datetime import datetime
+from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import get_object_or_404
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm, mm
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+from reportlab.lib.colors import black, grey, HexColor
+from PIL import Image as PILImage
+import qrcode
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import tempfile
 
 
 from .models import (
@@ -94,6 +113,447 @@ def gestion_abonnements(request):
     }
     
     return render(request, 'administrations/gestion_abonnements.html', context)
+
+
+
+
+    
+
+@staff_member_required
+def exporter_tous_qrcodes_pdf(request):
+    """
+    Exporte tous les QR codes des abonnements dans un fichier PDF format A4
+    avec 6 QR codes par page, classés par ordre alphabétique des utilisateurs
+    """
+    # Récupérer tous les abonnements actifs avec leurs QR codes
+    subscriptions = Subscription.objects.filter(
+        qr_code__isnull=False
+    ).select_related('user', 'plan', 'qr_code').order_by('user__last_name', 'user__first_name')
+    
+    if not subscriptions.exists():
+        # Si aucun abonnement avec QR code, essayer de récupérer ceux qui ont un QR code via l'OneToOne
+        subscriptions = Subscription.objects.filter(
+            status='active',
+            qr_code__isnull=False
+        ).select_related('user', 'plan', 'qr_code').order_by('user__last_name', 'user__first_name')
+    
+    # Créer la réponse HTTP avec le type PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="tous_les_qrcodes_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
+    
+    # Créer le canvas PDF avec dimensions A4
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4  # 595.27 x 841.89 points (environ 21cm x 29.7cm)
+    
+    # Paramètres de mise en page
+    margin = 1.5 * cm
+    qr_width = (width - 2 * margin) / 3  # 3 QR codes par ligne
+    qr_height = (height - 2 * margin) / 2  # 2 lignes par page
+    
+    # Chemin du logo (à adapter selon votre structure)
+    logo_path = None
+    # Essayez de localiser le logo dans différents emplacements possibles
+    possible_logo_paths = [
+        os.path.join(settings.MEDIA_ROOT, 'logo.png'),
+        os.path.join(settings.STATIC_ROOT, 'images', 'logo.png'),
+        os.path.join(settings.BASE_DIR, 'static', 'images', 'logo.png'),
+        os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png'),
+    ]
+    
+    for path in possible_logo_paths:
+        if os.path.exists(path):
+            logo_path = path
+            break
+    
+    # Si aucun logo trouvé, on utilisera un texte
+    logo_found = logo_path is not None
+    
+    # Fonction pour générer l'image QR code
+    def generate_qr_image(data, size=200):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        return img
+    
+    # Compter le nombre total de QR codes
+    total_qr_codes = subscriptions.count()
+    current_page = 1
+    qr_index = 0
+    
+    # Créer un dictionnaire pour stocker temporairement les images
+    temp_images = []
+    
+    try:
+        # Pour chaque abonnement, préparer l'image QR
+        for subscription in subscriptions:
+            # Récupérer les informations pour le QR code
+            user = subscription.user
+            user_name = user.get_full_name() or user.username
+            user_phone = user.phone or "Non renseigné"
+            
+            # Données à encoder dans le QR code
+            if hasattr(subscription, 'qr_code') and subscription.qr_code:
+                # Utiliser l'URL de renouvellement existante
+                qr_data = subscription.qr_code.get_renewal_url()
+            else:
+                # Créer une URL par défaut
+                qr_data = f"{settings.SITE_URL}/subscription/{subscription.id}/"
+            
+            # Générer l'image QR
+            qr_img = generate_qr_image(qr_data, size=300)
+            
+            # Sauvegarder temporairement l'image
+            img_buffer = BytesIO()
+            qr_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            
+            # Ouvrir avec PIL pour redimensionner si nécessaire
+            pil_img = PILImage.open(img_buffer)
+            
+            # Convertir en mode RGB si nécessaire
+            if pil_img.mode != 'RGB':
+                pil_img = pil_img.convert('RGB')
+            
+            # Sauvegarder temporairement
+            temp_img = BytesIO()
+            pil_img.save(temp_img, format='PNG')
+            temp_img.seek(0)
+            
+            temp_images.append({
+                'img': temp_img,
+                'user_name': user_name,
+                'user_phone': user_phone,
+                'user': user
+            })
+        
+        # Trier les images par nom d'utilisateur (déjà trié par la requête)
+        # Mais on garde le tri au cas où
+        
+        # Parcourir toutes les images et les placer sur les pages
+        for idx, temp_data in enumerate(temp_images):
+            # Calculer la position sur la page
+            col = idx % 3
+            row = (idx // 3) % 2
+            
+            x = margin + col * qr_width
+            y = height - margin - (row + 1) * qr_height + 0.5*cm  # Ajustement
+            
+            # Si on commence une nouvelle page (après 6 QR codes)
+            if idx > 0 and idx % 6 == 0:
+                p.showPage()  # Nouvelle page
+                current_page += 1
+            
+            # Dessiner le cadre du QR code
+            p.setStrokeColor(grey)
+            p.setLineWidth(0.5)
+            p.rect(x, y - qr_height + 1*cm, qr_width - 0.5*cm, qr_height - 1*cm, stroke=1, fill=0)
+            
+            # Ajouter le logo en haut du cadre
+            if logo_found:
+                try:
+                    logo = ImageReader(logo_path)
+                    logo_width = 2.5*cm
+                    logo_height = 2.5*cm
+                    logo_x = x + (qr_width - 0.5*cm - logo_width) / 2
+                    logo_y = y - 0.5*cm
+                    p.drawImage(logo, logo_x, logo_y - logo_height + 0.3*cm, 
+                                width=logo_width, height=logo_height, 
+                                preserveAspectRatio=True, mask='auto')
+                except Exception as e:
+                    # En cas d'erreur avec le logo, écrire du texte
+                    p.setFont("Helvetica-Bold", 12)
+                    p.setFillColor(HexColor("#7B1212"))  # Vert ECOCITY
+                    p.drawCentredString(x + (qr_width - 0.5*cm) / 2, y - 0.3*cm, "ECOCITY")
+                    p.setFillColor(black)
+            else:
+                # Pas de logo, écrire le nom de l'application
+                p.setFont("Helvetica-Bold", 12)
+                p.setFillColor(HexColor("#F45A02"))  # Vert ECOCITY
+                p.drawCentredString(x + (qr_width - 0.5*cm) / 2, y - 0.3*cm, "ECOCITY")
+                p.setFillColor(black)
+            
+            # Charger l'image depuis le buffer temporaire
+            temp_data['img'].seek(0)
+            img_reader = ImageReader(temp_data['img'])
+            
+            # Dimensions du QR code dans le PDF
+            qr_img_width = 4*cm
+            qr_img_height = 4*cm
+            qr_img_x = x + (qr_width - 0.5*cm - qr_img_width) / 2
+            qr_img_y = y - 2*cm - qr_img_height
+            
+            # Dessiner le QR code
+            p.drawImage(img_reader, qr_img_x, qr_img_y, 
+                       width=qr_img_width, height=qr_img_height, 
+                       preserveAspectRatio=True, mask='auto')
+            
+            # Ajouter les informations utilisateur en bas
+            p.setFont("Helvetica", 8)
+            p.setFillColor(black)
+            
+            # Nom de l'utilisateur
+            user_name_display = temp_data['user_name']
+            if len(user_name_display) > 25:
+                user_name_display = user_name_display[:22] + "..."
+            
+            p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 0.5*cm, 
+                               f"{user_name_display}")
+            
+            # Téléphone
+            phone_display = f"Tel: {temp_data['user_phone']}"
+            if len(phone_display) > 20:
+                phone_display = phone_display[:17] + "..."
+            
+            p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 1*cm, 
+                               phone_display)
+            
+            
+            # Optionnel : ajouter le type de plan ou l'ID
+            if hasattr(subscription, 'plan') and subscription.plan:
+                plan_display = subscription.plan.name
+                if len(plan_display) > 15:
+                    plan_display = plan_display[:12] + "..."
+                p.setFont("Helvetica", 6)
+                p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 1.3*cm, 
+                                   plan_display)
+        
+        # Ajouter un numéro de page
+        p.setFont("Helvetica", 8)
+        p.setFillColor(grey)
+        p.drawRightString(width - margin, margin/2, f"Page {current_page}")
+        
+        p.save()
+        
+        # Récupérer le contenu du PDF
+        pdf = buffer.getvalue()
+        buffer.close()
+        response.write(pdf)
+        
+    finally:
+        # Nettoyer les buffers temporaires
+        for temp_data in temp_images:
+            temp_data['img'].close()
+    
+    return response
+
+
+@staff_member_required
+def exporter_qrcodes_pdf_par_zone(request, zone_id=None):
+    """
+    Exporte les QR codes des abonnements par zone géographique
+    """
+    from .models import Zone
+    
+    if zone_id:
+        zone = get_object_or_404(Zone, id=zone_id)
+        subscriptions = Subscription.objects.filter(
+            status='active',
+            zone=zone,
+            qr_code__isnull=False
+        ).select_related('user', 'plan', 'qr_code').order_by('user__last_name', 'user__first_name')
+        
+        filename = f"qrcodes_zone_{zone.nom}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    else:
+        # Si pas de zone spécifiée, exporter toutes les zones
+        subscriptions = Subscription.objects.filter(
+            status='active',
+            qr_code__isnull=False
+        ).select_related('user', 'plan', 'qr_code', 'zone').order_by('zone__nom', 'user__last_name', 'user__first_name')
+        
+        filename = f"tous_les_qrcodes_par_zone_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    
+    # Même logique que la fonction précédente pour la génération du PDF
+    # (vous pouvez copier le code de exporter_tous_qrcodes_pdf ici)
+    # Pour éviter la duplication, nous allons appeler une fonction commune
+    
+    return generate_qrcodes_pdf_response(subscriptions, filename)
+
+
+def generate_qrcodes_pdf_response(subscriptions, filename):
+    """
+    Fonction commune pour générer un PDF de QR codes
+    """
+    if not subscriptions.exists():
+        response = HttpResponse(content_type='text/plain')
+        response.write("Aucun QR code trouvé pour les abonnements sélectionnés.")
+        return response
+    
+    # Créer la réponse HTTP avec le type PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Créer le canvas PDF avec dimensions A4
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Paramètres de mise en page (mêmes que précédemment)
+    margin = 1.5 * cm
+    qr_width = (width - 2 * margin) / 3
+    qr_height = (height - 2 * margin) / 2
+    
+    # Recherche du logo
+    logo_path = None
+    possible_logo_paths = [
+        os.path.join(settings.MEDIA_ROOT, 'logo.png'),
+        os.path.join(settings.STATIC_ROOT, 'images', 'logo.png'),
+        os.path.join(settings.BASE_DIR, 'static', 'images', 'logo.png'),
+        os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png'),
+    ]
+    
+    for path in possible_logo_paths:
+        if os.path.exists(path):
+            logo_path = path
+            break
+    
+    logo_found = logo_path is not None
+    
+    # Fonction pour générer l'image QR code
+    def generate_qr_image(data, size=200):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        return img
+    
+    temp_images = []
+    
+    try:
+        for subscription in subscriptions:
+            user = subscription.user
+            user_name = user.get_full_name() or user.username
+            user_phone = user.phone or "Non renseigné"
+            
+            if hasattr(subscription, 'qr_code') and subscription.qr_code:
+                qr_data = subscription.qr_code.get_renewal_url()
+            else:
+                qr_data = f"{settings.SITE_URL}/subscription/{subscription.id}/"
+            
+            qr_img = generate_qr_image(qr_data, size=300)
+            
+            img_buffer = BytesIO()
+            qr_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            
+            pil_img = PILImage.open(img_buffer)
+            if pil_img.mode != 'RGB':
+                pil_img = pil_img.convert('RGB')
+            
+            temp_img = BytesIO()
+            pil_img.save(temp_img, format='PNG')
+            temp_img.seek(0)
+            
+            temp_images.append({
+                'img': temp_img,
+                'user_name': user_name,
+                'user_phone': user_phone,
+                'zone_name': subscription.zone.nom if subscription.zone else "Sans zone"
+            })
+        
+        # Grouper par zone si nécessaire pour l'affichage
+        current_zone = None
+        
+        for idx, temp_data in enumerate(temp_images):
+            col = idx % 3
+            row = (idx // 3) % 2
+            
+            x = margin + col * qr_width
+            y = height - margin - (row + 1) * qr_height + 0.5*cm
+            
+            if idx > 0 and idx % 6 == 0:
+                p.showPage()
+            
+            # Ajouter le nom de la zone si elle change
+            if temp_data['zone_name'] != current_zone and idx % 6 == 0:
+                current_zone = temp_data['zone_name']
+                p.setFont("Helvetica-Bold", 10)
+                p.setFillColor(HexColor("#F06C0D"))
+                p.drawString(margin, height - margin - 0.3*cm, f"Zone: {current_zone}")
+                p.setFillColor(black)
+            
+            # Dessiner le cadre
+            p.setStrokeColor(grey)
+            p.setLineWidth(0.5)
+            p.rect(x, y - qr_height + 1*cm, qr_width - 0.5*cm, qr_height - 1*cm, stroke=1, fill=0)
+            
+            # Ajouter le logo
+            if logo_found:
+                try:
+                    logo = ImageReader(logo_path)
+                    logo_width = 2*cm
+                    logo_height = 0.8*cm
+                    logo_x = x + (qr_width - 0.5*cm - logo_width) / 2
+                    logo_y = y - 0.5*cm
+                    p.drawImage(logo, logo_x, logo_y - logo_height + 0.3*cm, 
+                               width=logo_width, height=logo_height, 
+                               preserveAspectRatio=True, mask='auto')
+                except:
+                    p.setFont("Helvetica-Bold", 12)
+                    p.setFillColor(HexColor("#2E8B57"))
+                    p.drawCentredString(x + (qr_width - 0.5*cm) / 2, y - 0.3*cm, "ECOCITY")
+                    p.setFillColor(black)
+            else:
+                p.setFont("Helvetica-Bold", 12)
+                p.setFillColor(HexColor("#2E8B57"))
+                p.drawCentredString(x + (qr_width - 0.5*cm) / 2, y - 0.3*cm, "ECOCITY")
+                p.setFillColor(black)
+            
+            temp_data['img'].seek(0)
+            img_reader = ImageReader(temp_data['img'])
+            
+            qr_img_width = 4*cm
+            qr_img_height = 4*cm
+            qr_img_x = x + (qr_width - 0.5*cm - qr_img_width) / 2
+            qr_img_y = y - 2*cm - qr_img_height
+            
+            p.drawImage(img_reader, qr_img_x, qr_img_y, 
+                       width=qr_img_width, height=qr_img_height, 
+                       preserveAspectRatio=True, mask='auto')
+            
+            p.setFont("Helvetica", 8)
+            p.setFillColor(black)
+            
+            user_name_display = temp_data['user_name']
+            if len(user_name_display) > 25:
+                user_name_display = user_name_display[:22] + "..."
+            
+            p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 0.5*cm, 
+                               f"{user_name_display}")
+            
+            phone_display = f"Tel: {temp_data['user_phone']}"
+            if len(phone_display) > 20:
+                phone_display = phone_display[:17] + "..."
+            
+            p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 1*cm, 
+                               phone_display)
+        
+        p.setFont("Helvetica", 8)
+        p.setFillColor(grey)
+        p.drawRightString(width - margin, margin/2, f"Page {p.getPageNumber()}")
+        
+        p.save()
+        
+        pdf = buffer.getvalue()
+        buffer.close()
+        response.write(pdf)
+        
+    finally:
+        for temp_data in temp_images:
+            temp_data['img'].close()
+    
+    return response
 
 @login_required(login_url='login')
 @user_passes_test(is_admin)
@@ -550,103 +1010,82 @@ def gestion_collecte(request):
 
 
 # les vues pour recuperer les informations des client dont l'abonnement expire dans 8 jour
-
-
-
-
-
 @staff_member_required
 def export_abonnements_expirant(request):
     """
-    Vue AJAX pour exporter les utilisateurs avec abonnements actifs
-    dont la date de fin est dans moins de 8 jours
+    Exporte les clients dont l'abonnement expire dans X jours
+    Format: Fichier XLS sans entêtes, juste 2 colonnes (Nom | Téléphone)
     """
-    try:
-        # Calculer la date limite (aujourd'hui + 8 jours)
-        date_limite = timezone.now().date() + timedelta(days=8)
-        aujourd_hui = timezone.now().date()
+    # Récupérer les paramètres
+    days = request.GET.get('days')
+    include_all = request.GET.get('include_all')
+    
+    today = timezone.now().date()
+    abonnements = Subscription.objects.filter(
+        status='active',
+        end_date__isnull=False
+    ).select_related('user')
+    
+    if include_all and include_all == '1':
+        # Inclure tous les abonnements actifs
+        subscriptions = abonnements
+        filename = f"tous_abonnements_{today.strftime('%Y%m%d')}.xlsx"
+    else:
+        try:
+            days = int(days) if days else 7
+            if days < 1:
+                days = 1
+            elif days > 365:
+                days = 365
+        except (ValueError, TypeError):
+            days = 7
         
-        print(f"Recherche des abonnements expirant entre {aujourd_hui} et {date_limite}")
+        # Calculer la date limite
+        limit_date = today + timedelta(days=days)
         
-        # Récupérer les abonnements inactifs dont la date de fin est inférieure ou égale à hier
-        hier = timezone.now().date() - timedelta(days=1)
-
-        abonnements = Subscription.objects.filter(
-            status='inactive',
-        ).select_related('user', 'plan', 'zone').order_by('end_date')
+        # Filtrer les abonnements qui expirent dans X jours
+        subscriptions = abonnements.filter(
+            end_date__lte=limit_date,
+            end_date__gte=today
+        )
+        filename = f"abonnements_expirant_{days}_jours_{today.strftime('%Y%m%d')}.xlsx"
+    
+    # Créer le fichier Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    
+    # Remplir les données (sans entêtes)
+    row_num = 1
+    for subscription in subscriptions:
+        client = subscription.user
+        nom_complet = f"{client.last_name} {client.first_name}".strip()
+        if not nom_complet:
+            nom_complet = client.username or "Client sans nom"
         
+        # Colonne A: Nom complet
+        ws.cell(row=row_num, column=1, value=nom_complet)
         
-        # Créer le fichier XLS
-        response = HttpResponse(content_type='application/ms-excel')
-        filename = f"abonnements_expirant_{hier.strftime('%Y%m%d')}.xls"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        # Colonne B: Numéro de téléphone
+        phone = client.phone if client.phone else ""
+        ws.cell(row=row_num, column=2, value=str(phone))
         
-        # Créer le classeur Excel
-        wb = xlwt.Workbook(encoding='utf-8')
-        ws = wb.add_sheet('Abonnements')
-        
-        # Style pour les cellules
-        style_nom = xlwt.XFStyle()
-        style_nom.font.bold = False
-        
-        # Remplir les données (sans entête)
-        row_num = 0
-        for abonnement in abonnements:
-            user = abonnement.user
-            
-            # Colonne A : Nom complet
-            nom = user.username or f"{user.first_name} {user.last_name}"
-            ws.write(row_num, 0, nom, style_nom)
-            
-            # Colonne B : Téléphone
-            telephone = user.phone if user.phone else ''
-            ws.write(row_num, 1, telephone, style_nom)
-            
-            row_num += 1
-        
-        # Statistiques (pour la réponse JSON si demandé)
-        stats = {
-            'total': abonnements.count(),
-            'date_recherche': aujourd_hui.strftime('%d/%m/%Y'),
-            'date_limite': date_limite.strftime('%d/%m/%Y')
-        }
-        
-        # Si c'est une requête AJAX avec paramètre 'json', retourner les données en JSON
-        if request.GET.get('format') == 'json':
-            data = []
-            for abonnement in abonnements:
-                user = abonnement.user
-                jours_restants = (abonnement.end_date - aujourd_hui).days
-                data.append({
-                    'nom': user.get_full_name() or f"{user.first_name} {user.last_name}",
-                    'telephone': user.phone if user.phone else 'Non renseigné',
-                    'email': user.email or 'Non renseigné',
-                    'plan': abonnement.plan.name if abonnement.plan else 'Non défini',
-                    'date_debut': abonnement.start_date.strftime('%d/%m/%Y'),
-                    'date_fin': abonnement.end_date.strftime('%d/%m/%Y'),
-                    'jours_restants': jours_restants,
-                    'zone': abonnement.zone.nom if abonnement.zone else 'Non assigné'
-                })
-            
-            return JsonResponse({
-                'success': True,
-                'data': data,
-                'stats': stats
-            })
-        
-        # Sauvegarder le classeur dans la réponse
-        wb.save(response)
-        return response
-        
-    except Exception as e:
-        print(f"Erreur lors de l'export : {str(e)}")
-        if request.GET.get('format') == 'json':
-            return JsonResponse({
-                'success': False,
-                'error': str(e)
-            }, status=500)
-        else:
-            return HttpResponse(f"Erreur : {str(e)}", status=500)
+        row_num += 1
+    
+    # Ajuster la largeur des colonnes
+    for col in range(1, 3):
+        column_letter = get_column_letter(col)
+        ws.column_dimensions[column_letter].width = 30
+    
+    # Créer la réponse HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    wb.save(response)
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Sauvegarder le workbook dans la réponse
+    
+    return response
         
 
 @staff_member_required
@@ -695,4 +1134,229 @@ def get_abonnements_expirant_stats(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+# les vues pour recuperer les clients inactif : 
+
+@staff_member_required
+def export_clients_inactifs_separe(request):
+    """
+    Exporte les clients avec abonnements inactifs dans deux fichiers Excel séparés
+    - Un fichier pour les numéros Orange Cameroun (préfixes 65, 69, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99)
+    - Un fichier pour les numéros MTN Cameroun (préfixes 67, 68, 6, 2)
+    Format: 2 colonnes (Nom, Téléphone) sans en-têtes
+    """
+    
+    # Récupérer tous les utilisateurs avec abonnements inactifs
+    # Un client est considéré inactif si tous ses abonnements sont inactifs
+    utilisateurs = CustomUser.objects.filter(
+        user_type='client',
+        is_active=True
+    ).prefetch_related('subscriptions')
+    
+    # Filtrer pour n'avoir que les clients avec abonnements inactifs
+    clients_inactifs = []
+    for user in utilisateurs:
+        # Vérifier si l'utilisateur a des abonnements
+        abonnements = user.subscriptions.all()
+        if abonnements.exists():
+            # Si tous les abonnements sont inactifs, on inclut le client
+            if all(sub.status != 'active' for sub in abonnements):
+                if user.phone:  # S'assurer que le numéro existe
+                    clients_inactifs.append({
+                        'nom': f"{user.first_name} {user.last_name}".strip() or user.username,
+                        'telephone': str(user.phone)
+                    })
+        else:
+            # Si l'utilisateur n'a aucun abonnement, on l'inclut aussi
+            if user.phone:
+                clients_inactifs.append({
+                    'nom': f"{user.first_name} {user.last_name}".strip() or user.username,
+                    'telephone': str(user.phone)
+                })
+    
+    # Fonction pour détecter l'opérateur camerounais
+    def get_operateur(telephone):
+        # Nettoyer le numéro (enlever les espaces, +, etc.)
+        numero = re.sub(r'[\s\+\-\(\)]', '', telephone)
+        
+        # Si le numéro commence par 237 (indicatif Cameroun), on le retire
+        if numero.startswith('237'):
+            numero = numero[3:]
+        
+        # Si le numéro fait moins de 9 chiffres, on le complète (au cas où)
+        if len(numero) < 9:
+            return 'inconnu'
+        
+        # Prendre les 2 premiers chiffres après l'indicatif éventuel
+        prefix = numero[:2] if len(numero) >= 2 else numero
+        
+        # Orange Cameroun : 65, 69, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99
+        orange_prefixes = ['40', '55', '56', '57', '58', '59', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99']
+        
+        # MTN Cameroun : 67, 68, 62, 63, 64, 65? (à vérifier) mais aussi 6, 2
+        mtn_prefixes = ['50', '51', '52', '53', '54', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83']
+        
+        if prefix in orange_prefixes:
+            return 'orange'
+        elif prefix in mtn_prefixes or prefix.startswith('6') or prefix.startswith('2'):
+            return 'mtn'
+        else:
+            return 'inconnu'
+    
+    # Séparer les clients par opérateur
+    orange_clients = []
+    mtn_clients = []
+    
+    for client in clients_inactifs:
+        operateur = get_operateur(client['telephone'])
+        if operateur == 'orange':
+            orange_clients.append([client['nom'], client['telephone']])
+        elif operateur == 'mtn':
+            mtn_clients.append([client['nom'], client['telephone']])
+        # On ignore les opérateurs inconnus
+    
+    # Créer le fichier pour Orange Cameroun
+    wb_orange = openpyxl.Workbook()
+    ws_orange = wb_orange.active
+    
+    # Ajouter les données sans en-têtes
+    for row in orange_clients:
+        ws_orange.append(row)
+    
+    # Ajuster la largeur des colonnes
+    ws_orange.column_dimensions['A'].width = 30
+    ws_orange.column_dimensions['B'].width = 20
+    
+    # Créer le fichier pour MTN Cameroun
+    wb_mtn = openpyxl.Workbook()
+    ws_mtn = wb_mtn.active
+    
+    # Ajouter les données sans en-têtes
+    for row in mtn_clients:
+        ws_mtn.append(row)
+    
+    # Ajuster la largeur des colonnes
+    ws_mtn.column_dimensions['A'].width = 30
+    ws_mtn.column_dimensions['B'].width = 20
+    
+    # Créer un fichier ZIP contenant les deux fichiers Excel
+    from io import BytesIO
+    import zipfile
+    
+    zip_buffer = BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        # Sauvegarder le fichier Orange dans le ZIP
+        orange_buffer = BytesIO()
+        wb_orange.save(orange_buffer)
+        orange_buffer.seek(0)
+        zip_file.writestr('clients_inactifs_orange.xlsx', orange_buffer.getvalue())
+        
+        # Sauvegarder le fichier MTN dans le ZIP
+        mtn_buffer = BytesIO()
+        wb_mtn.save(mtn_buffer)
+        mtn_buffer.seek(0)
+        zip_file.writestr('clients_inactifs_mtn.xlsx', mtn_buffer.getvalue())
+    
+    zip_buffer.seek(0)
+    
+    # Générer le nom du fichier avec la date
+    date_str = timezone.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'clients_inactifs_operateurs_{date_str}.zip'
+    
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
+@staff_member_required
+def export_clients_inactifs_orange(request):
+    """
+    Exporte uniquement les clients Orange Cameroun avec abonnements inactifs
+    """
+    return export_clients_inactifs_operateur(request, 'orange')
+
+
+@staff_member_required
+def export_clients_inactifs_mtn(request):
+    """
+    Exporte uniquement les clients MTN Cameroun avec abonnements inactifs
+    """
+    return export_clients_inactifs_operateur(request, 'mtn')
+
+
+def export_clients_inactifs_operateur(request, operateur):
+    """
+    Fonction générique pour exporter les clients d'un opérateur spécifique
+    """
+    import re
+    
+    # Récupérer tous les utilisateurs avec abonnements inactifs
+    utilisateurs = CustomUser.objects.filter(
+        user_type='client',
+        is_active=True
+    ).prefetch_related('subscriptions')
+    
+    clients_inactifs = []
+    for user in utilisateurs:
+        abonnements = user.subscriptions.all()
+        
+        # Inclure si pas d'abonnement ou tous inactifs
+        if not abonnements.exists() or all(sub.status != 'active' for sub in abonnements):
+            if user.phone:
+                clients_inactifs.append({
+                    'nom': f"{user.first_name} {user.last_name}".strip() or user.username,
+                    'telephone': str(user.phone)
+                })
+    
+    # Filtrer par opérateur
+    def is_orange(telephone):
+        numero = re.sub(r'[\s\+\-\(\)]', '', telephone)
+        if numero.startswith('237'):
+            numero = numero[3:]
+        prefix = numero[:2] if len(numero) >= 2 else numero
+        orange_prefixes = ['40', '55', '56', '57', '58', '59', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99']
+        return prefix in orange_prefixes
+    
+    def is_mtn(telephone):
+        numero = re.sub(r'[\s\+\-\(\)]', '', telephone)
+        if numero.startswith('237'):
+            numero = numero[3:]
+        prefix = numero[:2] if len(numero) >= 2 else numero
+        mtn_prefixes = ['50', '51', '52', '53', '54', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83']
+        return prefix in mtn_prefixes or prefix.startswith('6') or prefix.startswith('2')
+    
+    # Créer le workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    
+    # Ajouter les données
+    count = 0
+    for client in clients_inactifs:
+        if operateur == 'orange' and is_orange(client['telephone']):
+            ws.append([client['nom'], client['telephone']])
+            count += 1
+        elif operateur == 'mtn' and is_mtn(client['telephone']):
+            ws.append([client['nom'], client['telephone']])
+            count += 1
+    
+    # Ajuster la largeur des colonnes
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 20
+    
+    # Si aucun client trouvé, ajouter un message
+    if count == 0:
+        ws.append(["Aucun client trouvé", ""])
+    
+    # Générer la réponse
+    date_str = timezone.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'clients_inactifs_{operateur}_{date_str}.xlsx'
+    
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
 

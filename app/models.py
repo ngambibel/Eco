@@ -606,7 +606,7 @@ class CollectionSchedule(models.Model):
 # signal pour creer un programme de collecte automatiquement après la création d'un abonnement
 
 
-# SIGNAL POUR SUPPRIMER LES PROGRAMMES DE COLLECTES LIÉS AUX ABONNEMENTS INACTIFS
+
 @receiver(post_save, sender=Subscription)
 def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs):
     """
@@ -614,13 +614,13 @@ def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs)
     lorsqu'un abonnement devient inactif
     """
     # Vérifier si le statut de l'abonnement n'est pas 'active'
-    if instance.status != 'active':
-        
+    
+    
+    if instance.status == 'active':
+       from .views import generate_collection_schedule
 
-        
-        
-        # Créer une notification pour informer l'utilisateur
-        if instance.user:
+       # Créer une notification pour informer l'utilisateur
+       if instance.user:
             Notification.create_notification(
                 user=instance.user,
                 title="Abonnement désactivé",
@@ -630,8 +630,6 @@ def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs)
                 action_url=f'/subscriptions/{instance.id}/'
             )
     
-    if instance.status == 'active':
-       from .views import generate_collection_schedule
 
         # verifier s'il ya un payement reussis pour cette abonnement qui date de moin de 2 min pour eviter les creation de programme de collecte sans payement reussis
        if not Payment.objects.filter(subscription=instance, status='completed', payment_date__gte=timezone.now() - timedelta(minutes=5)).exists():
@@ -687,6 +685,10 @@ def supprimer_programmes_collecte_abonnement_inactif(sender, instance, **kwargs)
             CollectionSchedule.objects.filter(subscription=instance).delete()
             instance.assigner_jours_collecte_automatique()
             generate_collection_schedule(instance)
+
+    else:
+        # Supprimer les programmes de collecte associés à cet abonnement
+        CollectionSchedule.objects.filter(subscription=instance).delete()
 
 
 
