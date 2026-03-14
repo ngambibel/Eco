@@ -1,0 +1,704 @@
+{% extends 'admin_gaz/base_gaz.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Stocks Gaz{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-warehouse me-2"></i>
+            Gestion des Stocks
+        </h2>
+        <div>
+            <button class="btn btn-success" onclick="exportInventory()">
+                <i class="fas fa-download"></i> Exporter
+            </button>
+            <button class="btn btn-primary" onclick="showInventoryModal()">
+                <i class="fas fa-plus"></i> Nouvel inventaire
+            </button>
+        </div>
+    </div>
+
+    <!-- Alertes Stock -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-warning">Stock faible</h6>
+                            <h3>{{ low_stock_count|default:0 }}</h3>
+                            <small>Produits sous le seuil minimum</small>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-success">Stock disponible</h6>
+                            <h3>{{ total_stock|default:0 }}</h3>
+                            <small>Unités totales</small>
+                        </div>
+                        <i class="fas fa-check-circle fa-3x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-info">Valeur du stock</h6>
+                            <h3>{{ total_value|floatformat:0 }} FCFA</h3>
+                            <small>Valeur estimée</small>
+                        </div>
+                        <i class="fas fa-coins fa-3x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres et recherche -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-3">
+                    <label class="form-label">Type d'emplacement</label>
+                    <select name="location_type" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        {% for type_key, type_value in location_types %}
+                        <option value="{{ type_key }}" {% if request.GET.location_type == type_key %}selected{% endif %}>
+                            {{ type_value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Produit</label>
+                    <select name="product" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" {% if request.GET.product == product.id|stringformat:"i" %}selected{% endif %}>
+                            {{ product.get_gaz_type_display }} - {{ product.size_kg }}kg
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Statut</label>
+                    <select name="alert_status" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        <option value="low" {% if request.GET.alert_status == 'low' %}selected{% endif %}>Stock faible</option>
+                        <option value="normal" {% if request.GET.alert_status == 'normal' %}selected{% endif %}>Stock normal</option>
+                        <option value="over" {% if request.GET.alert_status == 'over' %}selected{% endif %}>Surstock</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Recherche</label>
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Produit, lieu..." value="{{ request.GET.search }}">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Résumé par produit -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Résumé par produit</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Type</th>
+                            <th>Stock total</th>
+                            <th>Entrepôt</th>
+                            <th>Tricycles</th>
+                            <th>Réservé</th>
+                            <th>Valeur</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in product_summary %}
+                        <tr>
+                            <td>
+                                <strong>{{ product.get_gaz_type_display }}</strong>
+                                <br>
+                                <small class="text-muted">{{ product.size_kg }} kg</small>
+                            </td>
+                            <td>{{ product.name|default:"-" }}</td>
+                            <td>
+                                <h6 class="mb-0">{{ product.total_stock|default:0 }}</h6>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ product.warehouse_count|default:0 }} emplacements</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ product.tricycle_count|default:0 }} tricycles</span>
+                            </td>
+                            <td>{{ product.total_reserved|default:0 }}</td>
+                            <td>
+                                {% with value=product.total_stock|default:0|floatformat:0 %}
+                                {{ value }} FCFA
+                                {% endwith %}
+                            </td>
+                            <td>
+                                {% if product.total_stock <= product.minimum_threshold|default:5 %}
+                                <span class="badge bg-danger">Stock faible</span>
+                                {% elif product.total_stock >= product.maximum_capacity|default:100 %}
+                                <span class="badge bg-warning">Surstock</span>
+                                {% else %}
+                                <span class="badge bg-success">Normal</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showRestockModal('{{ product.id }}', '{{ product.get_gaz_type_display }} - {{ product.size_kg }}kg')">
+                                    <i class="fas fa-plus-circle"></i> Réapprovisionner
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+                                <p>Aucun produit trouvé</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventaire détaillé -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Inventaire détaillé</h5>
+            <div>
+                <span class="badge bg-secondary me-2">{{ inventory.paginator.count }} entrées</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshInventory()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Emplacement</th>
+                            <th>Disponible</th>
+                            <th>Réservé</th>
+                            <th>Endommagé</th>
+                            <th>Total</th>
+                            <th>Seuil</th>
+                            <th>Dernier inventaire</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory %}
+                        <tr class="{% if item.quantity_available <= item.minimum_threshold %}table-warning{% endif %}">
+                            <td>
+                                <strong>{{ item.product.get_gaz_type_display }}</strong>
+                                <br>
+                                <small class="text-muted">{{ item.product.size_kg }} kg</small>
+                            </td>
+                            <td>
+                                {% if item.location_type == 'warehouse' %}
+                                    <i class="fas fa-warehouse text-primary"></i>
+                                    {{ item.warehouse_name|default:"Entrepôt principal" }}
+                                {% elif item.location_type == 'tricycle' and item.tricycle %}
+                                    <i class="fas fa-motorcycle text-success"></i>
+                                    {{ item.tricycle.nom }}
+                                {% elif item.location_type == 'shop' %}
+                                    <i class="fas fa-store text-info"></i>
+                                    Boutique
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">{{ item.get_location_type_display }}</small>
+                            </td>
+                            <td>
+                                <h6 class="mb-0 {% if item.quantity_available <= item.minimum_threshold %}text-danger{% endif %}">
+                                    {{ item.quantity_available }}
+                                </h6>
+                            </td>
+                            <td>{{ item.quantity_reserved }}</td>
+                            <td>{{ item.quantity_damaged }}</td>
+                            <td><strong>{{ item.total_quantity }}</strong></td>
+                            <td>{{ item.minimum_threshold }}</td>
+                            <td>
+                                {{ item.last_count_date|date:"d/m/Y" }}
+                                <br>
+                                <small class="text-muted">{{ item.last_count_date|timesince }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="adjustInventory('{{ item.id }}')"
+                                            title="Ajuster le stock">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" 
+                                            onclick="recordMovement('{{ item.id }}')"
+                                            title="Enregistrer mouvement">
+                                        <i class="fas fa-truck"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="viewHistory('{{ item.id }}')"
+                                            title="Historique">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
+                                <h5>Aucun inventaire trouvé</h5>
+                                <p class="text-muted">Commencez par ajouter des produits aux emplacements</p>
+                                <button class="btn btn-primary" onclick="showInventoryModal()">
+                                    <i class="fas fa-plus"></i> Ajouter un inventaire
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if inventory.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if inventory.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ inventory.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in inventory.paginator.page_range %}
+                        {% if inventory.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if inventory.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ inventory.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajustement Stock -->
+<div class="modal fade" id="adjustModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajuster le stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="adjustForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="inventory_id" id="adjust_inventory_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Produit</label>
+                        <input type="text" id="adjust_product_name" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Stock actuel</label>
+                        <input type="number" id="current_stock" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Type d'ajustement</label>
+                        <select name="adjustment_type" class="form-select" id="adjustment_type" required>
+                            <option value="add">Ajouter au stock</option>
+                            <option value="remove">Retirer du stock</option>
+                            <option value="set">Définir nouvelle valeur</option>
+                            <option value="damage">Marquer comme endommagé</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Quantité</label>
+                        <input type="number" name="quantity" class="form-control" min="0" step="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Raison</label>
+                        <select name="reason_type" class="form-select mb-2">
+                            <option value="restock">Réapprovisionnement</option>
+                            <option value="sale">Vente</option>
+                            <option value="return">Retour client</option>
+                            <option value="damage">Produit endommagé</option>
+                            <option value="inventory">Inventaire physique</option>
+                            <option value="transfer">Transfert</option>
+                        </select>
+                        <textarea name="reason" class="form-control" rows="2" 
+                                  placeholder="Description détaillée..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Référence (optionnel)</label>
+                        <input type="text" name="reference" class="form-control" 
+                               placeholder="N° facture, bon de livraison...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Valider l'ajustement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Réapprovisionnement -->
+<div class="modal fade" id="restockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Réapprovisionnement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="restockForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="product_id" id="restock_product_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Produit</label>
+                        <input type="text" id="restock_product_name" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Emplacement</label>
+                        <select name="location_type" class="form-select" required>
+                            <option value="warehouse">Entrepôt principal</option>
+                            <option value="warehouse">Entrepôt secondaire</option>
+                            <option value="shop">Boutique</option>
+                            {% for tricycle in tricycles %}
+                            <option value="tricycle_{{ tricycle.id }}">Tricycle: {{ tricycle.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Quantité à ajouter</label>
+                        <input type="number" name="quantity" class="form-control" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Prix d'achat unitaire (FCFA)</label>
+                        <input type="number" name="purchase_price" class="form-control" min="0" step="100">
+                        <small class="text-muted">Optionnel, pour le calcul des coûts</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Fournisseur</label>
+                        <input type="text" name="supplier" class="form-control" 
+                               placeholder="Nom du fournisseur">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Numéro de facture</label>
+                        <input type="text" name="invoice_number" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Confirmer le réapprovisionnement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Mouvement -->
+<div class="modal fade" id="movementModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Transfert de stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="movementForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="from_inventory_id" id="movement_from_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Produit</label>
+                        <input type="text" id="movement_product_name" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">De</label>
+                        <input type="text" id="movement_from_location" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Vers</label>
+                        <select name="to_location" class="form-select" required>
+                            <option value="">Choisir destination...</option>
+                            <optgroup label="Entrepôts">
+                                <option value="warehouse_1">Entrepôt principal</option>
+                                <option value="warehouse_2">Entrepôt secondaire</option>
+                            </optgroup>
+                            <optgroup label="Tricycles">
+                                {% for tricycle in tricycles %}
+                                <option value="tricycle_{{ tricycle.id }}">{{ tricycle.nom }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Boutiques">
+                                <option value="shop_1">Boutique centre-ville</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Quantité à transférer</label>
+                        <input type="number" name="quantity" class="form-control" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Raison du transfert</label>
+                        <textarea name="reason" class="form-control" rows="2" 
+                                  placeholder="Ex: Réapprovisionnement tricycle, commande spéciale..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Effectuer le transfert</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historique -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Historique des mouvements</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="historyModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Alertes -->
+<div class="modal fade" id="alertsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title text-white">Alertes Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="alertsList">
+                    <!-- Aliments dynamiques -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function adjustInventory(inventoryId) {
+        fetch(`/api/gas/inventory/${inventoryId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('adjust_inventory_id').value = inventoryId;
+                document.getElementById('adjust_product_name').value = 
+                    `${data.product_gaz_type} - ${data.product_size}kg`;
+                document.getElementById('current_stock').value = data.quantity_available;
+                
+                new bootstrap.Modal(document.getElementById('adjustModal')).show();
+            });
+    }
+
+    function showRestockModal(productId, productName) {
+        document.getElementById('restock_product_id').value = productId;
+        document.getElementById('restock_product_name').value = productName;
+        new bootstrap.Modal(document.getElementById('restockModal')).show();
+    }
+
+    function recordMovement(inventoryId) {
+        fetch(`/api/gas/inventory/${inventoryId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('movement_from_id').value = inventoryId;
+                document.getElementById('movement_product_name').value = 
+                    `${data.product_gaz_type} - ${data.product_size}kg`;
+                document.getElementById('movement_from_location').value = 
+                    data.location_type === 'warehouse' ? 'Entrepôt' : 
+                    data.location_type === 'tricycle' ? `Tricycle: ${data.tricycle_name}` : 'Boutique';
+                
+                new bootstrap.Modal(document.getElementById('movementModal')).show();
+            });
+    }
+
+    function viewHistory(inventoryId) {
+        document.getElementById('historyModal').style.display = 'block';
+        
+        fetch(`/api/gas/inventory/${inventoryId}/history/`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<div class="timeline">';
+                
+                data.history.forEach(item => {
+                    html += `
+                        <div class="timeline-item">
+                            <div class="timeline-badge bg-${item.type_color}">
+                                <i class="fas fa-${item.icon}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>${item.action}</h6>
+                                <p>${item.description}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> ${item.date}
+                                    ${item.user ? ' par ' + item.user : ''}
+                                </small>
+                                ${item.reference ? '<br><small>Réf: ' + item.reference + '</small>' : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                
+                if (data.history.length === 0) {
+                    html = '<p class="text-center text-muted py-4">Aucun historique trouvé</p>';
+                }
+                
+                document.getElementById('historyModalBody').innerHTML = html;
+            });
+    }
+
+    document.getElementById('adjustForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const inventoryId = formData.get('inventory_id');
+        
+        fetch(`/admin-gaz/inventory/${inventoryId}/adjust/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Succès', 'Stock ajusté avec succès', 'success')
+                    .then(() => location.reload());
+            } else {
+                Swal.fire('Erreur', data.message, 'error');
+            }
+        });
+    });
+
+    function exportInventory() {
+        const params = new URLSearchParams(new FormData(document.getElementById('filterForm'))).toString();
+        window.location.href = `/admin-gaz/export-inventory/?${params}`;
+    }
+
+    function refreshInventory() {
+        location.reload();
+    }
+
+    function checkLowStock() {
+        fetch('/api/gas/inventory/alerts/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.low_stock_count > 0) {
+                    let alerts = '';
+                    data.items.forEach(item => {
+                        alerts += `
+                            <div class="alert alert-warning">
+                                <strong>${item.product}</strong> - Stock: ${item.quantity}
+                                <br>
+                                <small>Seuil minimum: ${item.threshold}</small>
+                                <button class="btn btn-sm btn-warning mt-2" 
+                                        onclick="showRestockModal('${item.product_id}', '${item.product}')">
+                                    Réapprovisionner
+                                </button>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('alertsList').innerHTML = alerts;
+                    new bootstrap.Modal(document.getElementById('alertsModal')).show();
+                }
+            });
+    }
+
+    // Vérifier les alertes au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+        '{% if low_stock_count > 0 %}'
+        checkLowStock();
+        '{% endif %}'
+    });
+
+    // Auto-refresh toutes les 5 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 300000);
+</script>
+{% endblock %}

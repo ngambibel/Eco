@@ -1,0 +1,361 @@
+{% extends 'admin_gaz/base_gaz.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestion des commandes de gaz</h2>
+        <div>
+            <button class="btn btn-success" onclick="exportOrders()">
+                <i class="fas fa-download"></i> Exporter
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres avancés -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-2">
+                    <label class="form-label">N° Commande</label>
+                    <input type="text" name="order_number" class="form-control" value="{{ request.GET.order_number }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Client</label>
+                    <input type="text" name="customer" class="form-control" value="{{ request.GET.customer }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Statut</label>
+                    <select name="status" class="form-select">
+                        <option value="">Tous</option>
+                        {% for status_key, status_value in order_statuses %}
+                        <option value="{{ status_key }}" {% if request.GET.status == status_key %}selected{% endif %}>
+                            {{ status_value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Paiement</label>
+                    <select name="payment_status" class="form-select">
+                        <option value="">Tous</option>
+                        {% for payment_key, payment_value in payment_statuses %}
+                        <option value="{{ payment_key }}" {% if request.GET.payment_status == payment_key %}selected{% endif %}>
+                            {{ payment_value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Du</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Au</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary" onclick="resetFilters()">
+                        <i class="fas fa-undo"></i> Réinitialiser
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Rechercher
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Résumé des commandes -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h6>Total commandes</h6>
+                    <h3>{{ orders.paginator.count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h6>Montant total</h6>
+                    <h3>{{ total_amount }} FCFA</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h6>Commandes livrées</h6>
+                    <h3>{{ delivered_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h6>En attente</h6>
+                    <h3>{{ pending_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des commandes -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>N° Commande</th>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th>Produits</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Paiement</th>
+                            <th>Livreur</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>
+                                <strong>{{ order.order_number }}</strong>
+                                <br>
+                                <small class="text-muted">{{ order.delivery_type|upper }}</small>
+                            </td>
+                            <td>{{ order.order_date|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {{ order.customer.get_full_name|default:order.customer.username }}
+                                <br>
+                                <small class="text-muted">{{ order.customer.phone }}</small>
+                            </td>
+                            <td>
+                                {% for item in order.items.all %}
+                                <span class="badge bg-secondary">
+                                    {{ item.quantity }}x {{ item.product.size_kg }}kg
+                                </span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <strong>{{ order.total_amount }} FCFA</strong>
+                                <br>
+                                <small>dont consigne {{ order.total_deposit }} FCFA</small>
+                            </td>
+                            <td>
+                                <span class="badge status-{{ order.status }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if order.payment_status == 'paid' %}bg-success{% elif order.payment_status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ order.get_payment_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if order.assigned_collector %}
+                                    {{ order.assigned_collector.get_full_name }}
+                                {% else %}
+                                    <span class="text-muted">Non assigné</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'admin_gaz_order_detail' order.id %}" 
+                                       class="btn btn-sm btn-info" title="Détails">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-primary" onclick="assignDelivery('{{ order.id }}')"
+                                            {% if order.status != 'confirmed' and order.status != 'preparing' %}disabled{% endif %}
+                                            title="Assigner un livreur">
+                                        <i class="fas fa-user-plus"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="updateStatus('{{ order.id }}')"
+                                            title="Changer statut">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-success" onclick="viewTracking('{{ order.id }}')"
+                                            {% if order.status != 'in_transit' %}disabled{% endif %}
+                                            title="Suivi">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                                <h5>Aucune commande trouvée</h5>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if orders.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if orders.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ orders.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in orders.paginator.page_range %}
+                        {% if orders.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if orders.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ orders.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Assignation Livreur -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assigner un livreur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="assignForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="order_id" id="assign_order_id">
+                    <div class="mb-3">
+                        <label class="form-label">Sélectionner un livreur</label>
+                        <select name="collector_id" class="form-select" required>
+                            <option value="">Choisir...</option>
+                            {% for collector in available_collectors %}
+                            <option value="{{ collector.id }}">
+                                {{ collector.get_full_name }} - 
+                                ({{ collector.assigned_gas_deliveries.count }} en cours)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tricycle</label>
+                        <select name="tricycle_id" class="form-select">
+                            <option value="">Automatique</option>
+                            {% for tricycle in available_tricycles %}
+                            <option value="{{ tricycle.id }}">{{ tricycle.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Instructions</label>
+                        <textarea name="instructions" class="form-control" rows="2" 
+                                  placeholder="Instructions spéciales pour le livreur..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Assigner</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resetFilters() {
+    window.location.href = "{% url 'admin_gaz_orders' %}";
+}
+
+function assignDelivery(orderId) {
+    document.getElementById('assign_order_id').value = orderId;
+    new bootstrap.Modal(document.getElementById('assignModal')).show();
+}
+
+function updateStatus(orderId) {
+    Swal.fire({
+        title: 'Mettre à jour le statut',
+        html: `
+            <select id="newStatus" class="form-select">
+                <option value="confirmed">Confirmer</option>
+                <option value="preparing">En préparation</option>
+                <option value="assigned">Assigner</option>
+                <option value="cancelled">Annuler</option>
+            </select>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Mettre à jour',
+        cancelButtonText: 'Annuler',
+        preConfirm: () => {
+            const status = document.getElementById('newStatus').value;
+            return fetch(`/admin-gaz/orders/${orderId}/update-status/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: status })
+            }).then(response => response.json());
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value.success) {
+            Swal.fire('Succès', 'Statut mis à jour', 'success')
+                .then(() => location.reload());
+        }
+    });
+}
+
+function viewTracking(orderId) {
+    window.open(`/admin-gaz/orders/${orderId}/tracking/`, '_blank');
+}
+
+function exportOrders() {
+    window.location.href = "{% url 'admin_gaz_export_orders' %}?" + new URLSearchParams(new FormData(document.getElementById('filterForm'))).toString();
+}
+
+document.getElementById('assignForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const orderId = formData.get('order_id');
+    
+    fetch(`/admin-gaz/orders/${orderId}/assign/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire('Succès', 'Livreur assigné avec succès', 'success')
+                .then(() => location.reload());
+        } else {
+            Swal.fire('Erreur', data.message, 'error');
+        }
+    });
+});
+</script>
+{% endblock %}

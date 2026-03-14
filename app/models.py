@@ -1329,3 +1329,683 @@ class Bonus (models.Model):
     def __str__(self):
         return self.subscription.user.username
     
+
+
+
+
+
+
+
+# les models pour la gestion des produits de gaz et des bouteilles de gaz
+class GasProduct(models.Model):
+    """
+    Modèle pour les différents types de gaz disponibles
+    """
+    GAZ_TYPE_CHOICES = (
+        ('butane', 'Gaz Butane'),
+        ('propane', 'Gaz Propane'),
+        ('naturel', 'Gaz Naturel'),
+        ('industriel', 'Gaz Industriel'),
+    )
+    
+    SIZE_CHOICES = (
+        (3, '3 kg'),
+        (6, '6 kg'),
+        (12, '12 kg'),
+        (25, '25 kg'),
+        (35, '35 kg'),
+        (50, '50 kg'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, verbose_name="Nom du produit")
+    gaz_type = models.CharField(max_length=20, choices=GAZ_TYPE_CHOICES, verbose_name="Type de gaz")
+    size_kg = models.IntegerField(choices=SIZE_CHOICES, verbose_name="Taille (kg)")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix unitaire")
+    deposit_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix de consigne", 
+                                        help_text="Prix de la bouteille consignée")
+    description = models.TextField(blank=True, verbose_name="Description")
+    image = models.ImageField(upload_to='gaz_products/', blank=True, null=True, verbose_name="Image")
+    stock_available = models.PositiveIntegerField(default=0, verbose_name="Stock disponible")
+    is_available = models.BooleanField(default=True, verbose_name="Disponible")
+    is_featured = models.BooleanField(default=False, verbose_name="Mis en avant")
+    
+    # Métadonnées
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Produit gaz"
+        verbose_name_plural = "Produits gaz"
+        ordering = ['gaz_type', 'size_kg']
+        
+    
+    def __str__(self):
+        return f"{self.get_gaz_type_display()} - {self.size_kg}kg"
+    
+    @property
+    def total_price(self):
+        """Prix total incluant la consigne"""
+        return self.price + self.deposit_price
+
+
+class GasCylinder(models.Model):
+    """
+    Modèle pour suivre les bouteilles de gaz individuelles (consignes)
+    """
+    STATUS_CHOICES = (
+        ('available', 'Disponible'),
+        ('with_customer', 'Chez le client'),
+        ('in_transit', 'En transit'),
+        ('returned', 'Retournée'),
+        ('damaged', 'Endommagée'),
+        ('lost', 'Perdue'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(GasProduct, on_delete=models.PROTECT, related_name='cylinders', verbose_name="Produit")
+    serial_number = models.CharField(max_length=100, unique=True, verbose_name="Numéro de série")
+    qr_code = models.ImageField(upload_to='cylinders_qr/', blank=True, null=True, verbose_name="QR Code")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
+    current_owner = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, 
+                                     related_name='cylinders', verbose_name="Propriétaire actuel")
+    last_maintenance_date = models.DateField(blank=True, null=True, verbose_name="Dernière maintenance")
+    next_maintenance_date = models.DateField(blank=True, null=True, verbose_name="Prochaine maintenance")
+    purchase_date = models.DateField(default=timezone.now, verbose_name="Date d'achat")
+    notes = models.TextField(blank=True, verbose_name="Notes")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Bouteille de gaz"
+        verbose_name_plural = "Bouteilles de gaz"
+        indexes = [
+            models.Index(fields=['serial_number', 'status']),
+            models.Index(fields=['product', 'status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.product} - {self.serial_number}"
+    
+    def generate_qr_code(self):
+        """Générer un QR code pour la bouteille"""
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        # URL pour suivre la bouteille
+        tracking_url = f"{settings.SITE_URL}/gas/cylinder/{self.id}/track/"
+        qr.add_data(tracking_url)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        
+        filename = f"cylinder_{self.serial_number}_qr.png"
+        self.qr_code.save(filename, buffer, save=True)
+
+
+class GasOrder(models.Model):
+    """
+    Modèle principal pour les commandes de gaz
+    """
+    ORDER_STATUS_CHOICES = (
+        ('pending', 'En attente'),
+        ('confirmed', 'Confirmée'),
+        ('preparing', 'En préparation'),
+        ('assigned', 'Assignée à un livreur'),
+        ('in_transit', 'En livraison'),
+        ('delivered', 'Livrée'),
+        ('cancelled', 'Annulée'),
+        ('failed', 'Échouée'),
+    )
+    
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'En attente'),
+        ('paid', 'Payée'),
+        ('partial', 'Partiellement payée'),
+        ('failed', 'Échouée'),
+        ('refunded', 'Remboursée'),
+    )
+    
+    DELIVERY_TYPE_CHOICES = (
+        ('standard', 'Standard'),
+        ('express', 'Express'),
+        ('scheduled', 'Programmée'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order_number = models.CharField(max_length=20, unique=True, editable=False, verbose_name="N° de commande")
+    
+    # Relations
+    customer = models.ForeignKey(CustomUser, on_delete=models.PROTECT, related_name='gas_orders', verbose_name="Client")
+    address = models.ForeignKey(Address, on_delete=models.PROTECT, related_name='gas_orders', verbose_name="Adresse de livraison")
+    zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, related_name='gas_orders', verbose_name="Zone")
+    assigned_collector = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='assigned_gas_deliveries', limit_choices_to={'user_type': 'collecteur'},
+                                         verbose_name="Livreur assigné")
+    assigned_tricycle = models.ForeignKey(Tricycle, on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='gas_deliveries', verbose_name="Tricycle assigné")
+    
+    # Informations de commande
+    delivery_type = models.CharField(max_length=20, choices=DELIVERY_TYPE_CHOICES, default='standard')
+    scheduled_date = models.DateField(blank=True, null=True, auto_now_add=True, verbose_name="Date programmée")
+    scheduled_time_slot = models.CharField(max_length=50, blank=True, verbose_name="Créneau horaire")
+    special_instructions = models.TextField(blank=True, verbose_name="Instructions spéciales")
+    
+    # Suivi de commande
+    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    
+    # Dates importantes
+    order_date = models.DateTimeField(auto_now_add=True, verbose_name="Date de commande")
+    confirmation_date = models.DateTimeField(blank=True, null=True, verbose_name="Date de confirmation")
+    preparation_date = models.DateTimeField(blank=True, null=True, verbose_name="Date de préparation")
+    pickup_date = models.DateTimeField(blank=True, null=True, verbose_name="Date d'enlèvement")
+    delivery_date = models.DateTimeField(blank=True, null=True, verbose_name="Date de livraison")
+    estimated_delivery_time = models.DateTimeField(blank=True, null=True, verbose_name="Heure estimée de livraison")
+    
+    # Informations financières
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Sous-total")
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Frais de livraison")
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Taxes")
+    total_deposit = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Total consigne")
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Montant total")
+    
+    # Paiement
+    payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name='gas_orders')
+    payment_method = models.CharField(max_length=50, blank=True, verbose_name="Méthode de paiement")
+    
+    # Métadonnées
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    notes = models.TextField(blank=True, verbose_name="Notes internes")
+    
+    class Meta:
+        verbose_name = "Commande de gaz"
+        verbose_name_plural = "Commandes de gaz"
+        ordering = ['-order_date']
+        indexes = [
+            models.Index(fields=['order_number', 'status']),
+            models.Index(fields=['customer', 'order_date']),
+            models.Index(fields=['assigned_collector', 'status']),
+            models.Index(fields=['scheduled_date', 'status']),
+        ]
+    
+    def __str__(self):
+        return f"Commande {self.order_number} - {self.customer.get_full_name() or self.customer.username}"
+    
+    def save(self, *args, **kwargs):
+        if not self.order_number:
+            self.order_number = self.generate_order_number()
+        super().save(*args, **kwargs)
+    
+    def generate_order_number(self):
+        """Générer un numéro de commande unique"""
+        today = timezone.now()
+        year = today.strftime('%Y')
+        month = today.strftime('%m')
+        day = today.strftime('%d')
+        
+        # Compter les commandes du jour pour générer un séquentiel
+        last_order = GasOrder.objects.filter(
+            order_date__date=today.date()
+        ).order_by('-order_number').first()
+        
+        if last_order and last_order.order_number:
+            last_sequence = int(last_order.order_number[-4:])
+            new_sequence = last_sequence + 1
+        else:
+            new_sequence = 1
+        
+        return f"GAZ-{year}{month}{day}-{new_sequence:04d}"
+    
+    def calculate_totals(self):
+        """Calculer les totaux de la commande"""
+        items = self.items.all()
+        self.subtotal = sum(item.total_price for item in items)
+        self.total_deposit = sum(item.total_deposit for item in items)
+        # Les frais de livraison et taxes sont définis séparément
+        self.total_amount = self.subtotal + self.delivery_fee + self.tax_amount
+        self.save(update_fields=['subtotal', 'total_deposit', 'total_amount'])
+
+
+class GasOrderItem(models.Model):
+    """
+    Détail des produits commandés
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(GasOrder, on_delete=models.CASCADE, related_name='items', verbose_name="Commande")
+    product = models.ForeignKey(GasProduct, on_delete=models.PROTECT, verbose_name="Produit")
+    quantity = models.PositiveIntegerField(default=1, verbose_name="Quantité")
+    
+    # Bouteilles assignées (pour le suivi des consignes)
+    assigned_cylinders = models.ManyToManyField(GasCylinder, blank=True, related_name='orders', 
+                                               verbose_name="Bouteilles assignées")
+    
+    # Prix au moment de la commande (pour historique)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix unitaire")
+    unit_deposit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Consigne unitaire")
+    
+    # Bouteilles retournées (pour l'échange)
+    returned_cylinders = models.ManyToManyField(GasCylinder, blank=True, related_name='returned_in_orders',
+                                              verbose_name="Bouteilles retournées")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Article commandé"
+        verbose_name_plural = "Articles commandés"
+    
+    def __str__(self):
+        return f"{self.quantity} x {self.product}"
+    
+    @property
+    def total_price(self):
+        """Prix total sans consigne"""
+        return self.quantity * self.unit_price
+    
+    @property
+    def total_deposit(self):
+        """Total de la consigne"""
+        return self.quantity * self.unit_deposit
+    
+    def save(self, *args, **kwargs):
+        if not self.unit_price:
+            self.unit_price = self.product.price
+        if not self.unit_deposit:
+            self.unit_deposit = self.product.deposit_price
+        super().save(*args, **kwargs)
+
+
+class GasDeliveryTracking(models.Model):
+    """
+    Suivi en temps réel des livraisons
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(GasOrder, on_delete=models.CASCADE, related_name='tracking_updates', 
+                            verbose_name="Commande")
+    
+    # Statut à ce moment
+    status = models.CharField(max_length=20, choices=GasOrder.ORDER_STATUS_CHOICES, verbose_name="Statut")
+    
+    # Localisation
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    location_accuracy = models.CharField(max_length=50, blank=True, verbose_name="Précision")
+    
+    # Informations de suivi
+    estimated_arrival = models.DateTimeField(blank=True, null=True, verbose_name="Arrivée estimée")
+    distance_remaining = models.FloatField(blank=True, null=True, verbose_name="Distance restante (km)")
+    
+    # Notes
+    notes = models.TextField(blank=True, verbose_name="Notes")
+    
+    # Photo de livraison (preuve)
+    delivery_photo = models.ImageField(upload_to='delivery_proofs/%Y/%m/%d/', blank=True, null=True,
+                                      verbose_name="Photo de livraison")
+    recipient_signature = models.ImageField(upload_to='signatures/%Y/%m/%d/', blank=True, null=True,
+                                          verbose_name="Signature du destinataire")
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Horodatage")
+    
+    class Meta:
+        verbose_name = "Suivi de livraison"
+        verbose_name_plural = "Suivis de livraison"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Suivi {self.order.order_number} - {self.get_status_display()} - {self.created_at}"
+
+
+class GasExchange(models.Model):
+    """
+    Modèle pour gérer les échanges de bouteilles (consignes)
+    """
+    EXCHANGE_TYPE_CHOICES = (
+        ('return_only', 'Retour uniquement'),
+        ('exchange', 'Échange standard'),
+        ('purchase_new', 'Achat neuf sans retour'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.OneToOneField(GasOrder, on_delete=models.CASCADE, related_name='exchange', verbose_name="Commande")
+    exchange_type = models.CharField(max_length=20, choices=EXCHANGE_TYPE_CHOICES, default='exchange')
+    
+    # Bouteilles retournées par le client
+    returned_cylinders = models.ManyToManyField(GasCylinder, related_name='exchanges_as_return', 
+                                              verbose_name="Bouteilles retournées")
+    
+    # Bouteilles neuves fournies
+    new_cylinders = models.ManyToManyField(GasCylinder, related_name='exchanges_as_new', 
+                                         verbose_name="Bouteilles neuves fournies")
+    
+    # État des bouteilles retournées
+    returned_condition_notes = models.TextField(blank=True, verbose_name="État des bouteilles retournées")
+    
+    # Différentiel de prix (si les bouteilles retournées ne sont pas équivalentes)
+    price_difference = models.DecimalField(max_digits=10, decimal_places=2, default=0, 
+                                         verbose_name="Différence de prix")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, 
+                                    related_name='processed_exchanges', verbose_name="Traité par")
+    
+    class Meta:
+        verbose_name = "Échange de bouteilles"
+        verbose_name_plural = "Échanges de bouteilles"
+    
+    def __str__(self):
+        return f"Échange #{self.id} - Commande {self.order.order_number}"
+
+
+class GasInventory(models.Model):
+    """
+    Suivi des stocks dans les différents dépôts/tricycles
+    """
+    LOCATION_TYPE_CHOICES = (
+        ('warehouse', 'Entrepôt'),
+        ('tricycle', 'Tricycle'),
+        ('shop', 'Boutique'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(GasProduct, on_delete=models.CASCADE, related_name='inventory_items')
+    location_type = models.CharField(max_length=20, choices=LOCATION_TYPE_CHOICES)
+    
+    # Selon le type de localisation
+    warehouse_name = models.CharField(max_length=100, blank=True, verbose_name="Nom de l'entrepôt")
+    tricycle = models.ForeignKey(Tricycle, on_delete=models.CASCADE, null=True, blank=True, 
+                               related_name='gas_inventory')
+    
+    # Quantités
+    quantity_available = models.PositiveIntegerField(default=0, verbose_name="Quantité disponible")
+    quantity_reserved = models.PositiveIntegerField(default=0, verbose_name="Quantité réservée")
+    quantity_damaged = models.PositiveIntegerField(default=0, verbose_name="Quantité endommagée")
+    
+    # Seuils
+    minimum_threshold = models.PositiveIntegerField(default=5, verbose_name="Seuil minimum")
+    maximum_capacity = models.PositiveIntegerField(default=100, verbose_name="Capacité maximale")
+    
+    # Métadonnées
+    last_restock_date = models.DateTimeField(blank=True, null=True, verbose_name="Dernier réapprovisionnement")
+    last_count_date = models.DateTimeField(auto_now=True, verbose_name="Dernier inventaire")
+    
+    class Meta:
+        verbose_name = "Inventaire gaz"
+        verbose_name_plural = "Inventaires gaz"
+        unique_together = ['product', 'location_type', 'tricycle']
+    
+    def __str__(self):
+        if self.location_type == 'tricycle' and self.tricycle:
+            return f"{self.product} - {self.tricycle.nom}"
+        return f"{self.product} - {self.get_location_type_display()}"
+    
+    @property
+    def total_quantity(self):
+        return self.quantity_available + self.quantity_reserved
+    
+    @property
+    def needs_restock(self):
+        return self.quantity_available <= self.minimum_threshold
+
+
+class GasPromotion(models.Model):
+    """
+    Promotions et offres spéciales pour le gaz
+    """
+    PROMOTION_TYPE_CHOICES = (
+        ('percentage', 'Pourcentage de réduction'),
+        ('fixed', 'Montant fixe'),
+        ('bundle', 'Pack multiple'),
+        ('free_delivery', 'Livraison gratuite'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200, verbose_name="Nom de la promotion")
+    description = models.TextField(verbose_name="Description")
+    promotion_type = models.CharField(max_length=20, choices=PROMOTION_TYPE_CHOICES)
+    
+    # Valeur de la réduction
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True,
+                                       verbose_name="Valeur de réduction")
+    discount_percentage = models.IntegerField(blank=True, null=True,
+                                            validators=[MinValueValidator(0), MaxValueValidator(100)],
+                                            verbose_name="Pourcentage de réduction")
+    
+    # Conditions
+    minimum_purchase = models.PositiveIntegerField(default=1, verbose_name="Achat minimum")
+    applicable_products = models.ManyToManyField(GasProduct, blank=True, related_name='promotions')
+    applicable_zones = models.ManyToManyField(Zone, blank=True, related_name='promotions')
+    
+    # Période de validité
+    start_date = models.DateTimeField(verbose_name="Date de début")
+    end_date = models.DateTimeField(verbose_name="Date de fin")
+    
+    # Code promo (optionnel)
+    promo_code = models.CharField(max_length=50, blank=True, unique=True, null=True, verbose_name="Code promo")
+    usage_limit = models.PositiveIntegerField(default=0, verbose_name="Limite d'utilisation")
+    used_count = models.PositiveIntegerField(default=0, verbose_name="Nombre d'utilisations")
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Promotion gaz"
+        verbose_name_plural = "Promotions gaz"
+    
+    def __str__(self):
+        return self.name
+    
+    def is_valid(self):
+        now = timezone.now()
+        return (self.is_active and 
+                self.start_date <= now <= self.end_date and
+                (self.usage_limit == 0 or self.used_count < self.usage_limit))
+
+
+class GasRating(models.Model):
+    """
+    Évaluations des commandes de gaz par les clients
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.OneToOneField(GasOrder, on_delete=models.CASCADE, related_name='rating')
+    customer = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='gas_ratings')
+    
+    # Note sur 5
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    
+    # Évaluations spécifiques
+    product_quality = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)], blank=True, null=True)
+    delivery_speed = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)], blank=True, null=True)
+    collector_behavior = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)], blank=True, null=True)
+    
+    comment = models.TextField(blank=True, verbose_name="Commentaire")
+    
+    # Photo optionnelle
+    photo = models.ImageField(upload_to='gas_ratings/', blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Évaluation gaz"
+        verbose_name_plural = "Évaluations gaz"
+    
+    def __str__(self):
+        return f"Évaluation {self.rating}/5 - Commande {self.order.order_number}"
+
+
+# Signaux pour le système de gaz
+
+@receiver(post_save, sender=GasOrder)
+def handle_gas_order_status_change(sender, instance, created, **kwargs):
+    """Gérer les changements de statut des commandes de gaz"""
+    if created:
+        # Nouvelle commande - créer une notification
+        Notification.create_notification(
+            user=instance.customer,
+            title="Commande de gaz confirmée",
+            message=f"Votre commande {instance.order_number} a été confirmée. Montant total: {instance.total_amount} FCFA",
+            notification_type='success',
+            related_object=instance,
+            action_url=f'/gas/orders/{instance.id}/'
+        )
+    else:
+        # Vérifier si le statut a changé
+        if instance.status == 'assigned' and instance.assigned_collector:
+            # Notifier le client
+            Notification.create_notification(
+                user=instance.customer,
+                title="Livreur assigné",
+                message=f"Votre commande {instance.order_number} a été assignée à {instance.assigned_collector.get_full_name()}",
+                notification_type='info',
+                related_object=instance,
+                action_url=f'/gas/orders/{instance.id}/'
+            )
+        
+        elif instance.status == 'in_transit':
+            # Notifier le client
+            Notification.create_notification(
+                user=instance.customer,
+                title="Commande en route",
+                message=f"Votre commande {instance.order_number} est en cours de livraison",
+                notification_type='info',
+                related_object=instance,
+                action_url=f'/gas/orders/{instance.id}/'
+            )
+        
+        elif instance.status == 'delivered':
+            # Notifier le client
+            Notification.create_notification(
+                user=instance.customer,
+                title="Commande livrée",
+                message=f"Votre commande {instance.order_number} a été livrée avec succès",
+                notification_type='success',
+                related_object=instance,
+                action_url=f'/gas/orders/{instance.id}/'
+            )
+            
+            # Créer un enregistrement de revenu
+            today = timezone.now().date()
+            period_start = today.replace(day=1)
+            next_month = period_start.replace(month=period_start.month + 1) if period_start.month < 12 else period_start.replace(year=period_start.year + 1, month=1)
+            period_end = next_month - timezone.timedelta(days=1)
+            
+            RevenueRecord.objects.create(
+                revenue_type='one_time',
+                amount=instance.total_amount,
+                tax_amount=instance.tax_amount,
+                net_amount=instance.total_amount - instance.tax_amount,
+                payment_method=instance.payment_method,
+                status='completed',
+                transaction_date=timezone.now(),
+                period_start=period_start,
+                period_end=period_end,
+                description=f"Vente gaz - Commande {instance.order_number}",
+                customer=instance.customer,
+                zone=instance.zone,
+                is_recurring=False
+            )
+
+
+@receiver(post_save, sender=GasOrderItem)
+def update_order_totals(sender, instance, **kwargs):
+    """Mettre à jour les totaux de la commande quand un item est ajouté/modifié"""
+    instance.order.calculate_totals()
+
+
+@receiver(post_save, sender=GasDeliveryTracking)
+def notify_delivery_tracking(sender, instance, created, **kwargs):
+    """Notifier le client des mises à jour de livraison"""
+    if created and instance.status == 'in_transit' and instance.estimated_arrival:
+        Notification.create_notification(
+            user=instance.order.customer,
+            title="Mise à jour livraison",
+            message=f"Votre commande {instance.order.order_number} arrive dans environ {instance.estimated_arrival}",
+            notification_type='info',
+            related_object=instance.order,
+            action_url=f'/gas/orders/{instance.order.id}/track/'
+        )
+
+
+# Fonctions utilitaires pour le gaz
+
+def get_available_gas_products(zone=None):
+    """
+    Récupérer les produits de gaz disponibles dans une zone spécifique
+    """
+    products = GasProduct.objects.filter(is_available=True)
+    
+    if zone:
+        # Filtrer par stock disponible dans la zone
+        available_products = []
+        for product in products:
+            # Vérifier s'il y a du stock dans la zone ou dans les tricycles assignés
+            inventory = GasInventory.objects.filter(
+                product=product,
+                quantity_available__gt=0
+            ).filter(
+                models.Q(location_type='warehouse') |
+                models.Q(location_type='tricycle', tricycle__programmes__zone=zone)
+            ).exists()
+            
+            if inventory:
+                available_products.append(product)
+        
+        return available_products
+    
+    return products
+
+
+def assign_delivery_collector(order_id):
+    """
+    Assigner automatiquement un livreur à une commande de gaz
+    """
+    try:
+        order = GasOrder.objects.get(id=order_id)
+    except GasOrder.DoesNotExist:
+        return None
+    
+    if not order.zone:
+        return None
+    
+    # Chercher un collecteur disponible dans la zone
+    available_collectors = CustomUser.objects.filter(
+        user_type='collecteur',
+        city=order.address.city,
+        tricycle__programmes__zone=order.zone,
+        tricycle__status='active',
+        tricycle__isnull=False
+    ).distinct()
+    
+    # Filtrer ceux qui ont moins de X commandes en cours
+    busy_collectors = []
+    for collector in available_collectors:
+        active_deliveries = GasOrder.objects.filter(
+            assigned_collector=collector,
+            status__in=['assigned', 'in_transit', 'preparing']
+        ).count()
+        
+        if active_deliveries < 3:  # Maximum 3 commandes en cours
+            order.assigned_collector = collector
+            order.assigned_tricycle = collector.tricycle_set.filter(status='active').first()
+            order.status = 'assigned'
+            order.save()
+            
+            # Notifier le collecteur
+            Notification.create_notification(
+                user=collector,
+                title="Nouvelle livraison assignée",
+                message=f"Commande {order.order_number} - {order.customer.get_full_name()} - {order.address.street}",
+                notification_type='info',
+                related_object=order,
+                action_url=f'/collector/gas-deliveries/{order.id}/'
+            )
+            
+            return collector
+    
+    return None

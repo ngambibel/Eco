@@ -1,0 +1,592 @@
+{% extends 'admin_gaz/base_gaz.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Promotions Gaz{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-tags me-2"></i>
+            Gestion des Promotions
+        </h2>
+        <button class="btn btn-primary" onclick="showAddPromoModal()">
+            <i class="fas fa-plus"></i> Nouvelle promotion
+        </button>
+    </div>
+
+    <!-- Promotions actives -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-fire"></i>
+                        Promotions actives ({{ active_promotions.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for promo in active_promotions %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <h5 class="card-title">{{ promo.name }}</h5>
+                                        <span class="badge bg-success">Active</span>
+                                    </div>
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        {% if promo.promotion_type == 'percentage' %}
+                                            {{ promo.discount_percentage }}% de réduction
+                                        {% elif promo.promotion_type == 'fixed' %}
+                                            {{ promo.discount_value }} FCFA de réduction
+                                        {% elif promo.promotion_type == 'bundle' %}
+                                            Pack multiple
+                                        {% elif promo.promotion_type == 'free_delivery' %}
+                                            Livraison gratuite
+                                        {% endif %}
+                                    </h6>
+                                    <p class="card-text">{{ promo.description|truncatechars:100 }}</p>
+                                    
+                                    <div class="mb-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar"></i>
+                                            {{ promo.start_date|date:"d/m/Y" }} - {{ promo.end_date|date:"d/m/Y" }}
+                                        </small>
+                                    </div>
+                                    
+                                    {% if promo.promo_code %}
+                                    <div class="mb-2">
+                                        <span class="badge bg-info">Code: {{ promo.promo_code }}</span>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="progress mb-2" style="height: 5px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: '{% widthratio promo.used_count promo.usage_limit 100 %}'"></div>
+                                    </div>
+                                    <small>Utilisation: {{ promo.used_count }}/{{ promo.usage_limit|default:"∞" }}</small>
+                                </div>
+                                <div class="card-footer bg-white">
+                                    <div class="btn-group w-100">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="editPromo('{{ promo.id }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="deactivatePromo('{{ promo.id }}')">
+                                            <i class="fas fa-ban"></i> Désactiver
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="viewPromoStats('{{ promo.id }}')">
+                                            <i class="fas fa-chart-line"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center py-4">
+                            <i class="fas fa-tag fa-3x text-muted mb-3"></i>
+                            <p>Aucune promotion active</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toutes les promotions -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Toutes les promotions</h5>
+            <div>
+                <input type="text" class="form-control form-control-sm" 
+                       placeholder="Rechercher..." id="searchPromo" style="width: 200px;">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="promotionsTable">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Type</th>
+                            <th>Réduction</th>
+                            <th>Période</th>
+                            <th>Code</th>
+                            <th>Utilisations</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for promo in promotions %}
+                        <tr class="{% if promo.is_valid %}table-success{% endif %}">
+                            <td>
+                                <strong>{{ promo.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ promo.description|truncatechars:30 }}</small>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if promo.promotion_type == 'percentage' %}bg-info
+                                    {% elif promo.promotion_type == 'fixed' %}bg-primary
+                                    {% elif promo.promotion_type == 'bundle' %}bg-success
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ promo.get_promotion_type_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if promo.promotion_type == 'percentage' %}
+                                    <strong>{{ promo.discount_percentage }}%</strong>
+                                {% elif promo.promotion_type == 'fixed' %}
+                                    <strong>{{ promo.discount_value }} FCFA</strong>
+                                {% elif promo.promotion_type == 'bundle' %}
+                                    Achat ≥ {{ promo.minimum_purchase }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ promo.start_date|date:"d/m/Y" }}
+                                <br>
+                                <small class="text-muted">au {{ promo.end_date|date:"d/m/Y" }}</small>
+                            </td>
+                            <td>
+                                {% if promo.promo_code %}
+                                <span class="badge bg-dark">{{ promo.promo_code }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 5px; width: 80px;">
+                                        <div class="progress-bar {% if promo.usage_limit > 0 and promo.used_count >= promo.usage_limit %}bg-danger{% else %}bg-success{% endif %}" 
+                                             style="width: '{% if promo.usage_limit > 0 %}''{% widthratio promo.used_count promo.usage_limit 100 %}''{% else %}'0'{% endif %}'"></div>
+                                    </div>
+                                    <small>{{ promo.used_count }}/{{ promo.usage_limit|default:"∞" }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if promo.is_valid %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Expirée</span>
+                                {% endif %}
+                                <br>
+                                <small>{{ promo.end_date|timeuntil }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="viewPromoDetails('{{ promo.id }}')"
+                                            title="Détails">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="editPromo('{{ promo.id }}')"
+                                            title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning" 
+                                            onclick="duplicatePromo('{{ promo.id }}')"
+                                            title="Dupliquer">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deletePromo('{{ promo.id }}')"
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                                <p>Aucune promotion trouvée</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajout/Modification Promotion -->
+<div class="modal fade" id="promoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="promoModalTitle">Nouvelle promotion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="promoForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="promo_id" id="promo_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nom de la promotion</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Type de promotion</label>
+                            <select name="promotion_type" class="form-select" id="promotion_type" required>
+                                {% for type_key, type_value in promotion_types %}
+                                <option value="{{ type_key }}">{{ type_value }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2" required></textarea>
+                    </div>
+                    
+                    <div class="row" id="discount_fields">
+                        <div class="col-md-6 mb-3 percentage-field">
+                            <label class="form-label">Pourcentage de réduction</label>
+                            <input type="number" name="discount_percentage" class="form-control" 
+                                   min="0" max="100" step="1">
+                        </div>
+                        <div class="col-md-6 mb-3 fixed-field">
+                            <label class="form-label">Montant de réduction (FCFA)</label>
+                            <input type="number" name="discount_value" class="form-control" min="0" step="100">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Achat minimum</label>
+                            <input type="number" name="minimum_purchase" class="form-control" value="1" min="1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Code promo (optionnel)</label>
+                            <input type="text" name="promo_code" class="form-control" 
+                                   placeholder="Ex: PROMO20">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date de début</label>
+                            <input type="datetime-local" name="start_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date de fin</label>
+                            <input type="datetime-local" name="end_date" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Limite d'utilisations (0 = illimité)</label>
+                            <input type="number" name="usage_limit" class="form-control" value="0" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Produits applicables</label>
+                        <select name="products" class="form-select" multiple size="3">
+                            <option value="all">Tous les produits</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">
+                                {{ product.get_gaz_type_display }} - {{ product.size_kg }}kg
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs produits</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Zones applicables</label>
+                        <select name="zones" class="form-select" multiple size="3">
+                            <option value="all">Toutes les zones</option>
+                            {% for zone in zones %}
+                            <option value="{{ zone.id }}">{{ zone.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer la promotion</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails Promotion -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Détails de la promotion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Statistiques -->
+<div class="modal fade" id="statsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Statistiques d'utilisation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="statsModalBody">
+                <!-- Stats will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showAddPromoModal() {
+        document.getElementById('promoModalTitle').textContent = 'Nouvelle promotion';
+        document.getElementById('promoForm').reset();
+        document.getElementById('promoForm').action = "";
+        updateDiscountFields();
+        new bootstrap.Modal(document.getElementById('promoModal')).show();
+    }
+
+    function editPromo(promoId) {
+        fetch(`/api/gas/promotions/${promoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('promoModalTitle').textContent = 'Modifier la promotion';
+                document.getElementById('promo_id').value = promoId;
+                
+                // Remplir le formulaire
+                document.querySelector('[name="name"]').value = data.name;
+                document.querySelector('[name="description"]').value = data.description;
+                document.querySelector('[name="promotion_type"]').value = data.promotion_type;
+                document.querySelector('[name="discount_percentage"]').value = data.discount_percentage;
+                document.querySelector('[name="discount_value"]').value = data.discount_value;
+                document.querySelector('[name="minimum_purchase"]').value = data.minimum_purchase;
+                document.querySelector('[name="promo_code"]').value = data.promo_code;
+                document.querySelector('[name="usage_limit"]').value = data.usage_limit;
+                
+                // Formater les dates pour l'input datetime-local
+                document.querySelector('[name="start_date"]').value = data.start_date.slice(0,16);
+                document.querySelector('[name="end_date"]').value = data.end_date.slice(0,16);
+                
+                // Sélectionner les produits
+                const productSelect = document.querySelector('[name="products"]');
+                if (data.products && data.products.length) {
+                    Array.from(productSelect.options).forEach(option => {
+                        if (data.products.includes(option.value)) {
+                            option.selected = true;
+                        }
+                    });
+                }
+                
+                updateDiscountFields();
+                document.getElementById('promoForm').action = `/admin-gaz/promotions/${promoId}/update/`;
+                new bootstrap.Modal(document.getElementById('promoModal')).show();
+            });
+    }
+
+    function updateDiscountFields() {
+        const type = document.getElementById('promotion_type').value;
+        const percentageFields = document.querySelectorAll('.percentage-field');
+        const fixedFields = document.querySelectorAll('.fixed-field');
+        
+        if (type === 'percentage') {
+            percentageFields.forEach(f => f.style.display = 'block');
+            fixedFields.forEach(f => f.style.display = 'none');
+        } else if (type === 'fixed') {
+            percentageFields.forEach(f => f.style.display = 'none');
+            fixedFields.forEach(f => f.style.display = 'block');
+        } else {
+            percentageFields.forEach(f => f.style.display = 'none');
+            fixedFields.forEach(f => f.style.display = 'none');
+        }
+    }
+
+    document.getElementById('promotion_type').addEventListener('change', updateDiscountFields);
+
+    function viewPromoDetails(promoId) {
+        fetch(`/api/gas/promotions/${promoId}/details/`)
+            .then(response => response.json())
+            .then(data => {
+                let html = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Informations</h6>
+                            <table class="table table-sm">
+                                <tr><th>Nom:</th><td>${data.name}</td></tr>
+                                <tr><th>Type:</th><td>${data.type_display}</td></tr>
+                                <tr><th>Réduction:</th><td>${data.discount}</td></tr>
+                                <tr><th>Période:</th><td>${data.period}</td></tr>
+                                <tr><th>Statut:</th><td><span class="badge bg-${data.status_color}">${data.status}</span></td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Utilisation</h6>
+                            <table class="table table-sm">
+                                <tr><th>Utilisations:</th><td>${data.used_count}/${data.usage_limit}</td></tr>
+                                <tr><th>Code promo:</th><td>${data.promo_code || '-'}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mt-3">Produits applicables</h6>
+                    <ul class="list-group mb-3">
+                        ${data.products.map(p => `<li class="list-group-item">${p}</li>`).join('')}
+                    </ul>
+                    
+                    <h6>Dernières utilisations</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Commande</th>
+                                <th>Client</th>
+                                <th>Date</th>
+                                <th>Économie</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.recent_uses.map(u => `
+                                <tr>
+                                    <td>${u.order}</td>
+                                    <td>${u.customer}</td>
+                                    <td>${u.date}</td>
+                                    <td>${u.saved} FCFA</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                document.getElementById('detailsModalBody').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            });
+    }
+
+    function viewPromoStats(promoId) {
+        fetch(`/api/gas/promotions/${promoId}/stats/`)
+            .then(response => response.json())
+            .then(data => {
+                let html = `
+                    <canvas id="statsChart" height="200"></canvas>
+                    <div class="mt-3">
+                        <h6>Résumé</h6>
+                        <p>Total utilisé: ${data.total_used}</p>
+                        <p>Montant total économisé: ${data.total_saved} FCFA</p>
+                        <p>Commandes concernées: ${data.total_orders}</p>
+                    </div>
+                `;
+                
+                document.getElementById('statsModalBody').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('statsModal')).show();
+                
+                // Créer le graphique
+                new Chart(document.getElementById('statsChart'), {
+                    type: 'line',
+                    data: {
+                        labels: data.dates,
+                        datasets: [{
+                            label: 'Utilisations par jour',
+                            data: data.usage_by_day,
+                            borderColor: '#2E8B57',
+                            tension: 0.1
+                        }]
+                    }
+                });
+            });
+    }
+
+    function duplicatePromo(promoId) {
+        fetch(`/api/gas/promotions/${promoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                showAddPromoModal();
+                // Remplir avec les données existantes
+                document.querySelector('[name="name"]').value = data.name + ' (copie)';
+                document.querySelector('[name="description"]').value = data.description;
+                document.querySelector('[name="promotion_type"]').value = data.promotion_type;
+                document.querySelector('[name="discount_percentage"]').value = data.discount_percentage;
+                document.querySelector('[name="discount_value"]').value = data.discount_value;
+                updateDiscountFields();
+            });
+    }
+
+    function deactivatePromo(promoId) {
+        Swal.fire({
+            title: 'Désactiver la promotion',
+            text: 'Cette promotion ne sera plus applicable',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Oui, désactiver',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/admin-gaz/promotions/${promoId}/deactivate/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                }).then(() => {
+                    location.reload();
+                });
+            }
+        });
+    }
+
+    function deletePromo(promoId) {
+        Swal.fire({
+            title: 'Supprimer la promotion',
+            text: 'Cette action est irréversible',
+            icon: 'error',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Supprimer',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/admin-gaz/promotions/${promoId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                }).then(() => {
+                    location.reload();
+                });
+            }
+        });
+    }
+
+    // Recherche dans le tableau
+    document.getElementById('searchPromo').addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#promotionsTable tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchValue) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

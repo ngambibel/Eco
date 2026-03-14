@@ -1,3 +1,4 @@
+<!-- collectors/includes/sidebar.html (version mise à jour) -->
 <div class="position-sticky pt-3">
     <div class="sidebar-header p-3 text-center border-bottom">
         <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=fff&color=2e7d32&bold=true" 
@@ -41,6 +42,54 @@
                 Historique des collectes
             </a>
         </li>
+        
+        <!-- NOUVEL ONGLET GAZ -->
+        <li class="nav-item">
+            <a class="nav-link {% if 'gas' in request.path %}active{% endif %}" 
+               href="#gasSubmenu" data-bs-toggle="collapse" aria-expanded="false">
+                <i class="fas fa-fire"></i>
+                Gestion Gaz
+                <i class="fas fa-chevron-down float-end mt-1"></i>
+            </a>
+            <ul class="nav flex-column collapse {% if 'gas' in request.path %}show{% endif %}" id="gasSubmenu">
+                <li class="nav-item">
+                    <a class="nav-link ms-3 {% if request.resolver_match.url_name == 'gas_deliveries_today' %}active{% endif %}" 
+                       href="{% url 'gas_deliveries_today' %}">
+                        <i class="fas fa-truck"></i>
+                        Livraisons du jour
+                        {% if today_gas_count > 0 %}
+                        <span class="badge bg-warning float-end">{{ today_gas_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link ms-3 {% if request.resolver_match.url_name == 'gas_deliveries_assigned' %}active{% endif %}" 
+                       href="{% url 'gas_deliveries_assigned' %}">
+                        <i class="fas fa-clipboard-list"></i>
+                        Mes livraisons
+                        {% if assigned_gas_count > 0 %}
+                        <span class="badge bg-primary float-end">{{ assigned_gas_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link ms-3 {% if request.resolver_match.url_name == 'gas_delivery_history' %}active{% endif %}" 
+                       href="{% url 'gas_delivery_history' %}">
+                        <i class="fas fa-history"></i>
+                        Historique livraisons
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link ms-3 {% if request.resolver_match.url_name == 'gas_inventory' %}active{% endif %}" 
+                       href="{% url 'gas_inventory' %}">
+                        <i class="fas fa-boxes"></i>
+                        Mon inventaire
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <!-- FIN NOUVEL ONGLET GAZ -->
+        
         <li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'collector_tricycle' %}active{% endif %}" 
                href="{% url 'collector_tricycle' %}">
@@ -56,3 +105,12 @@
         </li>
     </ul>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier si l'URL contient 'gas' pour ouvrir le sous-menu automatiquement
+    if (window.location.pathname.includes('gas')) {
+        document.getElementById('gasSubmenu').classList.add('show');
+    }
+});
+</script>

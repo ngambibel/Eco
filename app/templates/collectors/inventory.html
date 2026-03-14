@@ -1,0 +1,213 @@
+
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Mon inventaire gaz - EcoCollect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-boxes text-success me-2"></i>
+            Mon inventaire gaz
+        </h2>
+        <div>
+            <a href="{% url 'gas_deliveries_today' %}" class="btn btn-outline-success me-2">
+                <i class="fas fa-calendar-day me-1"></i> Livraisons du jour
+            </a>
+            <a href="{% url 'gas_deliveries_assigned' %}" class="btn btn-outline-primary">
+                <i class="fas fa-clipboard-list me-1"></i> Mes livraisons
+            </a>
+        </div>
+    </div>
+
+    {% if not has_tricycle %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Vous n'avez pas de tricycle actif assigné. Contactez l'administrateur.
+    </div>
+    {% else %}
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card card-custom bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50">Produits disponibles</h6>
+                    <h3>{{ stats.total_products }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom bg-success text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50">Bouteilles totales</h6>
+                    <h3>{{ stats.total_cylinders }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom bg-info text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50">En transit</h6>
+                    <h3>{{ stats.in_transit }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50">Chez clients</h6>
+                    <h3>{{ stats.with_customer }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Stock dans le tricycle -->
+        <div class="col-lg-6 mb-4">
+            <div class="card card-custom h-100">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-truck me-2 text-success"></i>
+                        Stock dans {{ tricycle.nom }}
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Produit</th>
+                                    <th class="text-center">Disponible</th>
+                                    <th class="text-center">Réservé</th>
+                                    <th class="text-center">Seuil</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in inventory_items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.product.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ item.product.get_gaz_type_display }} - {{ item.product.size_kg }}kg</small>
+                                    </td>
+                                    <td class="text-center fw-bold">{{ item.quantity_available }}</td>
+                                    <td class="text-center">{{ item.quantity_reserved }}</td>
+                                    <td class="text-center">{{ item.minimum_threshold }}</td>
+                                    <td>
+                                        {% if item.quantity_available <= item.minimum_threshold %}
+                                        <span class="badge bg-danger">Rupture</span>
+                                        {% elif item.quantity_available <= item.minimum_threshold|add:5 %}
+                                        <span class="badge bg-warning">Stock faible</span>
+                                        {% else %}
+                                        <span class="badge bg-success">OK</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <i class="fas fa-box-open fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">Aucun produit en stock</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bouteilles en transit -->
+        <div class="col-lg-6 mb-4">
+            <div class="card card-custom h-100">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-truck-loading me-2 text-success"></i>
+                        Bouteilles en transit
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if cylinders_in_transit %}
+                    <div class="list-group">
+                        {% for cylinder in cylinders_in_transit %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ cylinder.product.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">N° {{ cylinder.serial_number }}</small>
+                                </div>
+                                <span class="badge bg-info">{{ cylinder.get_status_display }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                        Aucune bouteille en transit
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Bouteilles chez les clients -->
+        <div class="col-12">
+            <div class="card card-custom">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2 text-success"></i>
+                        Bouteilles chez les clients
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if cylinders_with_customer %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>N° Série</th>
+                                    <th>Produit</th>
+                                    <th>Client</th>
+                                    <th>Depuis</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cylinder in cylinders_with_customer %}
+                                <tr>
+                                    <td><code>{{ cylinder.serial_number }}</code></td>
+                                    <td>{{ cylinder.product.name }}</td>
+                                    <td>
+                                        {% if cylinder.current_owner %}
+                                        {{ cylinder.current_owner.get_full_name|default:cylinder.current_owner.username }}
+                                        {% else %}
+                                        Inconnu
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cylinder.updated_at|date:"d/m/Y" }}</td>
+                                    <td><span class="badge bg-primary">Chez client</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                        Aucune bouteille chez les clients
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

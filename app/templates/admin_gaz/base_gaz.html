@@ -1,0 +1,87 @@
+{% extends 'administrations/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .gaz-stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .status-pending { background-color: #fff3cd; color: #856404; }
+    .status-confirmed { background-color: #cce5ff; color: #004085; }
+    .status-preparing { background-color: #d1ecf1; color: #0c5460; }
+    .status-assigned { background-color: #d4edda; color: #155724; }
+    .status-in_transit { background-color: #bee5eb; color: #0c5460; }
+    .status-delivered { background-color: #d4edda; color: #155724; }
+    .status-cancelled { background-color: #f8d7da; color: #721c24; }
+    
+    .cylinder-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .cylinder-card:hover {
+        border-color: #2E8B57;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    .cylinder-available { border-left: 5px solid #28a745; }
+    .cylinder-with_customer { border-left: 5px solid #ffc107; }
+    .cylinder-in_transit { border-left: 5px solid #17a2b8; }
+    .cylinder-damaged { border-left: 5px solid #dc3545; }
+    
+    .inventory-low {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 3px 8px;
+        border-radius: 15px;
+        font-weight: 600;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #2E8B57;
+        font-weight: 600;
+        border-bottom: 3px solid #2E8B57;
+    }
+    
+    .quick-action-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .quick-action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        border-color: #2E8B57;
+    }
+    
+    .quick-action-icon {
+        font-size: 2rem;
+        color: #2E8B57;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Gestion des Livraisons de Gaz{% endblock %}

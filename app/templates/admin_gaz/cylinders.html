@@ -1,0 +1,698 @@
+{% extends 'admin_gaz/base_gaz.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Bouteilles de Gaz{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-circle me-2"></i>
+            Gestion des Bouteilles (Consignes)
+        </h2>
+        <div>
+            <button class="btn btn-success" onclick="exportCylinders()">
+                <i class="fas fa-download"></i> Exporter
+            </button>
+            <button class="btn btn-primary" onclick="showAddCylinderModal()">
+                <i class="fas fa-plus"></i> Nouvelle bouteille
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistiques des bouteilles -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6>Disponibles</h6>
+                            <h3>{{ stats.available|default:0 }}</h3>
+                        </div>
+                        <i class="fas fa-check-circle fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6>Chez clients</h6>
+                            <h3>{{ stats.with_customer|default:0 }}</h3>
+                        </div>
+                        <i class="fas fa-users fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6>En transit</h6>
+                            <h3>{{ stats.in_transit|default:0 }}</h3>
+                        </div>
+                        <i class="fas fa-truck fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6>Endommagées</h6>
+                            <h3>{{ stats.damaged|default:0 }}</h3>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres et recherche -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="filterForm">
+                <div class="col-md-2">
+                    <label class="form-label">Statut</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        {% for status_key, status_value in status_choices %}
+                        <option value="{{ status_key }}" {% if request.GET.status == status_key %}selected{% endif %}>
+                            {{ status_value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Produit</label>
+                    <select name="product" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" {% if request.GET.product == product.id|stringformat:"i" %}selected{% endif %}>
+                            {{ product.get_gaz_type_display }} - {{ product.size_kg }}kg
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Propriétaire</label>
+                    <select name="owner" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        <option value="none" {% if request.GET.owner == 'none' %}selected{% endif %}>Non assigné</option>
+                        {% for owner in owners %}
+                        <option value="{{ owner.id }}" {% if request.GET.owner == owner.id|stringformat:"i" %}selected{% endif %}>
+                            {{ owner.get_full_name|default:owner.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Recherche</label>
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="N° série, notes..." value="{{ request.GET.search }}">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Maintenance</label>
+                    <select name="maintenance" class="form-select" onchange="this.form.submit()">
+                        <option value="">Toutes</option>
+                        <option value="due" {% if request.GET.maintenance == 'due' %}selected{% endif %}>Maintenance due</option>
+                        <option value="upcoming" {% if request.GET.maintenance == 'upcoming' %}selected{% endif %}>Maintenance à venir</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des bouteilles -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Liste des bouteilles</h5>
+            <span class="badge bg-secondary">{{ cylinders.paginator.count }} bouteilles</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>N° Série</th>
+                            <th>Produit</th>
+                            <th>Statut</th>
+                            <th>Propriétaire actuel</th>
+                            <th>QR Code</th>
+                            <th>Maintenance</th>
+                            <th>Date achat</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cylinder in cylinders %}
+                        <tr class="cylinder-{{ cylinder.status }}">
+                            <td>
+                                <strong>{{ cylinder.serial_number }}</strong>
+                                {% if cylinder.notes %}
+                                <i class="fas fa-info-circle text-info ms-1" 
+                                   title="{{ cylinder.notes|truncatechars:50 }}"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ cylinder.product.get_gaz_type_display }}
+                                <br>
+                                <small class="text-muted">{{ cylinder.product.size_kg }} kg</small>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if cylinder.status == 'available' %}bg-success
+                                    {% elif cylinder.status == 'with_customer' %}bg-warning
+                                    {% elif cylinder.status == 'in_transit' %}bg-info
+                                    {% elif cylinder.status == 'damaged' %}bg-danger
+                                    {% elif cylinder.status == 'lost' %}bg-dark
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ cylinder.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if cylinder.current_owner %}
+                                    {{ cylinder.current_owner.get_full_name|default:cylinder.current_owner.username }}
+                                    <br>
+                                    <small class="text-muted">{{ cylinder.current_owner.phone }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if cylinder.qr_code %}
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="viewQRCode('{{ cylinder.id }}')"
+                                        title="Voir QR Code">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                                <a href="{{ cylinder.qr_code.url }}" download 
+                                   class="btn btn-sm btn-outline-success" title="Télécharger">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                        onclick="generateQR('{{ cylinder.id }}')"
+                                        title="Générer QR Code">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                            <td>
+                                
+                            </td>
+                            <td>{{ cylinder.purchase_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="viewCylinderDetails('{{ cylinder.id }}')"
+                                            title="Détails">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="editCylinder('{{ cylinder.id }}')"
+                                            title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning" 
+                                            onclick="changeStatus('{{ cylinder.id }}')"
+                                            title="Changer statut">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" 
+                                            onclick="assignOwner('{{ cylinder.id }}')"
+                                            title="Assigner propriétaire">
+                                        <i class="fas fa-user-tag"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteCylinder('{{ cylinder.id }}')"
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="fas fa-circle fa-4x text-muted mb-3"></i>
+                                <h5>Aucune bouteille trouvée</h5>
+                                <p class="text-muted">Commencez par ajouter des bouteilles à l'inventaire</p>
+                                <button class="btn btn-primary" onclick="showAddCylinderModal()">
+                                    <i class="fas fa-plus"></i> Ajouter une bouteille
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if cylinders.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if cylinders.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ cylinders.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in cylinders.paginator.page_range %}
+                        {% if cylinders.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if cylinders.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ cylinders.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajout/Modification Bouteille -->
+<div class="modal fade" id="cylinderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cylinderModalTitle">Ajouter une bouteille</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="cylinderForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="cylinder_id" id="cylinder_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Produit</label>
+                        <select name="product_id" class="form-select" required>
+                            <option value="">Sélectionner...</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">
+                                {{ product.get_gaz_type_display }} - {{ product.size_kg }}kg
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Numéro de série</label>
+                        <input type="text" name="serial_number" class="form-control" required>
+                        <small class="text-muted">Format: GAZ-XXX-XXXX</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Statut initial</label>
+                        <select name="status" class="form-select">
+                            {% for status_key, status_value in status_choices %}
+                            <option value="{{ status_key }}">{{ status_value }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date d'achat</label>
+                        <input type="date" name="purchase_date" class="form-control" 
+                               value="{% now 'Y-m-d' %}">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dernière maintenance</label>
+                            <input type="date" name="last_maintenance" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Prochaine maintenance</label>
+                            <input type="date" name="next_maintenance" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Changement Statut -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Changer le statut</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="statusForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="cylinder_id" id="status_cylinder_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau statut</label>
+                        <select name="new_status" class="form-select" required>
+                            {% for status_key, status_value in status_choices %}
+                            <option value="{{ status_key }}">{{ status_value }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Raison du changement</label>
+                        <textarea name="reason" class="form-control" rows="2" required></textarea>
+                    </div>
+                    
+                    {% if show_owner_field %}
+                    <div class="mb-3" id="ownerField">
+                        <label class="form-label">Assigner à</label>
+                        <select name="owner_id" class="form-select">
+                            <option value="">Sélectionner...</option>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">{{ client.get_full_name|default:client.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Assignation Propriétaire -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assigner un propriétaire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="assignForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="cylinder_id" id="assign_cylinder_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Client</label>
+                        <select name="owner_id" class="form-select" required>
+                            <option value="">Sélectionner un client...</option>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">
+                                {{ client.get_full_name|default:client.username }} - {{ client.phone }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date d'assignation</label>
+                        <input type="date" name="assign_date" class="form-control" 
+                               value="{% now 'Y-m-d' %}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Assigner</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal QR Code -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR Code de la bouteille</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" id="qrModalBody">
+                <!-- QR code will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Détails de la bouteille</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showAddCylinderModal() {
+        document.getElementById('cylinderModalTitle').textContent = 'Ajouter une bouteille';
+        document.getElementById('cylinderForm').reset();
+        document.getElementById('cylinderForm').action = "";
+        new bootstrap.Modal(document.getElementById('cylinderModal')).show();
+    }
+
+    function editCylinder(cylinderId) {
+        fetch(`/api/gas/cylinders/${cylinderId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('cylinderModalTitle').textContent = 'Modifier la bouteille';
+                document.getElementById('cylinder_id').value = cylinderId;
+                document.querySelector('[name="product_id"]').value = data.product_id;
+                document.querySelector('[name="serial_number"]').value = data.serial_number;
+                document.querySelector('[name="status"]').value = data.status;
+                document.querySelector('[name="purchase_date"]').value = data.purchase_date;
+                document.querySelector('[name="last_maintenance"]').value = data.last_maintenance_date;
+                document.querySelector('[name="next_maintenance"]').value = data.next_maintenance_date;
+                document.querySelector('[name="notes"]').value = data.notes;
+                
+                document.getElementById('cylinderForm').action = `/admin-gaz/cylinders/${cylinderId}/update/`;
+                new bootstrap.Modal(document.getElementById('cylinderModal')).show();
+            });
+    }
+
+    function changeStatus(cylinderId) {
+        document.getElementById('status_cylinder_id').value = cylinderId;
+        new bootstrap.Modal(document.getElementById('statusModal')).show();
+    }
+
+    function assignOwner(cylinderId) {
+        document.getElementById('assign_cylinder_id').value = cylinderId;
+        new bootstrap.Modal(document.getElementById('assignModal')).show();
+    }
+
+    function viewQRCode(cylinderId) {
+        fetch(`/api/gas/cylinders/${cylinderId}/qr/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('qrModalBody').innerHTML = `
+                    <img src="${data.qr_url}" class="img-fluid mb-3" alt="QR Code">
+                    <p><strong>${data.serial_number}</strong></p>
+                    <a href="${data.qr_url}" download class="btn btn-primary btn-sm">
+                        <i class="fas fa-download"></i> Télécharger
+                    </a>
+                `;
+                new bootstrap.Modal(document.getElementById('qrModal')).show();
+            });
+    }
+
+    function generateQR(cylinderId) {
+        fetch(`/admin-gaz/cylinders/${cylinderId}/generate-qr/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Succès', 'QR Code généré avec succès', 'success')
+                    .then(() => location.reload());
+            }
+        });
+    }
+
+    function viewCylinderDetails(cylinderId) {
+        fetch(`/api/gas/cylinders/${cylinderId}/details/`)
+            .then(response => response.json())
+            .then(data => {
+                let html = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Informations générales</h6>
+                            <table class="table table-sm">
+                                <tr><th>N° Série:</th><td>${data.serial_number}</td></tr>
+                                <tr><th>Produit:</th><td>${data.product}</td></tr>
+                                <tr><th>Statut:</th><td><span class="badge bg-${data.status_color}">${data.status_display}</span></td></tr>
+                                <tr><th>Date achat:</th><td>${data.purchase_date}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Maintenance</h6>
+                            <table class="table table-sm">
+                                <tr><th>Dernière:</th><td>${data.last_maintenance || '-'}</td></tr>
+                                <tr><th>Prochaine:</th><td>${data.next_maintenance || '-'}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <h6 class="mt-3">Historique des mouvements</h6>
+                    <div class="timeline">
+                `;
+                
+                data.history.forEach(item => {
+                    html += `
+                        <div class="timeline-item">
+                            <div class="timeline-badge bg-${item.color}">
+                                <i class="fas fa-${item.icon}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <p>${item.description}</p>
+                                <small class="text-muted">${item.date}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                
+                document.getElementById('detailsModalBody').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            });
+    }
+
+    function deleteCylinder(cylinderId) {
+        Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Cette action est irréversible !",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/admin-gaz/cylinders/${cylinderId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                }).then(() => {
+                    location.reload();
+                });
+            }
+        });
+    }
+
+    function exportCylinders() {
+        const params = new URLSearchParams(new FormData(document.getElementById('filterForm'))).toString();
+        window.location.href = `/admin-gaz/export-cylinders/?${params}`;
+    }
+
+    document.getElementById('statusForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const cylinderId = formData.get('cylinder_id');
+        
+        fetch(`/admin-gaz/cylinders/${cylinderId}/update-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Succès', 'Statut mis à jour', 'success')
+                    .then(() => location.reload());
+            } else {
+                Swal.fire('Erreur', data.message, 'error');
+            }
+        });
+    });
+
+    document.getElementById('assignForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const cylinderId = formData.get('cylinder_id');
+        
+        fetch(`/admin-gaz/cylinders/${cylinderId}/assign/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Succès', 'Propriétaire assigné', 'success')
+                    .then(() => location.reload());
+            }
+        });
+    });
+
+    // Afficher/cacher le champ propriétaire selon le statut
+    document.querySelector('[name="new_status"]').addEventListener('change', function() {
+        const ownerField = document.getElementById('ownerField');
+        if (this.value === 'with_customer') {
+            ownerField.style.display = 'block';
+        } else {
+            ownerField.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

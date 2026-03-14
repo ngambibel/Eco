@@ -1,0 +1,101 @@
+
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Mes livraisons - EcoCollect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-clipboard-list text-success me-2"></i>
+            Mes livraisons de gaz
+        </h2>
+        <div>
+            <a href="{% url 'gas_deliveries_today' %}" class="btn btn-outline-success me-2">
+                <i class="fas fa-calendar-day me-1"></i> Livraisons du jour
+            </a>
+            <a href="{% url 'gas_inventory' %}" class="btn btn-outline-primary">
+                <i class="fas fa-boxes me-1"></i> Mon inventaire
+            </a>
+        </div>
+    </div>
+
+    <!-- Onglets par statut -->
+    <ul class="nav nav-tabs mb-4" id="deliveryTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">
+                En attente <span class="badge bg-secondary ms-1">{{ stats.pending }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="confirmed-tab" data-bs-toggle="tab" data-bs-target="#confirmed" type="button" role="tab">
+                Confirmées <span class="badge bg-secondary ms-1">{{ stats.confirmed }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="preparing-tab" data-bs-toggle="tab" data-bs-target="#preparing" type="button" role="tab">
+                En préparation <span class="badge bg-secondary ms-1">{{ stats.preparing }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="assigned-tab" data-bs-toggle="tab" data-bs-target="#assigned" type="button" role="tab">
+                Assignées <span class="badge bg-secondary ms-1">{{ stats.assigned }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="transit-tab" data-bs-toggle="tab" data-bs-target="#transit" type="button" role="tab">
+                En cours <span class="badge bg-secondary ms-1">{{ stats.in_transit }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenu des onglets -->
+    <div class="tab-content" id="deliveryTabsContent">
+        <!-- En attente -->
+        <div class="tab-pane fade show active" id="pending" role="tabpanel">
+            {% include 'collectors/delivery_list.html' with deliveries=pending empty_message="Aucune commande en attente" %}
+        </div>
+        
+        <!-- Confirmées -->
+        <div class="tab-pane fade" id="confirmed" role="tabpanel">
+            {% include 'collectors/delivery_list.html' with deliveries=confirmed empty_message="Aucune commande confirmée" %}
+        </div>
+        
+        <!-- En préparation -->
+        <div class="tab-pane fade" id="preparing" role="tabpanel">
+            {% include 'collectors/delivery_list.html' with deliveries=preparing empty_message="Aucune commande en préparation" %}
+        </div>
+        
+        <!-- Assignées -->
+        <div class="tab-pane fade" id="assigned" role="tabpanel">
+            {% include 'collectors/delivery_list.html' with deliveries=assigned empty_message="Aucune commande assignée" %}
+        </div>
+        
+        <!-- En cours -->
+        <div class="tab-pane fade" id="transit" role="tabpanel">
+            {% include 'collectors/delivery_list.html' with deliveries=in_transit empty_message="Aucune commande en cours" %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Actualiser les badges toutes les 30 secondes
+setInterval(function() {
+    fetch('/collector/gas/api/stats/')
+        .then(response => response.json())
+        .then(data => {
+            // Mettre à jour les compteurs dans les onglets
+            document.querySelectorAll('.nav-link .badge').forEach(badge => {
+                const tabId = badge.closest('.nav-link').id.replace('-tab', '');
+                if (data[tabId] !== undefined) {
+                    badge.textContent = data[tabId];
+                }
+            });
+        });
+}, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,189 @@
+
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Livraisons du jour - EcoCollect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-truck text-success me-2"></i>
+                Livraisons de gaz du jour
+            </h2>
+            <p class="text-muted">
+                <i class="far fa-calendar-alt me-1"></i> {{ today|date:"l d F Y" }}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'gas_deliveries_assigned' %}" class="btn btn-outline-success me-2">
+                <i class="fas fa-clipboard-list me-1"></i> Mes livraisons
+            </a>
+            <a href="{% url 'gas_inventory' %}" class="btn btn-outline-primary">
+                <i class="fas fa-boxes me-1"></i> Mon inventaire
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card card-custom bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Total du jour</h6>
+                            <h3 class="mb-0">{{ stats.total }}</h3>
+                        </div>
+                        <i class="fas fa-truck fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">En attente</h6>
+                            <h3 class="mb-0">{{ stats.confirmed|add:stats.preparing }}</h3>
+                        </div>
+                        <i class="fas fa-clock fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Assignées</h6>
+                            <h3 class="mb-0">{{ stats.assigned }}</h3>
+                        </div>
+                        <i class="fas fa-user-check fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">En cours</h6>
+                            <h3 class="mb-0">{{ stats.in_transit }}</h3>
+                        </div>
+                        <i class="fas fa-road fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if deliveries %}
+        <!-- Liste des livraisons -->
+        <div class="row">
+            {% for delivery in deliveries %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card card-custom h-100">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">{{ delivery.order_number }}</span>
+                        <span class="badge 
+                            {% if delivery.status == 'confirmed' %}bg-black
+                            {% elif delivery.status == 'preparing' %}bg-info
+                            {% elif delivery.status == 'pending' %} bg-warning
+                            {% elif delivery.status == 'in_transit' %}bg-success
+                            {% elif delivery.status == 'delivered' %}bg-primary
+                            {% elif delivery.status == 'cancelled' %}bg-danger
+                            {% endif %}">
+                            {{ delivery.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-user me-1"></i> Client
+                            </h6>
+                            <p class="mb-1 fw-bold">{{ delivery.customer.get_full_name|default:delivery.customer.username }}</p>
+                            <p class="text-muted small">{{ delivery.customer.phone }}</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-map-marker-alt me-1"></i> Adresse
+                            </h6>
+                            <p class="mb-1">{{ delivery.address.street }}</p>
+                            <p class="text-muted small">{{ delivery.address.city }}</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-box me-1"></i> Articles
+                            </h6>
+                            {% for item in delivery.items.all %}
+                            <div class="d-flex justify-content-between small">
+                                <span>{{ item.quantity }}x {{ item.product.name }}</span>
+                                <span class="fw-bold">{{ item.total_price }} FCFA</span>
+                            </div>
+                            {% endfor %}
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold">Total</span>
+                                <span class="fw-bold text-success">{{ delivery.total_amount }} FCFA</span>
+                            </div>
+                        </div>
+                        
+                        {% if delivery.scheduled_time_slot %}
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">
+                                <i class="far fa-clock me-1"></i> Créneau
+                            </h6>
+                            <p>{{ delivery.scheduled_time_slot }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if delivery.special_instructions %}
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-info-circle me-1"></i> Instructions
+                            </h6>
+                            <p class="small">{{ delivery.special_instructions }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="{% url 'gas_delivery_detail' delivery.id %}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-eye me-1"></i> Voir détails
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Aucune livraison -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-truck fa-4x text-muted"></i>
+            </div>
+            <h4 class="text-muted">Aucune livraison programmée pour aujourd'hui</h4>
+            <p class="text-muted">Les nouvelles livraisons apparaîtront ici</p>
+            <a href="{% url 'gas_deliveries_assigned' %}" class="btn btn-primary mt-3">
+                <i class="fas fa-clipboard-list me-1"></i> Voir mes livraisons assignées
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh des données toutes les 30 secondes
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

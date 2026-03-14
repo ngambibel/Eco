@@ -1,0 +1,685 @@
+{% extends 'admin_gaz/base_gaz.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestion des produits gaz</h2>
+        <button type="button" class="btn btn-primary" onclick="showAddProductModal()">
+            <i class="fas fa-plus"></i> Ajouter un produit
+        </button>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Type de gaz</label>
+                    <select name="gaz_type" class="form-select">
+                        <option value="">Tous</option>
+                        {% for type_key, type_value in gaz_types %}
+                        <option value="{{ type_key }}" {% if request.GET.gaz_type == type_key %}selected{% endif %}>
+                            {{ type_value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Taille</label>
+                    <select name="size" class="form-select">
+                        <option value="">Toutes</option>
+                        {% for size_key, size_value in size_choices %}
+                        <option value="{{ size_key }}" {% if request.GET.size == size_key|stringformat:"i" %}selected{% endif %}>
+                            {{ size_value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Disponibilité</label>
+                    <select name="is_available" class="form-select">
+                        <option value="">Tous</option>
+                        <option value="true" {% if request.GET.is_available == 'true' %}selected{% endif %}>Disponible</option>
+                        <option value="false" {% if request.GET.is_available == 'false' %}selected{% endif %}>Non disponible</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des produits -->
+    <div class="row" id="products-list">
+        {% for product in products %}
+        <div class="col-md-4 mb-4" id="product-{{ product.id }}">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title">{{ product.get_gaz_type_display }} - {{ product.size_kg }}kg</h5>
+                        <span class="badge {% if product.is_available %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ product.is_available|yesno:"Disponible,Indisponible" }}
+                        </span>
+                    </div>
+                    
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" class="img-fluid mb-3 product-image" style="height: 150px; object-fit: contain;" alt="{{ product.name }}">
+                    {% else %}
+                    <div class="text-center mb-3 py-4 bg-light rounded">
+                        <i class="fas fa-gas-pump fa-3x text-muted"></i>
+                        <p class="text-muted mt-2">Aucune image</p>
+                    </div>
+                    {% endif %}
+                    
+                    <p class="card-text">{{ product.description|truncatewords:20 }}</p>
+                    
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <small class="text-muted">Prix gaz</small>
+                            <h6>{{ product.price }} FCFA</h6>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Consigne</small>
+                            <h6>{{ product.deposit_price }} FCFA</h6>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">Stock disponible</small>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">{{ product.stock_available }} unités</h5>
+                            {% if product.stock_available <= 5 %}
+                            <span class="badge bg-danger">Stock faible</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-sm btn-outline-info" onclick="viewProduct('{{ product.id }}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editProduct('{{ product.id }}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct('{{ product.id }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="updateStock('{{ product.id }}')">
+                            <i class="fas fa-boxes"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                Aucun produit trouvé
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if products.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if products.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ products.previous_page_number }}{% if request.GET.gaz_type %}&gaz_type={{ request.GET.gaz_type }}{% endif %}{% if request.GET.size %}&size={{ request.GET.size }}{% endif %}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for i in products.paginator.page_range %}
+                {% if products.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ i }}{% if request.GET.gaz_type %}&gaz_type={{ request.GET.gaz_type }}{% endif %}{% if request.GET.size %}&size={{ request.GET.size }}{% endif %}">{{ i }}</a></li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if products.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ products.next_page_number }}{% if request.GET.gaz_type %}&gaz_type={{ request.GET.gaz_type }}{% endif %}{% if request.GET.size %}&size={{ request.GET.size }}{% endif %}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Modal Ajout/Modification Produit -->
+<div class="modal fade" id="productModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalTitle">Ajouter un produit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="productForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" id="product_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Colonne formulaire -->
+                        <div class="col-md-7">
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Nom du produit</label>
+                                    <input type="text" name="name" id="name" class="form-control" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Type de gaz</label>
+                                    <select name="gaz_type" id="gaz_type" class="form-select" required>
+                                        <option value="">Sélectionner...</option>
+                                        {% for type_key, type_value in gaz_types %}
+                                        <option value="{{ type_key }}">{{ type_value }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Taille (kg)</label>
+                                    <select name="size_kg" id="size_kg" class="form-select" required>
+                                        <option value="">Sélectionner...</option>
+                                        {% for size_key, size_value in size_choices %}
+                                        <option value="{{ size_key }}">{{ size_value }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Prix du gaz (FCFA)</label>
+                                    <input type="number" name="price" id="price" class="form-control" step="0.01" min="0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Prix de consigne (FCFA)</label>
+                                    <input type="number" name="deposit_price" id="deposit_price" class="form-control" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Stock initial</label>
+                                    <input type="number" name="stock_available" id="stock_available" class="form-control" min="0" value="0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Seuil d'alerte</label>
+                                    <input type="number" name="inventory_threshold" id="inventory_threshold" class="form-control" min="0" value="5">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" id="description" class="form-control" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="is_available" id="is_available" class="form-check-input" checked>
+                                        <label class="form-check-label" for="is_available">Disponible à la vente</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="is_featured" id="is_featured" class="form-check-input">
+                                        <label class="form-check-label" for="is_featured">Mettre en avant</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Colonne image avec aperçu -->
+                        <div class="col-md-5">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Image du produit</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="image-preview-container mb-3">
+                                        <img id="imagePreview" src="#" alt="Aperçu" 
+                                             style="display: none; max-width: 100%; max-height: 200px; object-fit: contain;"
+                                             class="img-thumbnail">
+                                        <div id="noImageText" class="py-4">
+                                            <i class="fas fa-image fa-3x text-muted"></i>
+                                            <p class="text-muted mt-2">Aucune image sélectionnée</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="image" class="form-label">Choisir une image</label>
+                                        <input type="file" name="image" id="image" class="form-control" accept="image/*">
+                                    </div>
+                                    
+                                    <div class="progress" style="display: none;" id="uploadProgress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 0%">0%</div>
+                                    </div>
+                                    
+                                    <small class="text-muted">
+                                        Formats acceptés: JPG, PNG, GIF. Taille max: 2MB
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="saveProductBtn">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Mise à jour stock -->
+<div class="modal fade" id="stockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mettre à jour le stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="stockForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="product_id" id="stock_product_id">
+                    <div class="mb-3">
+                        <label class="form-label">Stock actuel</label>
+                        <input type="number" id="current_stock" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type d'ajustement</label>
+                        <select name="adjustment_type" class="form-select" id="adjustment_type" required>
+                            <option value="add">Ajouter au stock</option>
+                            <option value="remove">Retirer du stock</option>
+                            <option value="set">Définir nouvelle valeur</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantité</label>
+                        <input type="number" name="quantity" class="form-control" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Raison</label>
+                        <textarea name="reason" class="form-control" rows="2" placeholder="Ex: Nouveau stock reçu, vente, perte..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Template pour nouveau produit (invisible) -->
+<template id="new-product-template">
+    <div class="col-md-4 mb-4" id="product-{id}">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="card-title">{gaz_type} - {size}kg</h5>
+                    <span class="badge {available_class}">{available_text}</span>
+                </div>
+                
+                <div class="text-center mb-3 py-4 bg-light rounded">
+                    <i class="fas fa-gas-pump fa-3x text-muted"></i>
+                    <p class="text-muted mt-2">Aucune image</p>
+                </div>
+                
+                <p class="card-text">{description}</p>
+                
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <small class="text-muted">Prix gaz</small>
+                        <h6>{price} FCFA</h6>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Consigne</small>
+                        <h6>{deposit} FCFA</h6>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">Stock disponible</small>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{stock} unités</h5>
+                        {stock_badge}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-sm btn-outline-info" onclick="viewProduct('{id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editProduct('{id}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct('{id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" onclick="updateStock('{id}')">
+                        <i class="fas fa-boxes"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Aperçu de l'image
+document.getElementById('image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Vérifier la taille (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            Swal.fire('Erreur', 'L\'image ne doit pas dépasser 2MB', 'error');
+            this.value = '';
+            return;
+        }
+        
+        // Vérifier le type
+        if (!file.type.startsWith('image/')) {
+            Swal.fire('Erreur', 'Le fichier doit être une image', 'error');
+            this.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('imagePreview');
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            document.getElementById('noImageText').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Réinitialiser l'aperçu quand le modal est fermé
+document.getElementById('productModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('productForm').reset();
+    document.getElementById('product_id').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('noImageText').style.display = 'block';
+    document.getElementById('uploadProgress').style.display = 'none';
+});
+
+function showAddProductModal() {
+    document.getElementById('productModalTitle').textContent = 'Ajouter un produit';
+    document.getElementById('productForm').reset();
+    document.getElementById('product_id').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('noImageText').style.display = 'block';
+    
+    // Réinitialiser l'action du formulaire
+    document.getElementById('productForm').action = "{% url 'admin_gaz_add_product_ajax' %}";
+    
+    new bootstrap.Modal(document.getElementById('productModal')).show();
+}
+
+function editProduct(productId) {
+    document.getElementById('productModalTitle').textContent = 'Modifier le produit';
+    document.getElementById('productForm').action = `/admin-gaz/products/${productId}/update/`;
+    
+    // Afficher le loader
+    Swal.fire({
+        title: 'Chargement...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    fetch(`/api/gas/products/${productId}/`)
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            
+            document.getElementById('product_id').value = productId;
+            document.getElementById('name').value = data.name || '';
+            document.getElementById('gaz_type').value = data.gaz_type;
+            document.getElementById('size_kg').value = data.size_kg;
+            document.getElementById('price').value = data.price;
+            document.getElementById('deposit_price').value = data.deposit_price;
+            document.getElementById('stock_available').value = data.stock_available;
+            document.getElementById('inventory_threshold').value = data.inventory_threshold || 5;
+            document.getElementById('description').value = data.description || '';
+            document.getElementById('is_available').checked = data.is_available;
+            document.getElementById('is_featured').checked = data.is_featured;
+            
+            // Afficher l'image si elle existe
+            if (data.image_url) {
+                document.getElementById('imagePreview').src = data.image_url;
+                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('noImageText').style.display = 'none';
+            }
+            
+            new bootstrap.Modal(document.getElementById('productModal')).show();
+        })
+        .catch(error => {
+            Swal.fire('Erreur', 'Impossible de charger les données du produit', 'error');
+        });
+}
+
+document.getElementById('productForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const isEdit = document.getElementById('product_id').value !== '';
+    const url = this.action;
+    
+    // Afficher la progression
+    document.getElementById('uploadProgress').style.display = 'block';
+    document.getElementById('saveProductBtn').disabled = true;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('saveProductBtn').disabled = false;
+        
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Succès',
+                text: isEdit ? 'Produit modifié avec succès' : 'Produit ajouté avec succès',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                // Fermer le modal
+                bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+                
+                if (!isEdit) {
+                    // Ajouter le nouveau produit à la liste sans recharger
+                    addProductToList(data.product);
+                } else {
+                    // Recharger la page pour voir les modifications
+                    location.reload();
+                }
+            });
+        } else {
+            Swal.fire('Erreur', data.message || 'Une erreur est survenue', 'error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('saveProductBtn').disabled = false;
+        Swal.fire('Erreur', 'Une erreur est survenue', 'error');
+    });
+});
+
+function addProductToList(product) {
+    const template = document.getElementById('new-product-template').innerHTML;
+    const gazTypeDisplay = {
+        'butane': 'Gaz Butane',
+        'propane': 'Gaz Propane',
+        'naturel': 'Gaz Naturel',
+        'industriel': 'Gaz Industriel'
+    }[product.gaz_type] || product.gaz_type;
+    
+    const availableClass = product.is_available ? 'bg-success' : 'bg-danger';
+    const availableText = product.is_available ? 'Disponible' : 'Indisponible';
+    const stockBadge = product.stock_available <= 5 ? 
+        '<span class="badge bg-danger">Stock faible</span>' : '';
+    
+    let newProductHtml = template
+        .replace('{id}', product.id)
+        .replace('{gaz_type}', gazTypeDisplay)
+        .replace('{size}', product.size_kg)
+        .replace('{available_class}', availableClass)
+        .replace('{available_text}', availableText)
+        .replace('{description}', product.description ? product.description.substring(0, 100) + '...' : '')
+        .replace('{price}', product.price)
+        .replace('{deposit}', product.deposit_price)
+        .replace('{stock}', product.stock_available)
+        .replace('{stock_badge}', stockBadge);
+    
+    // Ajouter au début de la liste
+    const productsList = document.getElementById('products-list');
+    if (productsList.children[0] && productsList.children[0].classList.contains('alert')) {
+        // Remplacer le message "Aucun produit"
+        productsList.innerHTML = newProductHtml;
+    } else {
+        productsList.insertAdjacentHTML('afterbegin', newProductHtml);
+    }
+}
+
+function deleteProduct(productId) {
+    Swal.fire({
+        title: 'Êtes-vous sûr ?',
+        text: "Cette action est irréversible !",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Oui, supprimer',
+        cancelButtonText: 'Annuler'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin-gaz/products/${productId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`product-${productId}`).remove();
+                    Swal.fire('Supprimé!', 'Le produit a été supprimé.', 'success');
+                } else {
+                    Swal.fire('Erreur', data.message, 'error');
+                }
+            });
+        }
+    });
+}
+
+function updateStock(productId) {
+    fetch(`/api/gas/products/${productId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('stock_product_id').value = productId;
+            document.getElementById('current_stock').value = data.stock_available;
+            new bootstrap.Modal(document.getElementById('stockModal')).show();
+        });
+}
+
+document.getElementById('stockForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const productId = formData.get('product_id');
+    
+    fetch(`/admin-gaz/products/${productId}/update-stock/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire('Succès', 'Stock mis à jour avec succès', 'success')
+                .then(() => location.reload());
+        } else {
+            Swal.fire('Erreur', data.message, 'error');
+        }
+    });
+});
+
+function viewProduct(productId) {
+    fetch(`/api/gas/products/${productId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const gazTypeDisplay = {
+                'butane': 'Gaz Butane',
+                'propane': 'Gaz Propane',
+                'naturel': 'Gaz Naturel',
+                'industriel': 'Gaz Industriel'
+            }[data.gaz_type] || data.gaz_type;
+            
+            Swal.fire({
+                title: data.name || `${gazTypeDisplay} - ${data.size_kg}kg`,
+                html: `
+                    <div class="text-center">
+                        ${data.image_url ? 
+                            `<img src="${data.image_url}" style="max-width: 200px; max-height: 200px; margin-bottom: 15px;">` : 
+                            '<i class="fas fa-gas-pump fa-4x text-muted mb-3"></i>'}
+                        <p>${data.description || 'Aucune description'}</p>
+                        <hr>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Prix gaz:</strong><br>
+                                ${data.price} FCFA
+                            </div>
+                            <div class="col-6">
+                                <strong>Consigne:</strong><br>
+                                ${data.deposit_price} FCFA
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong>Stock:</strong> ${data.stock_available} unités
+                        </div>
+                    </div>
+                `,
+                showCloseButton: true,
+                showConfirmButton: false
+            });
+        });
+}
+</script>
+{% endblock %}

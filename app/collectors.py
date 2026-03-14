@@ -9,7 +9,7 @@ import json
 
 from .models import (
     CustomUser, CollectionRequest, Subscription, Tricycle, 
-    Zone, ProgrammeTricycle, Notification, Payment, CollectionSchedule, Performence
+    Zone, ProgrammeTricycle, Notification, Payment, CollectionSchedule, Performence, GasOrder
 )
 
 # Decorator pour vérifier que l'utilisateur est un collecteur
@@ -23,11 +23,57 @@ def collector_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+def collector_context(request):
+    if request.user.is_authenticated and request.user.user_type == 'collecteur':
+        today = timezone.now().date()
+        collector = request.user
+        
+        # Compter les livraisons du jour
+        today_gas_count = GasOrder.objects.filter(
+            assigned_collector=collector,
+            scheduled_date=today,
+            status__in=['confirmed', 'preparing', 'assigned', 'in_transit']
+        ).count()
+        
+        # Compter les livraisons assignées
+        assigned_gas_count = GasOrder.objects.filter(
+            assigned_collector=collector
+        ).exclude(
+            status__in=['delivered', 'cancelled', 'failed']
+        ).count()
+        
+        return {
+            'today_gas_count': today_gas_count,
+            'assigned_gas_count': assigned_gas_count,
+        }
+    return {}
+
 @login_required(login_url='login')
 @collector_required
 def collector_dashboard(request):
     """Vue pour le tableau de bord du collecteur"""
     today = timezone.now().date()
+
+    # recuperer les notifications qui dattent de plus de 7 jours
+    seven_days_ago = today - timedelta(days=7)
+    old_notifications = Notification.objects.filter(
+        created_at__lt=seven_days_ago
+    )
+    # supprimer les notifications qui dattent de plus de 7 jours
+    old_notifications.delete()
+
+
+    # recuperer toutesles commandes de gaz terminées d'hier 
+    yesterday = today - timedelta(days=1)
+    yesterday_gas_orders = GasOrder.objects.filter( 
+        scheduled_date=yesterday,
+        status='delivered'
+    )
+    
+    if yesterday_gas_orders.exists():
+        yesterday_gas_orders.delete()
+
+    
 
     
         

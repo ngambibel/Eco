@@ -1,0 +1,312 @@
+{% extends 'admin_gaz/base_gaz.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête avec actions rapides -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Tableau de bord Gaz</h2>
+        <div>
+            <a href="{% url 'admin_gaz_products' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nouveau produit
+            </a>
+            <a href="{% url 'admin_gaz_orders' %}" class="btn btn-success">
+                <i class="fas fa-truck"></i> Voir toutes les commandes
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="gaz-stats-card">
+                <h5>Commandes aujourd'hui</h5>
+                <h2>{{ stats.today_orders }}</h2>
+                <small>{{ stats.today_percentage }}% vs hier</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="gaz-stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h5>En attente</h5>
+                <h2>{{ stats.pending_orders }}</h2>
+                <small>À traiter</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="gaz-stats-card" style="background: linear-gradient(135deg, #5f2c82 0%, #49a09d 100%);">
+                <h5>En livraison</h5>
+                <h2>{{ stats.in_transit_orders }}</h2>
+                <small>Commandes en cours</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="gaz-stats-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <h5>Stock alerte</h5>
+                <h2>{{ stats.low_stock_count }}</h2>
+                <small>Produits sous seuil</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Actions rapides -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Actions rapides</h5>
+                </div>
+                <div class="card-body">
+                    
+                    
+                    <div class="quick-action-card mb-3" onclick="window.location.href='{% url 'admin_gaz_inventory' %}'">
+                        <div class="quick-action-icon">
+                            <i class="fas fa-warehouse"></i>
+                        </div>
+                        <h6>Gérer stock</h6>
+                        <small class="text-muted">Mettre à jour l'inventaire</small>
+                    </div>
+                    
+                    <div class="quick-action-card mb-3" onclick="window.location.href='{% url 'admin_gaz_cylinders' %}'">
+                        <div class="quick-action-icon">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                        <h6>Bouteilles</h6>
+                        <small class="text-muted">Gérer les consignes</small>
+                    </div>
+                    
+                    <div class="quick-action-card" onclick="window.location.href='{% url 'admin_gaz_promotions' %}'">
+                        <div class="quick-action-icon">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <h6>Promotions</h6>
+                        <small class="text-muted">Offres spéciales</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commandes récentes -->
+        <div class="col-md-9 mb-4">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Commandes récentes</h5>
+                    <a href="{% url 'admin_gaz_orders' %}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>N° Commande</th>
+                                    <th>Client</th>
+                                    <th>Produits</th>
+                                    <th>Total</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td><strong>{{ order.order_number }}</strong></td>
+                                    <td>
+                                        {{ order.customer.get_full_name|default:order.customer.username }}
+                                        <br>
+                                        <small class="text-muted">{{ order.customer.phone }}</small>
+                                    </td>
+                                    <td>
+                                        {% for item in order.items.all|slice:":2" %}
+                                            {{ item.quantity }}x {{ item.product.size_kg }}kg<br>
+                                        {% endfor %}
+                                        {% if order.items.count > 2 %}
+                                            <small class="text-muted">+{{ order.items.count|add:"-2" }} autres</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ order.total_amount }} FCFA</td>
+                                    <td>
+                                        <span class="badge status-{{ order.status }}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ order.order_date|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'admin_gaz_order_detail' order.id %}" 
+                                           class="btn btn-sm btn-info" title="Détails">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if order.status == 'pending' %}
+                                        <a href="{% url 'admin_gaz_confirm_order' order.id %}" 
+                                           class="btn btn-sm btn-success" title="Confirmer">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                        <p>Aucune commande récente</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- État des stocks -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">État des stocks</h5>
+                    <a href="{% url 'admin_gaz_inventory' %}" class="btn btn-sm btn-outline-primary">Gérer</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Produit</th>
+                                    <th>Stock</th>
+                                    <th>Seuil</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ product.get_gaz_type_display }} - {{ product.size_kg }}kg</strong>
+                                    </td>
+                                    <td>{{ product.stock_available }}</td>
+                                    <td>{{ product.inventory_threshold|default:5 }}</td>
+                                    <td>
+                                        {% if product.stock_available <= product.inventory_threshold|default:5 %}
+                                        <span class="inventory-low">
+                                            <i class="fas fa-exclamation-triangle"></i> Stock faible
+                                        </span>
+                                        {% else %}
+                                        <span class="text-success">
+                                            <i class="fas fa-check-circle"></i> Normal
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        Aucun produit enregistré
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+       
+    <!-- Dernières livraisons effectuées -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Dernières livraisons effectuées</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Commande</th>
+                                    <th>Client</th>
+                                    <th>Livreur</th>
+                                    <th>Date livraison</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in delivered_orders %}
+                                <tr>
+                                    <td>{{ order.order_number }}</td>
+                                    <td>{{ order.customer.get_full_name|default:order.customer.username }}</td>
+                                    <td>
+                                        {% if order.assigned_collector %}
+                                            {{ order.assigned_collector.get_full_name }}
+                                        {% else %}
+                                            <span class="text-muted">Non assigné</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ order.delivery_date|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'admin_gaz_order_detail' order.id %}" 
+                                           class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        Aucune livraison effectuée
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Graphique des bouteilles
+    const ctx = document.getElementById('cylindersChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Disponibles', 'Chez clients', 'En transit', 'Endommagées'],
+            datasets: [{
+                data: [
+                    '{{ cylinders_stats.available }}',
+                    '{{ cylinders_stats.with_customer }}',
+                    '{{ cylinders_stats.in_transit }}',
+                    '{{ cylinders_stats.damaged }}'
+                ],
+                backgroundColor: [
+                    '#28a745',
+                    '#ffc107',
+                    '#17a2b8',
+                    '#dc3545'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Auto-refresh toutes les 30 secondes
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+</script>
+{% endblock %}

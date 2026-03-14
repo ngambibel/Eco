@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Réabonnement Rapide - EcoCity</title>
     <style>
+        /* Gardez tous les styles existants */
         :root {
             --orange-cosmique: #FF6B35;
             --rouge-poupre: #C53D3D;
@@ -14,6 +15,7 @@
             --noir: #212529;
             --vert-success: #28a745;
             --orange-warning: #fd7e14;
+            --bleu-primary: #007bff;
         }
         
         * {
@@ -55,6 +57,38 @@
         
         .header p {
             opacity: 0.9;
+        }
+        
+        .gas-button-container {
+            padding: 15px 30px;
+            background: var(--gris-clair);
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .btn-gas {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, var(--bleu-primary), #0056b3);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gas:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+        
+        .btn-gas i {
+            font-size: 1.2rem;
         }
         
         .content {
@@ -292,6 +326,12 @@
             border: 1px solid #f5c6cb;
         }
         
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
         .footer {
             text-align: center;
             padding: 20px;
@@ -321,6 +361,323 @@
         .info-note i {
             color: var(--orange-cosmique);
         }
+        
+        /* Styles pour le popup modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow: auto;
+        }
+        
+        .modal-content {
+            background-color: var(--blanc);
+            margin: 50px auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, var(--bleu-primary), #0056b3);
+            color: white;
+            padding: 20px;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-header h2 i {
+            font-size: 1.5rem;
+        }
+        
+        .close-modal {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        
+        .close-modal:hover {
+            opacity: 0.8;
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        .product-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        
+        .product-card {
+            background: var(--gris-clair);
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .product-card:hover {
+            border-color: var(--bleu-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.2);
+        }
+        
+        .product-card.selected {
+            border-color: var(--bleu-primary);
+            background: #e3f2fd;
+        }
+        
+        .product-image {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background: white;
+            padding: 5px;
+        }
+        
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .product-image-placeholder {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #e0e0e0, #f5f5f5);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            color: var(--gris-fonce);
+            font-size: 0.8rem;
+        }
+        
+        .product-image-placeholder i {
+            font-size: 2.5rem;
+            color: var(--bleu-primary);
+        }
+        
+        .product-name {
+            font-weight: bold;
+            color: var(--noir);
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+        
+        .product-details {
+            width: 100%;
+            margin-top: 5px;
+        }
+        
+        .product-price {
+            color: var(--bleu-primary);
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .product-deposit {
+            font-size: 0.85rem;
+            color: var(--gris-fonce);
+        }
+        
+        .product-stock {
+            font-size: 0.8rem;
+            color: var(--vert-success);
+            margin-top: 5px;
+            padding: 2px 8px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 12px;
+            display: inline-block;
+        }
+        
+        .product-stock.low {
+            color: var(--orange-warning);
+            background: rgba(253, 126, 20, 0.1);
+        }
+        
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        .quantity-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .quantity-btn:hover:not(:disabled) {
+            background: var(--bleu-primary);
+            color: white;
+            border-color: var(--bleu-primary);
+        }
+        
+        .quantity-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .quantity-input {
+            width: 60px;
+            height: 40px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        .modal-total {
+            background: linear-gradient(135deg, var(--bleu-primary), #0056b3);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .modal-total .total-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .modal-total .total-amount {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        
+        .modal-total .total-breakdown {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #dee2e6;
+            text-align: right;
+        }
+        
+        .btn-modal {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+        
+        .btn-modal-primary {
+            background: var(--bleu-primary);
+            color: white;
+        }
+        
+        .btn-modal-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-modal-secondary {
+            background: var(--gris-clair);
+            color: var(--gris-fonce);
+        }
+        
+        .btn-modal-secondary:hover {
+            background: #e9ecef;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .success-checkmark {
+            color: var(--vert-success);
+            font-size: 4rem;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .hidden-subscription-id {
+            display: none;
+        }
+        
+        /* Badge pour le type de gaz */
+        .product-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--bleu-primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -333,10 +690,29 @@
             <p>Scannez et payez en 2 minutes</p>
         </div>
         
+        <!-- Stocker l'ID de subscription caché -->
+        <input type="hidden" id="subscriptionId" value="{{ subscription.id }}">
+        
+        <!-- Nouveau bouton pour commander du gaz -->
+        <div class="gas-button-container">
+            <button class="btn-gas" id="gasOrderBtn">
+                <i class="fas fa-fire"></i>
+                Commander du Gaz
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="info-note" style="margin-top: 10px; text-align: center;">
+                <i class="fas fa-info-circle"></i>
+                Livraison rapide de gaz à domicile
+            </div>
+        </div>
+        
         <div class="content">
             
-            
             <div class="subscription-info">
+                <div class="info-item">
+                    <span class="info-label">Client:</span>
+                    <span class="info-value">{{ subscription.user.get_full_name|default:subscription.user.username }}</span>
+                </div>
                 {% if subscription.end_date %}
                 <div class="info-item">
                     <span class="info-label">Fin abonnement actuel:</span>
@@ -514,11 +890,98 @@
         </div>
     </div>
 
+    <!-- Modal pour la commande de gaz -->
+    <div id="gasOrderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <i class="fas fa-fire"></i>
+                    Commander du Gaz
+                </h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Loading state -->
+                <div id="loadingProducts" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+                    <p style="margin-top: 15px;">Chargement des produits...</p>
+                </div>
+                
+                <!-- Products container (initially hidden) -->
+                <div id="productsContainer" style="display: none;">
+                    <label class="form-label">Choisissez votre type de gaz</label>
+                    <div class="product-selector" id="productSelector"></div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="modalPhoneNumber">Numéro de téléphone</label>
+                        <input type="tel" class="form-control" id="modalPhoneNumber" 
+                               placeholder="6XXXXXXXX" required pattern="6[0-9]{8}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="modalNetwork">Opérateur mobile</label>
+                        <select class="form-control" id="modalNetwork" required>
+                            <option value="">Sélectionnez votre opérateur</option>
+                            <option value="mtn">MTN</option>
+                            <option value="orange">Orange</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="deliveryAddress">Adresse de livraison</label>
+                        <input type="text" class="form-control" id="deliveryAddress" 
+                               placeholder="Rue, quartier, numéro..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="city">Ville</label>
+                        <input type="text" class="form-control" id="city" 
+                               placeholder="Douala, Yaoundé..." required>
+                    </div>
+                    
+                    <label class="form-label">Quantité</label>
+                    <div class="quantity-selector">
+                        <button class="quantity-btn" id="decreaseQty" type="button">-</button>
+                        <input type="number" class="quantity-input" id="quantity" value="1" min="1" max="10" readonly>
+                        <button class="quantity-btn" id="increaseQty" type="button">+</button>
+                    </div>
+                    
+                    <div class="modal-total" id="modalTotal">
+                        <div class="total-label">Total à payer</div>
+                        <div class="total-amount" id="modalTotalAmount">0 FCFA</div>
+                        <div class="total-breakdown" id="totalBreakdown"></div>
+                    </div>
+                </div>
+                
+                <!-- Success state -->
+                <div id="orderSuccess" style="display: none; text-align: center; padding: 30px;">
+                    <div class="success-checkmark">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 style="color: var(--vert-success); margin-bottom: 15px;">Commande réussie !</h3>
+                    <p id="successMessage"></p>
+                    <p style="margin-top: 15px; color: var(--gris-fonce);">
+                        Vous recevrez un appel de confirmation dans quelques minutes.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn-modal btn-modal-secondary" id="cancelOrder">Annuler</button>
+                <button class="btn-modal btn-modal-primary" id="confirmOrder" style="display: none;">Confirmer la commande</button>
+                <button class="btn-modal btn-modal-primary" id="closeSuccess" style="display: none;">Fermer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Font Awesome pour les icônes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Récupérer l'ID de subscription
+            const subscriptionId = document.getElementById('subscriptionId').value;
+            
+            // Variables pour le formulaire de réabonnement
             const monthRadios = document.querySelectorAll('input[name="months"]');
             const monthCountSpan = document.getElementById('monthCount');
             const subtotalAmountSpan = document.getElementById('subtotalAmount');
@@ -529,45 +992,62 @@
             const pricePerMonth = '{{ plan.price }}';
             const isBonusEligible = '{% if bonus_info.is_eligible %}true{% else %}false{% endif %}';
             
+            // Variables pour le modal de gaz
+            const modal = document.getElementById('gasOrderModal');
+            const gasOrderBtn = document.getElementById('gasOrderBtn');
+            const closeModal = document.querySelector('.close-modal');
+            const cancelOrder = document.getElementById('cancelOrder');
+            const closeSuccess = document.getElementById('closeSuccess');
+            const confirmOrder = document.getElementById('confirmOrder');
+            const loadingProducts = document.getElementById('loadingProducts');
+            const productsContainer = document.getElementById('productsContainer');
+            const orderSuccess = document.getElementById('orderSuccess');
+            const modalFooter = document.getElementById('modalFooter');
+            const productSelector = document.getElementById('productSelector');
+            const quantityInput = document.getElementById('quantity');
+            const decreaseBtn = document.getElementById('decreaseQty');
+            const increaseBtn = document.getElementById('increaseQty');
+            const modalTotalAmount = document.getElementById('modalTotalAmount');
+            const totalBreakdown = document.getElementById('totalBreakdown');
+            
+            let selectedProduct = null;
+            let products = [];
+            let maxStock = 10;
+            
+            // Fonction pour mettre à jour le prix du réabonnement
             function updatePrice() {
                 const selectedRadio = document.querySelector('input[name="months"]:checked');
                 if (!selectedRadio) return;
                 
                 const months = parseInt(selectedRadio.value);
-                const hasBonus = isBonusEligible && months === 3 && selectedRadio.dataset.bonus === 'true';
+                const hasBonus = isBonusEligible === 'true' && months === 3 && selectedRadio.dataset.bonus === 'true';
                 
-                // Update month count display
                 monthCountSpan.textContent = months;
                 
-                // Calculate subtotal
                 const subtotal = months * pricePerMonth;
                 subtotalAmountSpan.textContent = subtotal.toLocaleString() + ' FCFA';
                 
-                // Show/hide bonus row
                 if (hasBonus) {
                     bonusRow.style.display = 'flex';
                 } else {
                     bonusRow.style.display = 'none';
                 }
                 
-                // Total is same as subtotal (bonus is free)
                 const total = subtotal;
                 totalAmountSpan.textContent = total.toLocaleString() + ' FCFA';
                 displayAmountSpan.textContent = total.toLocaleString() + ' FCFA';
                 
-                // Update hidden field
                 selectedMonthsInput.value = months;
             }
             
-            // Add event listeners to radio buttons
+            // Ajouter les événements pour les radios de réabonnement
             monthRadios.forEach(radio => {
                 radio.addEventListener('change', updatePrice);
             });
             
-            // Initial update
             updatePrice();
             
-            // Form validation
+            // Validation du formulaire de réabonnement
             const form = document.getElementById('renewalForm');
             form.addEventListener('submit', function(e) {
                 const phoneNumber = document.getElementById('phoneNumber').value;
@@ -585,6 +1065,261 @@
                     return;
                 }
             });
+            
+            // Gestion du modal de gaz
+            gasOrderBtn.onclick = function() {
+                modal.style.display = 'block';
+                loadGasProducts();
+            };
+            
+            closeModal.onclick = function() {
+                modal.style.display = 'none';
+                resetModal();
+            };
+            
+            cancelOrder.onclick = function() {
+                modal.style.display = 'none';
+                resetModal();
+            };
+            
+            closeSuccess.onclick = function() {
+                modal.style.display = 'none';
+                resetModal();
+            };
+            
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                    resetModal();
+                }
+            };
+            
+            // Charger les produits de gaz
+            function loadGasProducts() {
+                loadingProducts.style.display = 'block';
+                productsContainer.style.display = 'none';
+                confirmOrder.style.display = 'none';
+                orderSuccess.style.display = 'none';
+                
+                fetch('/api/gas/products/')
+                    .then(response => response.json())
+                    .then(data => {
+                        loadingProducts.style.display = 'none';
+                        if (data.success && data.products.length > 0) {
+                            products = data.products;
+                            productsContainer.style.display = 'block';
+                            confirmOrder.style.display = 'inline-block';
+                            displayProducts(data.products);
+                        } else {
+                            productSelector.innerHTML = '<p style="text-align: center; color: var(--rouge-poupre);">Aucun produit disponible pour le moment</p>';
+                            productsContainer.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        loadingProducts.style.display = 'none';
+                        productSelector.innerHTML = '<p style="text-align: center; color: var(--rouge-poupre);">Erreur lors du chargement des produits</p>';
+                        productsContainer.style.display = 'block';
+                        console.error('Error:', error);
+                    });
+            }
+            
+            // Afficher les produits avec images
+            function displayProducts(products) {
+                productSelector.innerHTML = '';
+                products.forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.dataset.productId = product.id;
+                    
+                    // Créer le contenu HTML avec image
+                    let imageHtml = '';
+                    if (product.image) {
+                        imageHtml = `<img src="${product.image}" alt="${product.name}" class="product-image">`;
+                    } else {
+                        imageHtml = `
+                            <div class="product-image-placeholder">
+                                <i class="fas fa-gas-pump"></i>
+                            </div>
+                        `;
+                    }
+                    
+                    card.innerHTML = `
+                        ${imageHtml}
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-details">
+                            <div class="product-price">${product.price.toLocaleString()} FCFA</div>
+                            <div class="product-deposit">Consigne: ${product.deposit_price.toLocaleString()} FCFA</div>
+                            <div class="product-stock ${product.stock_available < 5 ? 'low' : ''}">
+                                <i class="fas fa-box"></i> Stock: ${product.stock_available}
+                            </div>
+                        </div>
+                    `;
+                    
+                    card.onclick = function() {
+                        document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+                        this.classList.add('selected');
+                        selectedProduct = product;
+                        maxStock = Math.min(product.stock_available, 10);
+                        quantityInput.max = maxStock;
+                        quantityInput.value = 1;
+                        updateModalTotal();
+                    };
+                    
+                    productSelector.appendChild(card);
+                });
+            }
+            
+            // Mettre à jour le total dans le modal
+            function updateModalTotal() {
+                if (selectedProduct) {
+                    const qty = parseInt(quantityInput.value) || 1;
+                    const subtotal = selectedProduct.price * qty;
+                    const deposit = selectedProduct.deposit_price * qty;
+                    const total = subtotal + deposit;
+                    
+                    modalTotalAmount.textContent = total.toLocaleString() + ' FCFA';
+                    totalBreakdown.innerHTML = `
+                        Gaz: ${subtotal.toLocaleString()} FCFA | Consigne: ${deposit.toLocaleString()} FCFA
+                    `;
+                }
+            }
+            
+            // Gestionnaires de quantité
+            decreaseBtn.onclick = function() {
+                let val = parseInt(quantityInput.value);
+                if (val > 1) {
+                    quantityInput.value = val - 1;
+                    updateModalTotal();
+                }
+            };
+            
+            increaseBtn.onclick = function() {
+                let val = parseInt(quantityInput.value);
+                if (val < maxStock) {
+                    quantityInput.value = val + 1;
+                    updateModalTotal();
+                }
+            };
+            
+            quantityInput.addEventListener('change', updateModalTotal);
+            
+            // Confirmer la commande
+            confirmOrder.onclick = function() {
+                if (!selectedProduct) {
+                    alert('Veuillez sélectionner un type de gaz');
+                    return;
+                }
+                
+                const phoneNumber = document.getElementById('modalPhoneNumber').value;
+                const network = document.getElementById('modalNetwork').value;
+                const deliveryAddress = document.getElementById('deliveryAddress').value;
+                const city = document.getElementById('city').value;
+                const quantity = parseInt(quantityInput.value);
+                
+                // Validations
+                if (!phoneNumber.match(/^6[0-9]{8}$/)) {
+                    alert('Veuillez entrer un numéro de téléphone valide au format 6XXXXXXXX');
+                    return;
+                }
+                
+                if (!network) {
+                    alert('Veuillez sélectionner votre opérateur mobile');
+                    return;
+                }
+                
+                if (!deliveryAddress) {
+                    alert('Veuillez entrer votre adresse de livraison');
+                    return;
+                }
+                
+                if (!city) {
+                    alert('Veuillez entrer votre ville');
+                    return;
+                }
+                
+                // Désactiver le bouton pendant l'envoi
+                confirmOrder.disabled = true;
+                confirmOrder.innerHTML = '<span class="loading-spinner"></span> Traitement...';
+                
+                // Envoyer la commande avec l'ID de subscription
+                fetch('/api/gas/quick-order/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        subscription_id: subscriptionId,
+                        product_id: selectedProduct.id,
+                        phone_number: phoneNumber,
+                        network: network,
+                        delivery_address: deliveryAddress,
+                        city: city,
+                        quantity: quantity
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    confirmOrder.disabled = false;
+                    confirmOrder.innerHTML = 'Confirmer la commande';
+                    
+                    if (data.success) {
+                        // Afficher le succès
+                        productsContainer.style.display = 'none';
+                        confirmOrder.style.display = 'none';
+                        cancelOrder.style.display = 'none';
+                        orderSuccess.style.display = 'block';
+                        closeSuccess.style.display = 'inline-block';
+                        
+                        document.getElementById('successMessage').innerHTML = `
+                            Commande #${data.order_number} confirmée!<br>
+                            Montant total: ${data.total_amount.toLocaleString()} FCFA
+                        `;
+                    } else {
+                        alert('Erreur: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    confirmOrder.disabled = false;
+                    confirmOrder.innerHTML = 'Confirmer la commande';
+                    alert('Une erreur est survenue. Veuillez réessayer.');
+                    console.error('Error:', error);
+                });
+            };
+            
+            // Fonction pour réinitialiser le modal
+            function resetModal() {
+                loadingProducts.style.display = 'block';
+                productsContainer.style.display = 'none';
+                orderSuccess.style.display = 'none';
+                confirmOrder.style.display = 'none';
+                cancelOrder.style.display = 'inline-block';
+                closeSuccess.style.display = 'none';
+                selectedProduct = null;
+                document.getElementById('modalPhoneNumber').value = '';
+                document.getElementById('modalNetwork').value = '';
+                document.getElementById('deliveryAddress').value = '';
+                document.getElementById('city').value = '';
+                quantityInput.value = 1;
+                modalTotalAmount.textContent = '0 FCFA';
+                totalBreakdown.innerHTML = '';
+            }
+            
+            // Fonction pour obtenir le token CSRF
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
         });
     </script>
 </body>

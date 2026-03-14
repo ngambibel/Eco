@@ -158,6 +158,21 @@ admin.site.register(Bonus)
 
 
 
+@admin.register(GasProduct)
+class GasProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'gaz_type', 'size_kg', 'price', 'stock_available', 'is_available']
+    list_filter = ['gaz_type', 'is_available', 'is_featured']
+    search_fields = ['name', 'description']
+
+@admin.register(GasOrder)
+class GasOrderAdmin(admin.ModelAdmin):
+    list_display = ['order_number', 'customer', 'total_amount', 'status', 'order_date']
+    list_filter = ['status', 'payment_status', 'delivery_type']
+    search_fields = ['order_number', 'customer__username', 'customer__email']
+    readonly_fields = ['order_number', 'created_at', 'updated_at']
+
+
+
 
 
 

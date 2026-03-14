@@ -1,0 +1,795 @@
+<!-- collectors/templates/collectors/gas/delivery_detail.html -->
+{% extends 'base_collectors.html' %}
+{% load static %}
+
+{% block title %}Détails livraison {{ order.order_number }} - EcoCollect{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+.timeline:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2e7d32;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #2e7d32;
+}
+.timeline-item.completed:before {
+    background: #28a745;
+    box-shadow: 0 0 0 2px #28a745;
+}
+.timeline-item.pending:before {
+    background: #ffc107;
+    box-shadow: 0 0 0 2px #ffc107;
+}
+.status-form {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.status-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+.status-notes {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    min-height: 80px;
+}
+.btn-update-status {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    width: 100%;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.btn-update-status:hover {
+    background: var(--dark-color);
+}
+.btn-update-status:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête avec navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Retour
+            </a>
+            <span class="h4 ms-2">
+                Commande {{ order.order_number }}
+            </span>
+        </div>
+        <div>
+            <span class="badge fs-6 p-3 
+                {% if order.status == 'delivered' %}bg-success
+                {% elif order.status == 'cancelled' %}bg-danger
+                {% elif order.status == 'failed' %}bg-danger
+                {% elif order.status == 'in_transit' %}bg-primary
+                {% elif order.status == 'assigned' %}bg-info
+                {% elif order.status == 'preparing' %}bg-warning
+                {% elif order.status == 'confirmed' %}bg-warning
+                {% else %}bg-secondary
+                {% endif %}">
+                {{ order.get_status_display }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Messages de notification -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Colonne principale - Détails de la commande -->
+        <div class="col-lg-8">
+            <!-- Informations client -->
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-circle me-2 text-success"></i>
+                        Informations client
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Nom complet:</strong><br>
+                                {{ order.customer.get_full_name|default:order.customer.username }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Téléphone:</strong><br>
+                                {{ order.customer.phone|default:"Non renseigné" }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Email:</strong><br>
+                                {{ order.customer.email|default:"Non renseigné" }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Zone:</strong><br>
+                                {{ order.zone.nom|default:"Non définie" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Adresse de livraison -->
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marker-alt me-2 text-success"></i>
+                        Adresse de livraison
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>{{ order.address.title }}</strong></p>
+                    <p class="mb-1">{{ order.address.street }}</p>
+                    <p class="mb-1">{{ order.address.city }} {% if order.address.postal_code %}- {{ order.address.postal_code }}{% endif %}</p>
+                    {% if order.address.lien %}
+                    <a href="{{ order.address.lien }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                        <i class="fas fa-map-marked-alt me-1"></i> Voir sur Google Maps
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Articles commandés -->
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart me-2 text-success"></i>
+                        Articles commandés
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Produit</th>
+                                    <th class="text-center">Quantité</th>
+                                    <th class="text-end">Prix unitaire</th>
+                                    <th class="text-end">Consigne</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.product.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ item.product.get_gaz_type_display }} - {{ item.product.size_kg }}kg</small>
+                                    </td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">{{ item.unit_price }} FCFA</td>
+                                    <td class="text-end">{{ item.unit_deposit }} FCFA</td>
+                                    <td class="text-end fw-bold">{{ item.total_price }} FCFA</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Sous-total:</strong></td>
+                                    <td class="text-end">{{ order.subtotal }} FCFA</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Frais de livraison:</strong></td>
+                                    <td class="text-end">{{ order.delivery_fee }} FCFA</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Taxes:</strong></td>
+                                    <td class="text-end">{{ order.tax_amount }} FCFA</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Total consigne:</strong></td>
+                                    <td class="text-end">{{ order.total_deposit }} FCFA</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong class="fs-5">Total:</strong></td>
+                                    <td class="text-end fs-5 fw-bold text-success">{{ order.total_amount }} FCFA</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouteilles assignées -->
+            {% if cylinders %}
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tag me-2 text-success"></i>
+                        Bouteilles assignées
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="scanCylinder()">
+                        <i class="fas fa-qrcode me-1"></i> Scanner QR
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for cylinder in cylinders %}
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>{{ cylinder.product.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">N°: {{ cylinder.serial_number }}</small>
+                                    </div>
+                                    <span class="badge 
+                                        {% if cylinder.status == 'available' %}bg-success
+                                        {% elif cylinder.status == 'in_transit' %}bg-info
+                                        {% elif cylinder.status == 'with_customer' %}bg-primary
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {{ cylinder.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Instructions spéciales -->
+            {% if order.special_instructions %}
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2 text-success"></i>
+                        Instructions spéciales
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{ order.special_instructions|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Colonne latérale - Actions et suivi -->
+        <div class="col-lg-4">
+            <!-- Formulaire de mise à jour du statut -->
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2 text-success"></i>
+                        Mettre à jour le statut
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="statusUpdateForm" onsubmit="updateOrderStatus(event)">
+                        {% csrf_token %}
+                        <div class="status-form">
+                            <label for="status" class="form-label fw-bold">Nouveau statut</label>
+                            <select class="status-select" id="status" name="status" required>
+                                <option value="">Sélectionnez un statut</option>
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            
+                            <label for="notes" class="form-label fw-bold">Notes (optionnel)</label>
+                            <textarea class="status-notes" id="notes" name="notes" 
+                                      placeholder="Ajoutez des notes sur ce changement de statut...">{{ order.notes }}</textarea>
+                            
+                            <button type="submit" class="btn-update-status" id="updateStatusBtn">
+                                <i class="fas fa-save me-1"></i> Mettre à jour le statut
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2 text-success"></i>
+                        Actions rapides
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if can_start %}
+                    <button class="btn btn-primary w-100 mb-2" onclick="startDelivery()">
+                        <i class="fas fa-play me-1"></i> Démarrer la livraison
+                    </button>
+                    {% endif %}
+                    
+                    {% if can_complete %}
+                    <button class="btn btn-success w-100 mb-2" onclick="completeDelivery()">
+                        <i class="fas fa-check me-1"></i> Marquer comme livrée
+                    </button>
+                    {% endif %}
+                    
+                    {% if order.status == 'in_transit' %}
+                    <button class="btn btn-info w-100 mb-2" onclick="updateLocation()">
+                        <i class="fas fa-map-marker-alt me-1"></i> Mettre à jour position
+                    </button>
+                    <button class="btn btn-outline-primary w-100 mb-2" onclick="scanCylinder()">
+                        <i class="fas fa-qrcode me-1"></i> Scanner QR Bouteille
+                    </button>
+                    {% endif %}
+                    
+                    {% if order.status != 'delivered' and order.status != 'cancelled' and order.status != 'failed' %}
+                    <button class="btn btn-warning w-100 mb-2" onclick="markAsProblem()">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Signaler un problème
+                    </button>
+                    {% endif %}
+                    
+                    {% if order.customer.phone %}
+                    <a href="tel:{{ order.customer.phone }}" class="btn btn-outline-success w-100">
+                        <i class="fas fa-phone me-1"></i> Appeler le client
+                    </a>
+                    {% endif %}
+                    
+                    <button class="btn btn-outline-secondary w-100 mt-2" onclick="window.print()">
+                        <i class="fas fa-print me-1"></i> Imprimer les détails
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chronologie -->
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2 text-success"></i>
+                        Chronologie
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item completed">
+                            <small class="text-muted">{{ order.order_date|date:"d/m/Y H:i" }}</small>
+                            <p class="mb-0"><strong>Commande créée</strong></p>
+                        </div>
+                        
+                        {% if order.confirmation_date %}
+                        <div class="timeline-item completed">
+                            <small class="text-muted">{{ order.confirmation_date|date:"d/m/Y H:i" }}</small>
+                            <p class="mb-0"><strong>Commande confirmée</strong></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if order.preparation_date %}
+                        <div class="timeline-item completed">
+                            <small class="text-muted">{{ order.preparation_date|date:"d/m/Y H:i" }}</small>
+                            <p class="mb-0"><strong>En préparation</strong></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if order.assigned_collector %}
+                        <div class="timeline-item {% if order.assigned_date %}completed{% endif %}">
+                            <small class="text-muted">
+                                {% if order.assigned_date %}
+                                    {{ order.assigned_date|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    En attente
+                                {% endif %}
+                            </small>
+                            <p class="mb-0"><strong>Assignée à {{ order.assigned_collector.get_full_name }}</strong></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if order.pickup_date %}
+                        <div class="timeline-item completed">
+                            <small class="text-muted">{{ order.pickup_date|date:"d/m/Y H:i" }}</small>
+                            <p class="mb-0"><strong>En cours de livraison</strong></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if order.delivery_date %}
+                        <div class="timeline-item completed">
+                            <small class="text-muted">{{ order.delivery_date|date:"d/m/Y H:i" }}</small>
+                            <p class="mb-0"><strong>Livrée</strong></p>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Afficher les mises à jour de statut récentes -->
+                        {% for update in order.tracking_updates.all|slice:":3" %}
+                        <div class="timeline-item">
+                            <small class="text-muted">{{ update.created_at|date:"d/m/Y H:i" }}</small>
+                            <p class="mb-0"><strong>Statut: {{ update.get_status_display }}</strong></p>
+                            {% if update.notes %}
+                            <small class="text-muted">{{ update.notes }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dernière position connue -->
+            {% if latest_tracking and latest_tracking.latitude %}
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt me-2 text-success"></i>
+                        Dernière position
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="map" style="height: 200px; border-radius: 8px;"></div>
+                    <small class="text-muted mt-2 d-block">
+                        Mis à jour: {{ latest_tracking.created_at|timesince }}
+                    </small>
+                    {% if latest_tracking.estimated_arrival %}
+                    <p class="mt-2 mb-0">
+                        <i class="far fa-clock me-1"></i>
+                        Arrivée estimée: {{ latest_tracking.estimated_arrival|date:"H:i" }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour scanner QR -->
+<div class="modal fade" id="scanModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Scanner QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="reader" style="width: 100%;"></div>
+                <div id="scan-result" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour signaler un problème -->
+<div class="modal fade" id="problemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Signaler un problème</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="problemForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="problemType" class="form-label">Type de problème</label>
+                        <select class="form-select" id="problemType" required>
+                            <option value="">Sélectionnez...</option>
+                            <option value="client_absent">Client absent</option>
+                            <option value="adresse_introuvable">Adresse introuvable</option>
+                            <option value="probleme_circulation">Problème de circulation</option>
+                            <option value="bouteille_endommagee">Bouteille endommagée</option>
+                            <option value="autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="problemDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="problemDescription" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" onclick="submitProblem()">Signaler</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<script>
+const orderId = "{{ order.id }}";
+let isUpdating = false;
+
+// Mise à jour du statut
+function updateOrderStatus(event) {
+    event.preventDefault();
+    
+    if (isUpdating) return;
+    
+    const status = document.getElementById('status').value;
+    const notes = document.getElementById('notes').value;
+    
+    if (!status) {
+        alert('Veuillez sélectionner un statut');
+        return;
+    }
+    
+    if (!confirm('Voulez-vous mettre à jour le statut de cette commande ?')) {
+        return;
+    }
+    
+    isUpdating = true;
+    const btn = document.getElementById('updateStatusBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Mise à jour...';
+    
+    fetch(`/collector/gas/delivery/${orderId}/update-status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            status: status,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Statut mis à jour avec succès');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-1"></i> Mettre à jour le statut';
+            isUpdating = false;
+        }
+    })
+    .catch(error => {
+        alert('Erreur lors de la mise à jour');
+        console.error('Error:', error);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i> Mettre à jour le statut';
+        isUpdating = false;
+    });
+}
+
+function startDelivery() {
+    if (!confirm('Démarrer cette livraison ?')) return;
+    
+    fetch(`/collector/gas/delivery/${orderId}/start/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Livraison démarrée avec succès');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    });
+}
+
+function completeDelivery() {
+    const recipientName = prompt('Nom du destinataire:');
+    if (!recipientName) return;
+    
+    fetch(`/collector/gas/delivery/${orderId}/complete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            recipient_name: recipientName,
+            notes: ''
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Livraison complétée avec succès');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    });
+}
+
+function updateLocation() {
+    if (!navigator.geolocation) {
+        alert('Géolocalisation non supportée');
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(position => {
+        fetch(`/collector/gas/delivery/${orderId}/location/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Position mise à jour');
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        });
+    });
+}
+
+function scanCylinder() {
+    const modal = new bootstrap.Modal(document.getElementById('scanModal'));
+    modal.show();
+    
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader", { fps: 10, qrbox: 250 });
+    
+    html5QrcodeScanner.render((decodedText, decodedResult) => {
+        fetch('/collector/gas/scan-cylinder/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cylinder_id: decodedText,
+                order_id: orderId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('scan-result').innerHTML = `
+                    <div class="alert alert-success">
+                        Bouteille scannée: ${data.cylinder.serial_number}<br>
+                        Produit: ${data.cylinder.product}<br>
+                        Statut: ${data.cylinder.status}
+                    </div>
+                `;
+                setTimeout(() => modal.hide(), 2000);
+            } else {
+                document.getElementById('scan-result').innerHTML = `
+                    <div class="alert alert-danger">${data.error}</div>
+                `;
+            }
+        });
+        
+        html5QrcodeScanner.clear();
+    });
+}
+
+function markAsProblem() {
+    const modal = new bootstrap.Modal(document.getElementById('problemModal'));
+    modal.show();
+}
+
+function submitProblem() {
+    const problemType = document.getElementById('problemType').value;
+    const description = document.getElementById('problemDescription').value;
+    
+    if (!problemType || !description) {
+        alert('Veuillez remplir tous les champs');
+        return;
+    }
+    
+    fetch(`/collector/gas/delivery/${orderId}/report-problem/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            problem_type: problemType,
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Problème signalé avec succès');
+            bootstrap.Modal.getInstance(document.getElementById('problemModal')).hide();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    });
+}
+
+// Initialiser la carte si des coordonnées existent
+'{% if latest_tracking and latest_tracking.latitude %}'
+function initMap() {
+    const map = L.map('map').setView(['{{ latest_tracking.latitude }}', '{{ latest_tracking.longitude }}'], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    L.marker(['{{ latest_tracking.latitude }}', '{{ latest_tracking.longitude }}']).addTo(map)
+        .bindPopup('Dernière position connue')
+        .openPopup();
+}
+
+// Charger Leaflet si nécessaire
+if (document.getElementById('map')) {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
+    script.onload = initMap;
+    document.head.appendChild(script);
+    
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+    document.head.appendChild(link);
+}
+'{% endif %}'
+
+// Auto-refresh des données toutes les 30 secondes (optionnel)
+let refreshInterval = setInterval(function() {
+    if (!document.hidden) {
+        fetch(`/collector/gas/api/order-status/${orderId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status_changed) {
+                    if (confirm('Le statut de la commande a changé. Recharger la page ?')) {
+                        location.reload();
+                    }
+                }
+            });
+    }
+}, 30000);
+
+// Nettoyer l'intervalle quand on quitte la page
+window.addEventListener('beforeunload', function() {
+    clearInterval(refreshInterval);
+});
+</script>
+{% endblock %}

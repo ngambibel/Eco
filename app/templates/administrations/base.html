@@ -36,6 +36,7 @@
             color: white;
             min-height: 100vh;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
         }
         
         .sidebar .nav-link {
@@ -165,6 +166,14 @@
                                 Chiffre d'Affaires
                             </a>
                         </li>
+
+
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'gaz' in request.path %}active{% endif %}" href="{% url 'admin_gaz_dashboard' %}">
+                            <i class="fas fa-fire"></i>
+                            Distribution de Gaz
+                        </a>
+</li>
                         
                         
                         <!-- Section Administration -->

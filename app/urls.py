@@ -3,6 +3,8 @@ from django.urls import path
 
 from EcoCity import settings
 from django.conf.urls.static import static
+
+from app import gaz_views, gaz_admin_views
 from . import views, canal, admins, collecte_admin, client_admin, collectors
 
 
@@ -196,6 +198,59 @@ path('administrations/export-clients-inactifs-separe/',
     path('api/stats/', collectors.api_collection_stats, name='api_collection_stats'),
     path('api/collection/<uuid:collection_id>/start/', collectors.api_start_collection, name='api_start_collection'),
     path('api/collection/<uuid:collection_id>/complete/', collectors.api_complete_collection, name='api_complete_collection'),
+
+    # urls pour les commandes rapides de gaz
+    path('api/gas/products/', gaz_views.get_gas_products, name='api_gas_products'),
+    path('api/gas/quick-order/', gaz_views.quick_gas_order, name='api_quick_gas_order'),
+
+
+    # URLs pour la gestion du gaz par les collecteurs
+    path('collector/gas/today/', gaz_views.gas_deliveries_today, name='gas_deliveries_today'),
+    path('collector/gas/assigned/', gaz_views.gas_deliveries_assigned, name='gas_deliveries_assigned'),
+    path('collector/gas/history/', gaz_views.gas_delivery_history, name='gas_delivery_history'),
+    path('collector/gas/inventory/', gaz_views.gas_inventory, name='gas_inventory'),
+    path('collector/gas/delivery/<uuid:order_id>/', gaz_views.gas_delivery_detail, name='gas_delivery_detail'),
+    path('collector/gas/delivery/<uuid:order_id>/start/', gaz_views.start_gas_delivery, name='start_gas_delivery'),
+    path('collector/gas/delivery/<uuid:order_id>/complete/', gaz_views.complete_gas_delivery, name='complete_gas_delivery'),
+    path('collector/gas/delivery/<uuid:order_id>/location/', gaz_views.update_delivery_location, name='update_delivery_location'),
+    path('collector/gas/scan-cylinder/', gaz_views.scan_cylinder_qr, name='scan_cylinder_qr'),
+    path('collector/gas/api/stats/', gaz_views.gas_delivery_stats_api, name='gas_delivery_stats_api'),
+
+     path('collector/gas/delivery/<uuid:order_id>/update-status/', 
+         gaz_views.update_gas_order_status, 
+         name='update_gas_order_status'),
+    
+    path('collector/gas/delivery/<uuid:order_id>/report-problem/', 
+         gaz_views.report_delivery_problem, 
+         name='report_delivery_problem'),
+    
+    path('collector/gas/api/order-status/<uuid:order_id>/', 
+         gaz_views.check_order_status_api, 
+         name='check_order_status_api'),
+
+
+     # Administration Gaz
+    path('admin-gaz/dashboard/', gaz_admin_views.admin_gaz_dashboard, name='admin_gaz_dashboard'),
+    path('admin-gaz/products/', gaz_admin_views.admin_gaz_products, name='admin_gaz_products'),
+    path('admin-gaz/orders/', gaz_admin_views.admin_gaz_orders, name='admin_gaz_orders'),
+    path('admin-gaz/orders/<uuid:order_id>/', gaz_admin_views.admin_gaz_order_detail, name='admin_gaz_order_detail'),
+    path('admin-gaz/cylinders/', gaz_admin_views.admin_gaz_cylinders, name='admin_gaz_cylinders'),
+    path('admin-gaz/inventory/', gaz_admin_views.admin_gaz_inventory, name='admin_gaz_inventory'),
+    path('admin-gaz/promotions/', gaz_admin_views.admin_gaz_promotions, name='admin_gaz_promotions'),
+    
+    # Actions AJAX
+    path('admin-gaz/create-order/', gaz_admin_views.admin_gaz_create_order, name='admin_gaz_create_order'),
+    path('admin-gaz/products/<uuid:product_id>/update-stock/', gaz_admin_views.admin_gaz_update_stock, name='admin_gaz_update_stock'),
+    path('admin-gaz/orders/<uuid:order_id>/assign/', gaz_admin_views.admin_gaz_assign_order, name='admin_gaz_assign_order'),
+    path('admin-gaz/export-orders/', gaz_admin_views.admin_gaz_export_orders, name='admin_gaz_export_orders'),
+    
+    # API
+    path('api/gas/products/<uuid:product_id>/', gaz_admin_views.api_gas_product_detail, name='api_gas_product_detail'),
+
+    path('admin-gaz/products/add-ajax/', gaz_admin_views.admin_gaz_add_product_ajax, name='admin_gaz_add_product_ajax'),
+    path('admin-gaz/products/<uuid:product_id>/update/', gaz_admin_views.admin_gaz_update_product, name='admin_gaz_update_product'),
+    path('admin-gaz/products/<uuid:product_id>/delete/', gaz_admin_views.admin_gaz_delete_product, name='admin_gaz_delete_product'),
+    path('admin-gaz/products/<uuid:product_id>/update-stock/', gaz_admin_views.admin_gaz_update_stock, name='admin_gaz_update_stock'),
 
     
 ]
