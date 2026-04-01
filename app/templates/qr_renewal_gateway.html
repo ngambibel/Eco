@@ -713,6 +713,14 @@
                     <span class="info-label">Client:</span>
                     <span class="info-value">{{ subscription.user.get_full_name|default:subscription.user.username }}</span>
                 </div>
+                <div class="info-item">
+                    <span class="info-label">contact:</span>
+                    <span class="info-value">{{ subscription.user.phone|default:"Non renseigné" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">adresse:</span>
+                    <span class="info-value">{{ subscription.address|default:"Non renseignée" }}</span>
+                </div>
                 {% if subscription.end_date %}
                 <div class="info-item">
                     <span class="info-label">Fin abonnement actuel:</span>
@@ -742,15 +750,8 @@
                 <strong>
                     {% if bonus_info.is_eligible %}
                         🎁vous etes élligible au Bonus spécial réabonnement ! <br>
-                        Continuer de vous réabonner avant la date de fin d'abonnement pour gagner des semaines de collectes gratuites. <br>
-                        EcoCity vous remercie pour votre confiance 
-
-                        <br>
-                        <br>
-
-                        Si vous souhaitez vous reabonner pour 1 mois vous devez vous reabonner les deux prochaine 
-                        fois avant la date de fin pour gagner ce bonus de fidelité de 1 semaine gratuite pour chaque reabonnement de 3 mois. <br>
-                         Vous pouvez aussi choisir de vous reabonner pour 3 mois dès maintenant pour bénéficier de ce bonus .
+                        Continuer de vous réabonner avant la date de fin d'abonnement pour gagner des semaines de collectes gratuites.
+                        EcoCity vous remercie pour votre confiance <br>
                     {% else %}
                         ℹ️ desolé vous n'etes pas élligible au bonus de reabonement par QR code 
                          car votre votre abonnement à deja expiré. <br>
@@ -760,9 +761,8 @@
                 </strong>
                 <p style="margin-top: 5px; margin-bottom: 0;">
                     {% if bonus_info.is_eligible %}
-                        Si vous choisissez 3 mois, vous bénéficierez d'<strong>1 semaine gratuite</strong> supplémentaire !
-                        Votre abonnement actuel étant encore actif (jusqu'au {{ subscription.end_date|date:"d/m/Y" }}), 
-                        le bonus s'appliquera à la fin de la période en cours.
+                        Votre abonnement actuel est actif et se termine le {{ bonus_info.current_end_date|date:"d/m/Y" }}. <br>
+                        En vous réabonnant pour 3 mois avant cette date, vous bénéficierez d'une semaine de collecte gratuite en plus de votre abonnement.
                     {% else %}
                         {% if bonus_info.reason == "expired" %}
                             Votre abonnement est déjà expiré. Le bonus d'1 semaine pour 3 mois ne s'applique pas.
@@ -877,8 +877,7 @@
                         <i class="fab fa-whatsapp"></i> +237 699 99 99 99
                     </a>
                     </center><br>
-                    un de nos agents se fera un plaisir de vous assister dans les 15 min  pour finaliser votre réabonnement et vous faire <br>
-                    bénéficier de nos services de collecte d'ordures ménagères.
+                    
                     
                 </h3>
             </form>

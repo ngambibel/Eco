@@ -37,6 +37,11 @@
         color: white;
     }
     
+    .withdrawal-card {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+    
     .chart-container {
         background: white;
         border-radius: 12px;
@@ -62,6 +67,41 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Styles pour le modal de retrait */
+    .token-input-container {
+        position: relative;
+    }
+    
+    .token-input-container input {
+        padding-right: 100px;
+    }
+    
+    .token-helper {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .withdrawal-step {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .security-icon {
+        font-size: 3rem;
+        color: #ffc107;
+        margin-bottom: 1rem;
     }
 </style>
 {% endblock %}
@@ -153,6 +193,31 @@
                             <i class="fas fa-user-check me-1"></i>
                             Clients actifs
                         </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nouvelle ligne pour le bouton de retrait -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card stat-card withdrawal-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title text-white mb-2">
+                                <i class="fas fa-hand-holding-usd me-2"></i>
+                                Opérations de Retrait
+                            </h5>
+                            <p class="text-white-50 mb-0">
+                                Effectuez des retraits d'argent pour les utilisateurs
+                            </p>
+                        </div>
+                        <button class="btn btn-light btn-lg" onclick="openWithdrawalModal()">
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            Effectuer un Retrait
+                        </button>
                     </div>
                 </div>
             </div>
@@ -297,10 +362,406 @@
         </div>
     </div>
 </div>
+
+<!-- Modal pour le retrait d'argent -->
+<div class="modal fade" id="withdrawalModal" tabindex="-1" aria-labelledby="withdrawalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title" id="withdrawalModalLabel" style="color: blue;">
+                    <i class="fas fa-hand-holding-usd me-2"></i>
+                    Effectuer un Retrait d'Argent
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Étape 1: Validation du token -->
+                <div id="tokenStep" class="withdrawal-step">
+                    <div class="text-center mb-4">
+                        <div class="security-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h5 class="mb-3">Vérification de sécurité requise</h5>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Cette opération est sécurisée et nécessite un token d'autorisation.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="securityToken" class="form-label fw-bold">
+                            <i class="fas fa-key me-2"></i>
+                            Token de sécurité
+                        </label>
+                        <div class="token-input-container">
+                            <input type="password" class="form-control form-control-lg" id="securityToken" 
+                                   placeholder="Entrez le token de sécurité" required>
+                        </div>
+                        <div class="token-helper mt-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Contactez l'administrateur système pour obtenir le token
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg w-100" onclick="validateToken()">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Valider le token
+                    </button>
+                </div>
+                
+                <!-- Étape 2: Formulaire de retrait (caché initialement) -->
+                <div id="withdrawalStep" class="withdrawal-step" style="display: none;">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-money-bill-wave fa-3x text-success mb-3"></i>
+                        <h5 class="mb-2">Formulaire de Retrait</h5>
+                        <p class="text-muted">Remplissez les informations pour effectuer le retrait</p>
+                    </div>
+                    
+                    <form id="withdrawalForm">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="userId" class="form-label fw-bold">
+                                    <i class="fas fa-user me-2"></i>
+                                    Utilisateur
+                                </label>
+                                <select class="form-select form-select-lg" id="userId" required>
+                                    <option value="">Sélectionner un utilisateur</option>
+                                </select>
+                                <div class="form-text">Choisissez l'utilisateur qui recevra le retrait</div>
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="phoneNumber" class="form-label fw-bold">
+                                    <i class="fas fa-phone me-2"></i>
+                                    Numéro de téléphone
+                                </label>
+                                <input type="tel" class="form-control form-control-lg" id="phoneNumber" 
+                                       placeholder="6XXXXXXXX ou 2376XXXXXXXX" required>
+                                <div class="form-text">Format: 6XXXXXXXX ou 2376XXXXXXXX (ex: 697123456)</div>
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="amount" class="form-label fw-bold">
+                                    <i class="fas fa-coins me-2"></i>
+                                    Montant (FCFA)
+                                </label>
+                                <input type="number" class="form-control form-control-lg" id="amount" 
+                                       min="5" max="1000000" step="100" required>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Minimum: 5 FCFA | Maximum: 1,000,000 FCFA
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="description" class="form-label fw-bold">
+                                    <i class="fas fa-align-left me-2"></i>
+                                    Description (Optionnel)
+                                </label>
+                                <textarea class="form-control" id="description" rows="3" 
+                                          placeholder="Motif du retrait..."></textarea>
+                                <div class="form-text">Précisez la raison du retrait si nécessaire</div>
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+                                <label for="amount" class="form-label fw-bold">
+                                    <i class="fas fa-lock me-2"></i>
+                                    Mot de passe de l'utilisateur selectioné :
+                                </label>
+                                <input type="password" class="form-control form-control-lg" id="password" 
+                                        required>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    votre mot de passe est requis pour confirmer le retrait
+                                </div>
+                            </div>
+                            
+                            <!-- Récapitulatif -->
+                            <div class="col-md-12 mt-3">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Récapitulatif :</strong>
+                                    <div id="recap" class="mt-2">
+                                        <span class="badge bg-secondary me-2">Montant: 0 FCFA</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Zone de message -->
+                <div id="withdrawalMessage" style="display: none;" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    Annuler
+                </button>
+                <button type="button" class="btn btn-success" id="confirmWithdrawalBtn" style="display: none;" onclick="submitWithdrawal()">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Confirmer le retrait
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Variables globales
+let currentStep = 1;
+
+// Fonction pour ouvrir le modal de retrait
+function openWithdrawalModal() {
+    // Réinitialiser le formulaire
+    resetWithdrawalForm();
+    
+    // Charger la liste des utilisateurs
+    loadUsers();
+    
+    // Ouvrir le modal
+    const modal = new bootstrap.Modal(document.getElementById('withdrawalModal'));
+    modal.show();
+}
+
+// Fonction pour réinitialiser le formulaire
+function resetWithdrawalForm() {
+    document.getElementById('tokenStep').style.display = 'block';
+    document.getElementById('withdrawalStep').style.display = 'none';
+    document.getElementById('confirmWithdrawalBtn').style.display = 'none';
+    document.getElementById('withdrawalMessage').style.display = 'none';
+    document.getElementById('securityToken').value = '';
+    document.getElementById('userId').value = '';
+    document.getElementById('phoneNumber').value = '';
+    document.getElementById('amount').value = '';
+    document.getElementById('description').value = '';
+    document.getElementById('password').value = '';
+    currentStep = 1;
+}
+
+// Fonction pour charger la liste des utilisateurs
+function loadUsers() {
+    fetch('/api/users-for-withdrawal/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById('userId');
+                select.innerHTML = '<option value="">Sélectionner un utilisateur</option>';
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    const userName = `${user.first_name} ${user.last_name}${user.username}`.trim();
+                    option.textContent = userName ? `${userName} (${user.username}) - ${user.email}` : `${user.username} - ${user.email}`;
+                    select.appendChild(option);
+                });
+            } else {
+                console.error('Erreur lors du chargement des utilisateurs:', data.message);
+                showMessage('Impossible de charger la liste des utilisateurs', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showMessage('Erreur de connexion au serveur', 'danger');
+        });
+}
+
+// Fonction pour valider le token
+function validateToken() {
+    const token = document.getElementById('securityToken').value;
+    const expectedToken = '{{ token }}'; // À configurer dans les paramètres
+    
+    if (!token) {
+        showMessage('Veuillez entrer le token de sécurité', 'danger');
+        return;
+    }
+    
+    if (token !== expectedToken) {
+        showMessage('Token de sécurité invalide. Veuillez vérifier et réessayer.', 'danger');
+        // Animation d'erreur
+        const tokenInput = document.getElementById('securityToken');
+        tokenInput.classList.add('is-invalid');
+        setTimeout(() => {
+            tokenInput.classList.remove('is-invalid');
+        }, 3000);
+        return;
+    }
+    
+    // Token valide, passer à l'étape 2
+    document.getElementById('tokenStep').style.display = 'none';
+    document.getElementById('withdrawalStep').style.display = 'block';
+    document.getElementById('confirmWithdrawalBtn').style.display = 'block';
+    document.getElementById('withdrawalMessage').style.display = 'none';
+    currentStep = 2;
+    
+    // Ajouter un événement pour mettre à jour le récapitulatif
+    const amountInput = document.getElementById('amount');
+    amountInput.addEventListener('input', updateRecap);
+    
+    // Animation
+    document.getElementById('withdrawalStep').style.animation = 'none';
+    setTimeout(() => {
+        document.getElementById('withdrawalStep').style.animation = 'fadeIn 0.5s ease-in-out';
+    }, 10);
+}
+
+// Fonction pour mettre à jour le récapitulatif
+function updateRecap() {
+    const amount = document.getElementById('amount').value;
+    const amountNum = parseFloat(amount);
+    
+    if (!isNaN(amountNum) && amountNum > 0) {
+        const formattedAmount = amountNum.toLocaleString('fr-FR');
+        document.getElementById('recap').innerHTML = `
+            <span class="badge bg-secondary me-2">Montant: ${formattedAmount} FCFA</span>
+            <span class="badge bg-info">Frais: 0 FCFA</span>
+            <span class="badge bg-success">Total: ${formattedAmount} FCFA</span>
+        `;
+    } else {
+        document.getElementById('recap').innerHTML = '<span class="badge bg-secondary">Montant: 0 FCFA</span>';
+    }
+}
+
+// Fonction pour soumettre le retrait
+function submitWithdrawal() {
+    const userId = document.getElementById('userId').value;
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    const amount = document.getElementById('amount').value;
+    const description = document.getElementById('description').value;
+    const token = document.getElementById('securityToken').value;
+    const password = document.getElementById('password').value;
+    
+    // Validation des champs
+    if (!userId) {
+        showMessage('Veuillez sélectionner un utilisateur', 'danger');
+        document.getElementById('userId').focus();
+        return;
+    }
+    
+    if (!phoneNumber) {
+        showMessage('Veuillez entrer un numéro de téléphone', 'danger');
+        document.getElementById('phoneNumber').focus();
+        return;
+    }
+    
+    // Validation du numéro de téléphone
+    const phoneRegex = /^(237)?[6-9][0-9]{8}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+        showMessage('Numéro de téléphone invalide. Format attendu: 6XXXXXXXX ou 2376XXXXXXXX', 'danger');
+        document.getElementById('phoneNumber').focus();
+        return;
+    }
+    
+    if (!amount || amount < 5 || amount > 100000000) {
+        showMessage('Montant invalide. Minimum 5 FCFA, maximum 1,000,000 FCFA', 'danger');
+        document.getElementById('amount').focus();
+        return;
+    }
+    
+    // Confirmation utilisateur
+    const amountFormatted = parseFloat(amount).toLocaleString('fr-FR');
+    const confirmMessage = `Êtes-vous sûr de vouloir effectuer un retrait de ${amountFormatted} FCFA pour cet utilisateur ?`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // Désactiver le bouton et afficher le chargement
+    const confirmBtn = document.getElementById('confirmWithdrawalBtn');
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement en cours...';
+    
+    // Envoyer la requête
+    fetch('/api/process-withdrawal/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            phone_number: phoneNumber,
+            amount: parseFloat(amount),
+            description: description,
+            security_token: token,
+            password: password
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            // Désactiver le formulaire
+            disableForm(true);
+            
+            // Fermer le modal après 2 secondes et recharger
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('withdrawalModal'));
+                modal.hide();
+                // Recharger la page pour mettre à jour les données
+                location.reload();
+            }, 2000);
+        } else {
+            showMessage(data.message, 'danger');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = originalText;
+            disableForm(false);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showMessage('Une erreur est survenue lors du traitement du retrait. Veuillez réessayer.', 'danger');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalText;
+        disableForm(false);
+    });
+}
+
+// Fonction pour désactiver/activer le formulaire
+function disableForm(disabled) {
+    const inputs = document.querySelectorAll('#withdrawalForm input, #withdrawalForm select, #withdrawalForm textarea');
+    inputs.forEach(input => {
+        input.disabled = disabled;
+    });
+}
+
+// Fonction pour afficher les messages
+function showMessage(message, type) {
+    const messageDiv = document.getElementById('withdrawalMessage');
+    messageDiv.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : (type === 'danger' ? 'exclamation-circle' : 'info-circle')} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    messageDiv.style.display = 'block';
+    
+    // Faire défiler jusqu'au message
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Auto-fermeture après 5 secondes pour les messages de succès
+    if (type === 'success') {
+        setTimeout(() => {
+            const alert = messageDiv.querySelector('.alert');
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 150);
+            }
+        }, 5000);
+    }
+}
+
+// Fonction pour récupérer le token CSRF
+function getCsrfToken() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfToken ? csrfToken.value : '';
+}
+
+// Graphiques existants
 document.addEventListener('DOMContentLoaded', function() {
     // Graphique des revenus mensuels
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');
@@ -360,11 +821,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const typeChart = new Chart(typeCtx, {
         type: 'doughnut',
         data: {
-            labels: ['{% for item in revenue_by_type %}{{item.revenue_type|title }}{% endfor %}'
-            ],
+            labels: ['{% for item in revenue_by_type %}{{ item.revenue_type|title }}{% if not forloop.last %}, {% endif %}{% endfor %}'],
             datasets: [{
-                data: ['{% for item in revenue_by_type %}{{item.total }}{% endfor %}'
-                ],
+                data: ['{% for item in revenue_by_type %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}'],
                 backgroundColor: [
                     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
                 ],

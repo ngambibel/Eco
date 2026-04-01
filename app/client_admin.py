@@ -33,7 +33,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, mm
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
-from reportlab.lib.colors import black, grey, HexColor
+from reportlab.lib.colors import black, gray, grey, HexColor
 from PIL import Image as PILImage
 import qrcode
 from django.core.files.storage import default_storage
@@ -123,15 +123,14 @@ def gestion_abonnements(request):
 def exporter_tous_qrcodes_pdf(request):
     """
     Exporte tous les QR codes des abonnements dans un fichier PDF format A4
-    avec 6 QR codes par page, classés par ordre alphabétique des utilisateurs
+    avec 9 QR codes par page (3x3), classés par ordre alphabétique des utilisateurs
     """
-    # Récupérer tous les abonnements actifs avec leurs QR codes
+    # Récupérer tous les abonnements avec leurs QR codes
     subscriptions = Subscription.objects.filter(
         qr_code__isnull=False
     ).select_related('user', 'plan', 'qr_code').order_by('user__last_name', 'user__first_name')
     
     if not subscriptions.exists():
-        # Si aucun abonnement avec QR code, essayer de récupérer ceux qui ont un QR code via l'OneToOne
         subscriptions = Subscription.objects.filter(
             status='active',
             qr_code__isnull=False
@@ -146,14 +145,30 @@ def exporter_tous_qrcodes_pdf(request):
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4  # 595.27 x 841.89 points (environ 21cm x 29.7cm)
     
-    # Paramètres de mise en page
-    margin = 1.5 * cm
-    qr_width = (width - 2 * margin) / 3  # 3 QR codes par ligne
-    qr_height = (height - 2 * margin) / 2  # 2 lignes par page
+    # Paramètres de mise en page pour 9 QR codes (3x3) - Commencer en haut à gauche
+    margin_top = 1.2 * cm      # Marge supérieure
+    margin_left = 1.2 * cm     # Marge gauche
+    margin_bottom = 1.2 * cm   # Marge inférieure
+    margin_right = 1.2 * cm    # Marge droite
     
-    # Chemin du logo (à adapter selon votre structure)
+    # Espacement entre les QR codes
+    spacing_x = 0.4 * cm
+    spacing_y = 0.4 * cm
+    
+    # Dimensions pour chaque QR code (3 colonnes, 3 lignes)
+    available_width = width - margin_left - margin_right
+    available_height = height - margin_top - margin_bottom
+    
+    qr_width = (available_width - (2 * spacing_x)) / 3
+    qr_height = (available_height - (2 * spacing_y)) / 3
+    
+    # Ajuster pour un meilleur ratio (les QR codes sont carrés)
+    qr_size = min(qr_width, qr_height)
+    qr_width = qr_size
+    qr_height = qr_size
+    
+    # Chemin du logo
     logo_path = None
-    # Essayez de localiser le logo dans différents emplacements possibles
     possible_logo_paths = [
         os.path.join(settings.MEDIA_ROOT, 'logo.png'),
         os.path.join(settings.STATIC_ROOT, 'images', 'logo.png'),
@@ -166,16 +181,15 @@ def exporter_tous_qrcodes_pdf(request):
             logo_path = path
             break
     
-    # Si aucun logo trouvé, on utilisera un texte
     logo_found = logo_path is not None
     
-    # Fonction pour générer l'image QR code
+    # Fonction pour générer l'image QR code avec taille optimisée
     def generate_qr_image(data, size=200):
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=10,
-            border=2,
+            box_size=8,  # Réduit pour un QR plus compact
+            border=1,    # Bordure réduite
         )
         qr.add_data(data)
         qr.make(fit=True)
@@ -184,150 +198,147 @@ def exporter_tous_qrcodes_pdf(request):
     
     # Compter le nombre total de QR codes
     total_qr_codes = subscriptions.count()
-    current_page = 1
-    qr_index = 0
-    
-    # Créer un dictionnaire pour stocker temporairement les images
     temp_images = []
     
     try:
-        # Pour chaque abonnement, préparer l'image QR
+        # Préparer toutes les images QR
         for subscription in subscriptions:
-            # Récupérer les informations pour le QR code
             user = subscription.user
             user_name = user.get_full_name() or user.username
             user_phone = user.phone or "Non renseigné"
             
             # Données à encoder dans le QR code
             if hasattr(subscription, 'qr_code') and subscription.qr_code:
-                # Utiliser l'URL de renouvellement existante
                 qr_data = subscription.qr_code.get_renewal_url()
             else:
-                # Créer une URL par défaut
                 qr_data = f"{settings.SITE_URL}/subscription/{subscription.id}/"
             
             # Générer l'image QR
-            qr_img = generate_qr_image(qr_data, size=300)
+            qr_img = generate_qr_image(qr_data, size=200)
             
             # Sauvegarder temporairement l'image
             img_buffer = BytesIO()
             qr_img.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             
-            # Ouvrir avec PIL pour redimensionner si nécessaire
+            # Ouvrir avec PIL pour redimensionner
             pil_img = PILImage.open(img_buffer)
             
             # Convertir en mode RGB si nécessaire
             if pil_img.mode != 'RGB':
                 pil_img = pil_img.convert('RGB')
             
-            # Sauvegarder temporairement
+            # Redimensionner pour une meilleure qualité
+            target_size = int(qr_width * 2)  # 2x pour meilleure résolution
+            pil_img = pil_img.resize((target_size, target_size), PILImage.Resampling.LANCZOS)
+            
+            # Sauvegarder
             temp_img = BytesIO()
-            pil_img.save(temp_img, format='PNG')
+            pil_img.save(temp_img, format='PNG', optimize=True)
             temp_img.seek(0)
             
             temp_images.append({
                 'img': temp_img,
                 'user_name': user_name,
                 'user_phone': user_phone,
-                'user': user
+                'subscription': subscription
             })
         
-        # Trier les images par nom d'utilisateur (déjà trié par la requête)
-        # Mais on garde le tri au cas où
+        # Calculer le nombre de pages nécessaires
+        qr_per_page = 12
+        total_pages = (len(temp_images) + qr_per_page - 1) // qr_per_page
+        current_page = 1
         
         # Parcourir toutes les images et les placer sur les pages
         for idx, temp_data in enumerate(temp_images):
-            # Calculer la position sur la page
-            col = idx % 3
-            row = (idx // 3) % 2
+            # Calculer la position dans la grille 3x3
+            position_in_page = idx % qr_per_page
+            col = position_in_page % 3
+            row = position_in_page // 3
             
-            x = margin + col * qr_width
-            y = height - margin - (row + 1) * qr_height + 0.5*cm  # Ajustement
+            # Calculer les coordonnées - Commencer en haut à gauche
+            # La première ligne commence à margin_top, pas centrée
+            x = margin_left + col * (qr_width + spacing_x)
+            y = height - margin_top - row * (qr_height + spacing_y)
             
-            # Si on commence une nouvelle page (après 6 QR codes)
-            if idx > 0 and idx % 6 == 0:
-                p.showPage()  # Nouvelle page
+            # Si on commence une nouvelle page
+            if idx > 0 and position_in_page == 0:
+                # Ajouter numéro de page sur la page précédente
+                p.setFont("Helvetica", 8)
+                p.setFillColor(gray)
+                p.drawRightString(width - margin_right, margin_bottom / 2, f"Page {current_page}")
+                p.showPage()
                 current_page += 1
             
-            # Dessiner le cadre du QR code
-            p.setStrokeColor(grey)
-            p.setLineWidth(0.5)
-            p.rect(x, y - qr_height + 1*cm, qr_width - 0.5*cm, qr_height - 1*cm, stroke=1, fill=0)
+            # Dessiner le cadre léger
+            p.setStrokeColor(gray)
+            p.setLineWidth(0.3)
+            p.rect(x, y - qr_height, qr_width, qr_height, stroke=1, fill=0)
             
-            # Ajouter le logo en haut du cadre
+            # Zone logo (en haut du cadre)
+            logo_height = 1 * cm
+            logo_width = 1.5 * cm
+            
             if logo_found:
                 try:
                     logo = ImageReader(logo_path)
-                    logo_width = 2.5*cm
-                    logo_height = 2.5*cm
-                    logo_x = x + (qr_width - 0.5*cm - logo_width) / 2
-                    logo_y = y - 0.5*cm
-                    p.drawImage(logo, logo_x, logo_y - logo_height + 0.3*cm, 
-                                width=logo_width, height=logo_height, 
-                                preserveAspectRatio=True, mask='auto')
-                except Exception as e:
-                    # En cas d'erreur avec le logo, écrire du texte
-                    p.setFont("Helvetica-Bold", 12)
-                    p.setFillColor(HexColor("#7B1212"))  # Vert ECOCITY
-                    p.drawCentredString(x + (qr_width - 0.5*cm) / 2, y - 0.3*cm, "ECOCITY")
+                    logo_x = x + (qr_width - logo_width) / 2
+                    logo_y = y - logo_height - 0.1 * cm
+                    p.drawImage(logo, logo_x, logo_y, 
+                              width=logo_width, height=logo_height, 
+                              preserveAspectRatio=True, mask='auto')
+                except:
+                    # Fallback: texte
+                    p.setFont("Helvetica-Bold", 8)
+                    p.setFillColor(HexColor("#F45A02"))
+                    p.drawCentredString(x + qr_width / 2, y - 0.2 * cm, "ECOCITY")
                     p.setFillColor(black)
             else:
-                # Pas de logo, écrire le nom de l'application
-                p.setFont("Helvetica-Bold", 12)
-                p.setFillColor(HexColor("#F45A02"))  # Vert ECOCITY
-                p.drawCentredString(x + (qr_width - 0.5*cm) / 2, y - 0.3*cm, "ECOCITY")
+                p.setFont("Helvetica-Bold", 8)
+                p.setFillColor(HexColor("#F45A02"))
+                p.drawCentredString(x + qr_width / 2, y - 0.2 * cm, "ECOCITY")
                 p.setFillColor(black)
             
-            # Charger l'image depuis le buffer temporaire
+            # Charger l'image QR
             temp_data['img'].seek(0)
             img_reader = ImageReader(temp_data['img'])
             
-            # Dimensions du QR code dans le PDF
-            qr_img_width = 4*cm
-            qr_img_height = 4*cm
-            qr_img_x = x + (qr_width - 0.5*cm - qr_img_width) / 2
-            qr_img_y = y - 2*cm - qr_img_height
+            # Dimensions du QR code dans le PDF (plus petit pour plus d'espace)
+            qr_display_size = qr_width * 0.65
+            qr_img_x = x + (qr_width - qr_display_size) / 2
+            qr_img_y = y - qr_height + (qr_height - qr_display_size) / 2
             
             # Dessiner le QR code
             p.drawImage(img_reader, qr_img_x, qr_img_y, 
-                       width=qr_img_width, height=qr_img_height, 
+                       width=qr_display_size, height=qr_display_size, 
                        preserveAspectRatio=True, mask='auto')
             
-            # Ajouter les informations utilisateur en bas
-            p.setFont("Helvetica", 8)
+            # Informations utilisateur (compactes)
+            p.setFont("Helvetica", 7)
             p.setFillColor(black)
             
-            # Nom de l'utilisateur
+            # Nom de l'utilisateur (une seule ligne)
             user_name_display = temp_data['user_name']
-            if len(user_name_display) > 25:
-                user_name_display = user_name_display[:22] + "..."
             
-            p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 0.5*cm, 
-                               f"{user_name_display}")
+           
             
-            # Téléphone
-            phone_display = f"Tel: {temp_data['user_phone']}"
-            if len(phone_display) > 20:
-                phone_display = phone_display[:17] + "..."
+            # Position du texte en bas
+            text_y = qr_img_y - 0.3 * cm
             
-            p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 1*cm, 
-                               phone_display)
+            # Afficher le nom
+            p.drawCentredString(x + qr_width / 2, text_y, user_name_display)
             
-            
-            # Optionnel : ajouter le type de plan ou l'ID
-            if hasattr(subscription, 'plan') and subscription.plan:
-                plan_display = subscription.plan.name
-                if len(plan_display) > 15:
-                    plan_display = plan_display[:12] + "..."
+            # Téléphone (optionnel, plus petit)
+            if temp_data['user_phone'] != "Non renseigné":
+                phone_display = temp_data['user_phone']
+                
                 p.setFont("Helvetica", 6)
-                p.drawCentredString(x + (qr_width - 0.5*cm) / 2, qr_img_y - 1.3*cm, 
-                                   plan_display)
+                p.setFillColor(gray)
         
-        # Ajouter un numéro de page
+        # Ajouter numéro de page sur la dernière page
         p.setFont("Helvetica", 8)
-        p.setFillColor(grey)
-        p.drawRightString(width - margin, margin/2, f"Page {current_page}")
+        p.setFillColor(gray)
+        p.drawRightString(width - margin_right, margin_bottom / 2, f"Page {current_page}")
         
         p.save()
         
@@ -342,7 +353,6 @@ def exporter_tous_qrcodes_pdf(request):
             temp_data['img'].close()
     
     return response
-
 
 @staff_member_required
 def exporter_qrcodes_pdf_par_zone(request, zone_id=None):

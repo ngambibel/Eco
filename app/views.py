@@ -9,6 +9,8 @@ from .forms import CustomUserCreationForm, CustomAuthenticationForm
 from .models import CustomUser as User
 import re
 from .models import *
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth import update_session_auth_hash
 import json
 import math
 from datetime import datetime, timedelta
@@ -558,6 +560,116 @@ def subscriptions_dashboard(request):
         'active_subscriptions_count': subscriptions.filter(status='active').count(),
     }
     return render(request, 'subscriptions_dashboard.html', context)
+
+
+
+# vue pour modifier le profil 
+
+@login_required
+@require_POST
+def update_profile(request):
+    """
+    Vue AJAX pour mettre à jour le profil utilisateur
+    """
+    try:
+        user = request.user
+        
+        # Récupérer les données du formulaire
+        username = request.POST.get('username')
+        first_name = request.POST.get('first_name', '')
+        last_name = request.POST.get('last_name', '')
+        email = request.POST.get('email')
+        phone = request.POST.get('phone', '')
+        city_id = request.POST.get('city')
+        
+        # Récupérer les champs de mot de passe
+        current_password = request.POST.get('current_password')
+        new_password = request.POST.get('new_password')
+        
+        # Validation du username
+        if username:
+            if CustomUser.objects.exclude(id=user.id).filter(username=username).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Ce nom d\'utilisateur est déjà utilisé.'
+                }, status=400)
+            user.username = username
+        
+        # Validation de l'email
+        if email:
+            if CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Cette adresse email est déjà utilisée.'
+                }, status=400)
+            user.email = email
+        
+        # Mettre à jour les autres champs
+        user.first_name = first_name
+        user.last_name = last_name
+        
+        if phone:
+            user.phone = phone
+        
+        if city_id:
+            try:
+                city = City.objects.get(id=city_id)
+                user.city = city
+            except City.DoesNotExist:
+                pass
+        
+        # Gérer le changement de mot de passe
+        if new_password and current_password:
+            # Vérifier l'ancien mot de passe
+            if not check_password(current_password, user.password):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Mot de passe actuel incorrect.'
+                }, status=400)
+            
+            # Vérifier la longueur du nouveau mot de passe
+            if len(new_password) < 6:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Le nouveau mot de passe doit contenir au moins 6 caractères.'
+                }, status=400)
+            
+            # Changer le mot de passe
+            user.set_password(new_password)
+        
+        # Sauvegarder les modifications
+        user.save()
+        
+        # Mettre à jour la session si le mot de passe a été changé
+        if new_password:
+            update_session_auth_hash(request, user)
+        
+        # Préparer les données de réponse
+        user_data = {
+            'id': str(user.id),
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'full_name': user.get_full_name(),
+            'email': user.email,
+            'phone': str(user.phone) if user.phone else '',
+            'city': user.city.city if user.city else '',
+            'city_id': str(user.city.id) if user.city else None,
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Profil mis à jour avec succès.',
+            'user': user_data
+        })
+        
+    except Exception as e:
+        print(f"Error updating profile: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Une erreur est survenue lors de la mise à jour du profil.'
+        }, status=500)
+
 
 @login_required(login_url='login')
 def edit_subscription(request, subscription_id):

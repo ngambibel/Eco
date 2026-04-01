@@ -154,6 +154,7 @@ admin.site.register(Abonnement)
 admin.site.register(RevenueRecord)
 admin.site.register(RevenueSummary)
 admin.site.register(Bonus)
+admin.site.register(Token)
 
 
 

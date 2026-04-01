@@ -57,12 +57,20 @@ class SubscriptionPlan(models.Model):
     )
     
     FREQUENCY_CHOICES = (
-        ('1000', '2000'),
-        ('3000', '1500'),
-        ('2500', '3000'),
-        ('3500', '5000'),
-        ('4000', '4500'),
-        ('10000', '15000'),
+        ('1000', '1000'),
+        ('2000', '2000'),
+        ('1500', '1500'),
+        ('3000', '3000'),
+        ('5000', '5000'),
+        ('5500', '5500'),
+        ('6000', '6000'),
+        ('6500', '6500'),
+        ('7000', '7000'),
+        ('2500', '2500'),
+        ('3500', '3500'),
+        ('4000', '4000'),
+        ('4500', '4500'),
+        ('10000', '10000'),
     )
     
     name = models.CharField(max_length=100, verbose_name="Nom du plan")
@@ -377,8 +385,8 @@ class Address(models.Model):
     postal_code = models.CharField(max_length=20, verbose_name="Code postal")
     country = models.CharField(max_length=100, verbose_name="Pays", default="France")
     zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name='adresses', verbose_name="Zone géographique")
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=14, decimal_places=10, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=14, decimal_places=10, blank=True, null=True)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     lien = models.URLField(blank=True, verbose_name="Lien Google Maps")
@@ -2009,3 +2017,36 @@ def assign_delivery_collector(order_id):
             return collector
     
     return None
+
+
+
+# models pour les retrait 
+class Withdrawal(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'En attente'),
+        ('completed', 'Complété'),
+        ('failed', 'Échoué'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='withdrawals')
+    amount = models.DecimalField(max_digits=10, decimal_places=0)
+    phone_number = models.CharField(max_length=20)
+    reference = models.CharField(max_length=100, unique=True)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Withdrawal {self.reference} - {self.amount} FCFA"
+    
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Token(models.Model):
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"Token for {self.token}"

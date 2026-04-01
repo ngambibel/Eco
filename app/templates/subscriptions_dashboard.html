@@ -22,6 +22,11 @@
         margin-bottom: 10px;
     }
 
+    .profile-btn-container {
+        text-align: right;
+        margin-top: 10px;
+    }
+
     .subscriptions-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -210,12 +215,14 @@
 
     .modal-content {
         background-color: var(--blanc);
-        margin: 10% auto;
+        margin: 5% auto;
         padding: 30px;
         border-radius: 15px;
         width: 90%;
-        max-width: 500px;
+        max-width: 600px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        max-height: 90vh;
+        overflow-y: auto;
     }
 
     .modal-header {
@@ -268,6 +275,10 @@
     .form-control:focus {
         outline: none;
         border-color: var(--orange-cosmique);
+    }
+
+    select.form-control {
+        cursor: pointer;
     }
 
     .payment-amount {
@@ -335,6 +346,25 @@
         display: none;
     }
 
+    .section-divider {
+        border-top: 1px solid var(--gris-clair);
+        margin: 20px 0;
+        padding-top: 15px;
+    }
+
+    .section-title {
+        color: var(--rouge-poupre);
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: var(--gris-fonce);
+        margin-top: 5px;
+    }
+
     @media (max-width: 768px) {
         .subscriptions-grid {
             grid-template-columns: 1fr;
@@ -353,6 +383,10 @@
             width: 95%;
             padding: 20px;
         }
+
+        .profile-btn-container {
+            text-align: center;
+        }
     }
 </style>
 {% endblock %}
@@ -362,6 +396,11 @@
     <div class="dashboard-header">
         <h1>Mes Abonnements</h1>
         <p>Gérez vos abonnements et programmes de collecte</p>
+        <div class="profile-btn-container">
+            <button class="btn btn-primary" onclick="openEditProfileModal()">
+                <i class="fas fa-user-edit"></i> Modifier mon profil
+            </button>
+        </div>
     </div>
 
     <!-- Alertes globales -->
@@ -520,7 +559,6 @@
                         <i class="fas fa-qrcode"></i> QR Code
                     </a>
                 {% endfor %}
-                
             </div>
         </div>
         
@@ -530,17 +568,113 @@
         </div>
         
         <div class="loading-spinner" id="renewalLoading">
-    <div class="spinner"></div>
-    <p>Traitement en cours...</p>
-    <p style="font-size: 0.9rem; margin-top: 10px; color: #666;">
-        <strong>Instructions :</strong><br>
-        • Votre opérateur va vous envoyer une demande de confirmation<br>
-        • Composez le code USSD si demandé :<br>
-        &nbsp;&nbsp;- MTN : <strong>#150*50#</strong><br>
-        &nbsp;&nbsp;- Orange : <strong>*126#</strong><br>
-        • La vérification automatique peut prendre jusqu'à 3 minutes
-    </p>
+            <div class="spinner"></div>
+            <p>Traitement en cours...</p>
+            <p style="font-size: 0.9rem; margin-top: 10px; color: #666;">
+                <strong>Instructions :</strong><br>
+                • Votre opérateur va vous envoyer une demande de confirmation<br>
+                • Composez le code USSD si demandé :<br>
+                &nbsp;&nbsp;- MTN : <strong>#150*50#</strong><br>
+                &nbsp;&nbsp;- Orange : <strong>*126#</strong><br>
+                • La vérification automatique peut prendre jusqu'à 3 minutes
+            </p>
+        </div>
+    </div>
 </div>
+
+<!-- Modal de modification du profil -->
+<div id="editProfileModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Modifier mon profil</h3>
+            <button type="button" class="close-modal" onclick="closeEditProfileModal()">&times;</button>
+        </div>
+        
+        <div id="profileAlert" class="alert" style="display: none;"></div>
+        
+        <form id="editProfileForm" onsubmit="submitProfileUpdate(event)">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_username">Nom d'utilisateur *</label>
+                <input type="text" class="form-control" id="edit_username" name="username" 
+                       value="{{ user.username }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_first_name">Prénom</label>
+                <input type="text" class="form-control" id="edit_first_name" name="first_name" 
+                       value="{{ user.first_name|default:'' }}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_last_name">Nom</label>
+                <input type="text" class="form-control" id="edit_last_name" name="last_name" 
+                       value="{{ user.last_name|default:'' }}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_email">Email *</label>
+                <input type="email" class="form-control" id="edit_email" name="email" 
+                       value="{{ user.email }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_phone">Téléphone</label>
+                <input type="tel" class="form-control" id="edit_phone" name="phone" 
+                       value="{% if user.phone %}{{ user.phone }}{% endif %}">
+                <small class="help-text">Format: 6XXXXXXXX (sans indicatif)</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_city">Ville</label>
+                <select class="form-control" id="edit_city" name="city">
+                    <option value="">Sélectionnez votre ville</option>
+                    {% for city in cities %}
+                        <option value="{{ city.id }}" {% if user.city.id == city.id %}selected{% endif %}>
+                            {{ city.city }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="section-divider">
+                <h4 class="section-title">
+                    <i class="fas fa-key"></i> Changer le mot de passe
+                </h4>
+                <p class="help-text">Laissez vide pour conserver le mot de passe actuel.</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_current_password">Mot de passe actuel</label>
+                <input type="password" class="form-control" id="edit_current_password" name="current_password">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_new_password">Nouveau mot de passe</label>
+                <input type="password" class="form-control" id="edit_new_password" name="new_password">
+                <small class="help-text">Minimum 6 caractères</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="edit_confirm_password">Confirmer le nouveau mot de passe</label>
+                <input type="password" class="form-control" id="edit_confirm_password" name="confirm_password">
+            </div>
+            
+            <div class="subscription-actions" style="justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeEditProfileModal()">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                    <i class="fas fa-save"></i> Enregistrer
+                </button>
+            </div>
+        </form>
+        
+        <div id="profileLoading" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Enregistrement en cours...</p>
+        </div>
     </div>
 </div>
 
@@ -550,11 +684,14 @@
 
 {% block extra_js %}
 <script>
+// ==================== VARIABLES GLOBALES ====================
 let currentSubscriptionId = null;
 let transactionReference = null;
 let statusCheckInterval = null;
 let statusCheckAttempts = 0;
 const MAX_STATUS_CHECKS = 36; // 3 minutes (36 * 5 secondes)
+
+// ==================== FONCTIONS DE RÉABONNEMENT ====================
 
 function openRenewalModal(subscriptionId) {
     console.log('Opening modal for subscription:', subscriptionId);
@@ -672,7 +809,6 @@ async function processRenewalWithPayment() {
 
         console.log('Response status:', response.status);
         
-        // Vérifier si la réponse est du JSON
         const contentType = response.headers.get('content-type');
         console.log('Content-Type:', contentType);
         
@@ -725,10 +861,8 @@ function startStatusChecking() {
     document.getElementById('statusChecking').style.display = 'block';
     statusCheckAttempts = 0;
     
-    // Vérifier le statut toutes les 5 secondes
     statusCheckInterval = setInterval(checkPaymentStatus, 5000);
     
-    // Première vérification immédiate
     setTimeout(checkPaymentStatus, 2000);
 }
 
@@ -741,7 +875,6 @@ async function checkPaymentStatus() {
     statusCheckAttempts++;
     console.log(`Checking payment status for: ${transactionReference} (attempt ${statusCheckAttempts})`);
     
-    // Arrêter après 3 minutes (36 tentatives)
     if (statusCheckAttempts >= MAX_STATUS_CHECKS) {
         console.log('Max status check attempts reached');
         clearInterval(statusCheckInterval);
@@ -782,18 +915,14 @@ async function checkPaymentStatus() {
                 document.getElementById('statusChecking').style.display = 'none';
             } else if (status === 'PENDING') {
                 console.log('Payment still pending');
-                // Continuer à vérifier
             } else {
                 console.log('Unknown status:', status);
-                // Continuer à vérifier
             }
         } else {
             console.log('Status check failed:', data.message);
-            // Continuer à vérifier malgré l'erreur
         }
     } catch (error) {
         console.error('Error during status check:', error);
-        // Continuer à vérifier malgré l'erreur
     }
 }
 
@@ -841,21 +970,194 @@ async function completeRenewalProcess() {
     }
 }
 
-// Gestion des clics en dehors du modal
+// ==================== FONCTIONS DE MODIFICATION DE PROFIL ====================
+
+let isSubmitting = false;
+
+function openEditProfileModal() {
+    console.log('Opening edit profile modal');
+    document.getElementById('editProfileModal').style.display = 'block';
+    
+    // Réinitialiser les champs de mot de passe
+    document.getElementById('edit_current_password').value = '';
+    document.getElementById('edit_new_password').value = '';
+    document.getElementById('edit_confirm_password').value = '';
+    
+    // Cacher les alertes précédentes
+    hideProfileAlert();
+    hideProfileLoading();
+}
+
+function closeEditProfileModal() {
+    console.log('Closing edit profile modal');
+    document.getElementById('editProfileModal').style.display = 'none';
+    isSubmitting = false;
+}
+
+function showProfileAlert(message, type) {
+    const alertElement = document.getElementById('profileAlert');
+    alertElement.textContent = message;
+    alertElement.className = `alert alert-${type}`;
+    alertElement.style.display = 'block';
+    console.log(`Profile alert [${type}]:`, message);
+}
+
+function hideProfileAlert() {
+    document.getElementById('profileAlert').style.display = 'none';
+}
+
+function showProfileLoading() {
+    document.getElementById('editProfileForm').style.display = 'none';
+    document.getElementById('profileLoading').style.display = 'block';
+    document.getElementById('saveProfileBtn').disabled = true;
+}
+
+function hideProfileLoading() {
+    document.getElementById('editProfileForm').style.display = 'block';
+    document.getElementById('profileLoading').style.display = 'none';
+    document.getElementById('saveProfileBtn').disabled = false;
+}
+
+async function submitProfileUpdate(event) {
+    event.preventDefault();
+    
+    if (isSubmitting) {
+        console.log('Already submitting, ignoring...');
+        return;
+    }
+    
+    console.log('Submitting profile update');
+    isSubmitting = true;
+    
+    const formData = new FormData();
+    formData.append('username', document.getElementById('edit_username').value);
+    formData.append('first_name', document.getElementById('edit_first_name').value);
+    formData.append('last_name', document.getElementById('edit_last_name').value);
+    formData.append('email', document.getElementById('edit_email').value);
+    formData.append('phone', document.getElementById('edit_phone').value);
+    formData.append('city', document.getElementById('edit_city').value);
+    
+    const currentPassword = document.getElementById('edit_current_password').value;
+    const newPassword = document.getElementById('edit_new_password').value;
+    const confirmPassword = document.getElementById('edit_confirm_password').value;
+    
+    if (newPassword || currentPassword || confirmPassword) {
+        if (!currentPassword) {
+            showProfileAlert('Veuillez entrer votre mot de passe actuel pour modifier le mot de passe.', 'error');
+            isSubmitting = false;
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            showProfileAlert('Les nouveaux mots de passe ne correspondent pas.', 'error');
+            isSubmitting = false;
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            showProfileAlert('Le nouveau mot de passe doit contenir au moins 6 caractères.', 'error');
+            isSubmitting = false;
+            return;
+        }
+        
+        formData.append('current_password', currentPassword);
+        formData.append('new_password', newPassword);
+    }
+    
+    const email = document.getElementById('edit_email').value;
+    if (!email || !email.includes('@')) {
+        showProfileAlert('Veuillez entrer une adresse email valide.', 'error');
+        isSubmitting = false;
+        return;
+    }
+    
+    const phone = document.getElementById('edit_phone').value;
+    if (phone && !phone.match(/^[0-9]{9,12}$/)) {
+        showProfileAlert('Format de numéro de téléphone invalide.', 'error');
+        isSubmitting = false;
+        return;
+    }
+    
+    showProfileLoading();
+    hideProfileAlert();
+    
+    try {
+        const response = await fetch('/api/update-profile/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        console.log('Response status:', response.status);
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text.substring(0, 500));
+            throw new Error('Réponse non-JSON du serveur.');
+        }
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        hideProfileLoading();
+        
+        if (data.success) {
+            showProfileAlert('✅ ' + data.message, 'success');
+            
+            if (data.user) {
+                if (data.user.username) document.getElementById('edit_username').value = data.user.username;
+                if (data.user.first_name) document.getElementById('edit_first_name').value = data.user.first_name;
+                if (data.user.last_name) document.getElementById('edit_last_name').value = data.user.last_name;
+                if (data.user.email) document.getElementById('edit_email').value = data.user.email;
+                if (data.user.phone) document.getElementById('edit_phone').value = data.user.phone;
+                
+                const userNameElement = document.querySelector('.user-name');
+                if (userNameElement && data.user.full_name) {
+                    userNameElement.textContent = data.user.full_name;
+                }
+            }
+            
+            setTimeout(() => {
+                closeEditProfileModal();
+            }, 2000);
+        } else {
+            showProfileAlert('❌ ' + data.message, 'error');
+        }
+        
+    } catch (error) {
+        hideProfileLoading();
+        console.error('Error during profile update:', error);
+        showProfileAlert('Erreur de connexion. Veuillez réessayer.', 'error');
+    } finally {
+        isSubmitting = false;
+    }
+}
+
+// ==================== GESTION DES MODALS ====================
+
 window.onclick = function(event) {
-    const modal = document.getElementById('renewalModal');
-    if (event.target === modal) {
+    const profileModal = document.getElementById('editProfileModal');
+    const renewalModal = document.getElementById('renewalModal');
+    
+    if (event.target === profileModal) {
+        closeEditProfileModal();
+    }
+    if (event.target === renewalModal) {
         closeRenewalModal();
     }
 }
 
-// Gestion de la touche Échap
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
+        closeEditProfileModal();
         closeRenewalModal();
     }
 });
 
-console.log('Renewal subscription script loaded');
+console.log('All scripts loaded successfully');
 </script>
 {% endblock %}

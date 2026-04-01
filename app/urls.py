@@ -16,6 +16,7 @@ urlpatterns = [
     path('', views.accueil , name='dashboard'),
 
     path('abonnement/', views.subscription_page, name='subscription_page'),
+    path('api/update-profile/', views.update_profile, name='update_profile'),
     
     path('api/schedule/<uuid:subscription_id>/', views.get_subscription_schedule, name='get_schedule'),
     path('subscription/payment/', views.process_subscription_payment, name='process_subscription_payment'),
@@ -98,6 +99,8 @@ urlpatterns = [
 
     # urls des finances 
     path('finances/', admins.finances_dashboard, name='finances_dashboard'),
+    path('api/process-withdrawal/', admins.process_withdrawal, name='process_withdrawal'),
+    path('api/users-for-withdrawal/', admins.get_users_for_withdrawal, name='users_for_withdrawal'),
 
     # API URLs pour la gestion des zones, tricycles et programmes
     path('gestion-collecte/', collecte_admin.GestionCollecteView.as_view(), name='gestion_collecte'),

@@ -1,12 +1,16 @@
+from asyncio.log import logger
+
 from django.views.generic import TemplateView
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from django.db.models.functions import TruncMonth, TruncYear
 
 import json
+
+from app.services.payment import PaymentService
 from .models import (
     Payment, Subscription, CollectionRequest, DemandeReabonnement, 
-    RevenueRecord, Notification, SubscriptionDay, Abonnement, CustomUser, Facture, CollectionSchedule
+    RevenueRecord, Notification, SubscriptionDay, Abonnement, CustomUser, Facture, CollectionSchedule, Token, Withdrawal
 )
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -23,6 +27,7 @@ import openpyxl
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
 
 
 
@@ -709,6 +714,7 @@ def finances_dashboard(request):
         else:
             growth_data.append(0)
     
+    token = Token.objects.all().first()  # Récupérer le token de sécurité pour les API de retrait      
     context = {
         'page_title': 'Tableau de Bord Financier',
         'months_json': json.dumps(months),
@@ -724,9 +730,78 @@ def finances_dashboard(request):
         'recent_payments': recent_payments,
         'start_date': start_date,
         'end_date': end_date,
+        'token': token.token if token else ""
     }
     
     return render(request, 'administrations/finances_dashboard.html', context)
+
+
+
+@csrf_exempt
+def process_withdrawal(request):
+    """API endpoint pour traiter les retraits"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        
+        
+        # Récupérer les données
+        user_id = data.get('user_id')
+        amount = float(data.get('amount'))
+        phone_number = data.get('phone_number')
+        description = data.get('description', 'Retrait d\'argent')
+        password = data.get('password')
+
+        # verifier que le mot de passe correspond à l'utilisateur
+        user = CustomUser.objects.get(id=user_id)
+        if not user.check_password(password):
+            return JsonResponse({'success': False, 'message': 'Mot de passe incorrect'}, status=401)
+
+        
+        # Valider les données
+        if not user_id:
+            return JsonResponse({'success': False, 'message': 'ID utilisateur requis'})
+        
+        if not amount or amount <= 0:
+            return JsonResponse({'success': False, 'message': 'Montant invalide'})
+        
+        if not phone_number:
+            return JsonResponse({'success': False, 'message': 'Numéro de téléphone requis'})
+        
+        # Récupérer l'utilisateur
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Utilisateur non trouvé'})
+        
+        # Traiter le retrait
+        payment_service = PaymentService()
+        result = payment_service.process_withdrawal(user, amount, phone_number, description)
+
+        if result.get('success'):
+            return JsonResponse({'success': True, 'message': result.get('message'), 'transaction_id': result.get('transaction_id')})
+        else:
+            return JsonResponse({'success': False, 'message': result.get('message')}, status=400)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Données invalides'}, status=400)
+    except Exception as e:
+        logger.error(f"Error processing withdrawal: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+def get_users_for_withdrawal(request):
+    """API endpoint pour récupérer la liste des utilisateurs"""
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+    
+    try:
+        users = CustomUser.objects.filter(is_active=True, is_superuser=True).values('id', 'username', 'email', 'first_name', 'last_name')
+        return JsonResponse({'success': True, 'users': list(users)})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 # vue pour exporter les clients en format xls
